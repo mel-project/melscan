@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use anyhow::Context;
 use themelio_nodeprot::ValClient;
-use themelio_stf::{CoinID, Denom, TxHash};
+use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 
 use tide::Body;
 use tmelcrypt::HashVal;
@@ -78,7 +78,10 @@ pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
 
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height).await?;
-    let cdh = older.get_pool(denom).await.map_err(to_badgateway)?;
+    let cdh = older
+        .get_pool(PoolKey::mel_and(denom))
+        .await
+        .map_err(to_badgateway)?;
     Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
 }
 

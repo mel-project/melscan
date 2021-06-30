@@ -8,7 +8,7 @@ use num_traits::ToPrimitive;
 use serde::Serialize;
 use smol::prelude::*;
 use themelio_nodeprot::ValClient;
-use themelio_stf::{Denom, NetID, MICRO_CONVERTER};
+use themelio_stf::{Denom, NetID, PoolKey, MICRO_CONVERTER};
 
 use super::{friendly_denom, RenderTimeTracer};
 
@@ -70,13 +70,25 @@ async fn pool_items(
     {
         item_futs.push(async move {
             let old_snap = snapshot.get_older(height).await.map_err(to_badgateway)?;
+            let pool_key = PoolKey::mel_and(denom);
             let pool_info = old_snap
-                .get_pool(denom)
+                .get_pool(pool_key)
                 .await
                 .map_err(to_badgateway)?
                 .ok_or_else(notfound)?;
             let price = pool_info.implied_price().to_f64().unwrap_or_default();
-            let liquidity = pool_info.mels as f64 * 2.0 / MICRO_CONVERTER as f64;
+            let price = if denom == pool_key.left {
+                1.0 / price
+            } else {
+                price
+            };
+            let liquidity = if denom == pool_key.left {
+                pool_info.rights
+            } else {
+                pool_info.lefts
+            } as f64
+                * 2.0
+                / MICRO_CONVERTER as f64;
             Ok::<_, tide::Error>(PoolDataItem {
                 date: chrono::Utc::now()
                     .checked_sub_signed(

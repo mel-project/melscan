@@ -2,9 +2,9 @@ use crate::to_badgateway;
 use askama::Template;
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
-use num_traits::ToPrimitive;
+use num_traits::{Inv, ToPrimitive};
 use themelio_nodeprot::ValClient;
-use themelio_stf::{CoinID, Denom, Header, NetID};
+use themelio_stf::{CoinID, Denom, Header, NetID, PoolKey};
 use tide::Body;
 
 use super::{MicroUnit, RenderTimeTracer};
@@ -97,18 +97,19 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     }
 
     let mel_per_dosc = (last_snap
-        .get_pool(Denom::NomDosc)
+        .get_pool(PoolKey::new(Denom::Mel, Denom::NomDosc))
         .await
         .map_err(to_badgateway)?
         .unwrap()
         .implied_price()
+        .inv()
         * themelio_stf::dosc_inflator(last_snap.current_header().height))
     .to_f64()
     .unwrap_or_default();
 
     let pool = PoolSummary {
         mel_per_sym: last_snap
-            .get_pool(Denom::Sym)
+            .get_pool(PoolKey::new(Denom::Mel, Denom::Sym))
             .await
             .map_err(to_badgateway)?
             .unwrap()
