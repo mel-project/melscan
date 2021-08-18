@@ -47,9 +47,9 @@ async fn main_inner() -> anyhow::Result<()> {
     // TODO read this from an argument
     if args.testnet {
         client.trust(
-            65447,
+            400167,
             HashVal(
-                hex::decode("68aebb894d48cb46e599f7a6bcf3727a0429fc798f6ec2870bdc9e1b0340f1d0")?
+                hex::decode("bf8a7194dcef69eb3a0c9a3664d58156f68ca4092306ce04eda08bfe794db940")?
                     .try_into()
                     .unwrap(),
             ),
@@ -80,6 +80,15 @@ async fn main_inner() -> anyhow::Result<()> {
         .get(raw::get_coin);
     app.at("/raw/blocks/:height/pools/:denom")
         .get(raw::get_pool);
+    app.with(tide::utils::After(|mut res: tide::Response| async move {
+        if let Some(err) = res.error() {
+            // put the error string in the response
+            let err_str = format!("ERROR: {:?}", err);
+            log::warn!("{}", err_str);
+            res.set_body(err_str);
+        }
+        Ok(res)
+    }));
     tracing::info!("Starting REST endpoint at {}", args.listen);
     app.listen(args.listen).await?;
     Ok(())
@@ -90,7 +99,6 @@ fn to_badreq<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> ti
 }
 
 fn to_badgateway<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
-    log::warn!("bad upstream: {:#?}", e);
     tide::Error::new(StatusCode::BadGateway, e)
 }
 
