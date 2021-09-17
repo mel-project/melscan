@@ -56,9 +56,9 @@ async fn main_inner() -> anyhow::Result<()> {
         );
     } else {
         client.trust(
-            14146,
+            405270,
             HashVal(
-                hex::decode("50f5a41c6e996d36bc05b1272a59c8adb3fe3f98de70965abd2eed0c115d2108")?
+                hex::decode("fc8bc73082a5a2b994d8c080646f5fcdb2a8c236bba50bdbe6e8fa0f3399d7e")?
                     .try_into()
                     .unwrap(),
             ),
