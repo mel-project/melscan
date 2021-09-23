@@ -1,6 +1,8 @@
-# Themelio Block eXplorer MicroService
+# Melscan
 
-Early alpha quality. This is the code behind [Melscan](https://scan.themelio.org)
+Early alpha quality. This is the code behind the official block explorer, [Melscan](https://scan.themelio.org).
+
+One notable feature is that Melscan pulls all data is pulled through a trustless thin client. This means that you can run a local, trusted instance of Melscan without running a full node.
 
 # API docs
 

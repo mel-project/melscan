@@ -44,7 +44,7 @@ pub async fn get_transaction(req: tide::Request<ValClient>) -> tide::Result<Body
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height.into()).await?;
     let tx = older.get_transaction(txhash).await?;
-    Ok(Body::from_json(&tx.ok_or_else(notfound)?)?)
+    Body::from_json(&tx.ok_or_else(notfound)?)
 }
 
 /// Get a particular coin
@@ -68,7 +68,7 @@ pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height.into()).await?;
     let cdh = older.get_coin(dbg!(CoinID { txhash, index })).await?;
-    Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
+    Body::from_json(&cdh.ok_or_else(notfound)?)
 }
 
 /// Get a particular pool
@@ -85,7 +85,7 @@ pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
         .get_pool(PoolKey::mel_and(denom))
         .await
         .map_err(to_badgateway)?;
-    Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
+    Body::from_json(&cdh.ok_or_else(notfound)?)
 }
 
 /// Get a particular block
@@ -98,5 +98,5 @@ pub async fn get_full_block(req: tide::Request<ValClient>) -> tide::Result<Body>
         .await
         .map_err(to_badgateway)?;
     let block = older.current_block().await.map_err(to_badgateway)?;
-    Ok(Body::from_json(&block)?)
+    Body::from_json(&block)
 }

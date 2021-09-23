@@ -1578,6 +1578,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "melscan"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "askama",
+ "chrono",
+ "futures-util",
+ "hex",
+ "log",
+ "num-traits",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "smol",
+ "structopt",
+ "themelio-nodeprot",
+ "themelio-stf",
+ "tide",
+ "tmelcrypt",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "memchr"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2666,30 +2690,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
-]
-
-[[package]]
-name = "themelio-bxms"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "askama",
- "chrono",
- "futures-util",
- "hex",
- "log",
- "num-traits",
- "once_cell",
- "serde",
- "serde_json",
- "smol",
- "structopt",
- "themelio-nodeprot",
- "themelio-stf",
- "tide",
- "tmelcrypt",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
