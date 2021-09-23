@@ -35,7 +35,7 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let last_day = pool_items(req.state(), denom, 2880).await?;
     let last_week = pool_items(req.state(), denom, 20160).await?;
     let last_month = pool_items(req.state(), denom, 86400).await?;
-    let all_time = pool_items(req.state(), denom, last_height).await?;
+    let all_time = pool_items(req.state(), denom, last_height.into()).await?;
     let mut body: tide::Body = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         denom: friendly_denom(denom),
@@ -58,7 +58,7 @@ async fn pool_items(
     blocks: u64,
 ) -> tide::Result<Vec<PoolDataItem>> {
     let snapshot = client.snapshot().await.map_err(to_badgateway)?;
-    let last_height = snapshot.current_header().height;
+    let last_height = snapshot.current_header().height.0;
     let blocks = last_height.min(blocks);
     const DIVIDER: u64 = 300;
     // at most DIVIDER points
@@ -69,7 +69,10 @@ async fn pool_items(
         .step_by((blocks / DIVIDER) as usize)
     {
         item_futs.push(async move {
-            let old_snap = snapshot.get_older(height).await.map_err(to_badgateway)?;
+            let old_snap = snapshot
+                .get_older(height.into())
+                .await
+                .map_err(to_badgateway)?;
             let pool_key = PoolKey::mel_and(denom);
             let pool_info = old_snap
                 .get_pool(pool_key)

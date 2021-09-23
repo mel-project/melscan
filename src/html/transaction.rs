@@ -40,7 +40,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
         .snapshot()
         .await
         .map_err(to_badgateway)?
-        .get_older(height)
+        .get_older(height.into())
         .await
         .map_err(to_badgateway)?;
     let transaction = snap
@@ -66,7 +66,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
                     .get(&output.covhash)
                     .cloned()
                     .unwrap_or_default()
-                    .checked_add(output.value.try_into()?)
+                    .checked_add(output.value.0.try_into()?)
                     .context("cannot add")?;
                 balance.insert(output.covhash, new_balance);
             }
@@ -82,7 +82,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
                     .get(&cdh.coin_data.covhash)
                     .cloned()
                     .unwrap_or_default()
-                    .checked_sub(cdh.coin_data.value.try_into()?)
+                    .checked_sub(cdh.coin_data.value.0.try_into()?)
                     .context("cannot add")?;
                 balance.insert(cdh.coin_data.covhash, new_balance);
             }
@@ -105,13 +105,13 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
 
     let fee = transaction.fee;
     let fee_mult = snap
-        .get_older(height - 1)
+        .get_older((height - 1).into())
         .await
         .map_err(to_badgateway)?
         .current_header()
         .fee_multiplier;
-    let base_fee = transaction.base_fee(fee_mult, 0);
-    let tips = fee.saturating_sub(base_fee);
+    let base_fee = transaction.base_fee(fee_mult, 0).0;
+    let tips = fee.0.saturating_sub(base_fee);
 
     let mut inputs_with_cdh = vec![];
     // we subtract from the balance
@@ -124,7 +124,10 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
             index,
             input,
             cdh.clone(),
-            MicroUnit(cdh.coin_data.value, friendly_denom(cdh.coin_data.denom)),
+            MicroUnit(
+                cdh.coin_data.value.into(),
+                friendly_denom(cdh.coin_data.denom),
+            ),
         ));
     }
 
@@ -141,15 +144,21 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
             .outputs
             .iter()
             .enumerate()
-            .map(|(i, cd)| (i, cd.clone(), MicroUnit(cd.value, friendly_denom(cd.denom))))
+            .map(|(i, cd)| {
+                (
+                    i,
+                    cd.clone(),
+                    MicroUnit(cd.value.0, friendly_denom(cd.denom)),
+                )
+            })
             .collect(),
-        fee: MicroUnit(fee, "MEL".into()),
+        fee: MicroUnit(fee.0, "MEL".into()),
         base_fee: MicroUnit(base_fee, "MEL".into()),
         tips: MicroUnit(tips, "MEL".into()),
         gross_gain: transaction
             .total_outputs()
             .iter()
-            .map(|(denom, val)| MicroUnit(*val, friendly_denom(*denom)))
+            .map(|(denom, val)| MicroUnit(val.0, friendly_denom(*denom)))
             .collect(),
     }
     .render()

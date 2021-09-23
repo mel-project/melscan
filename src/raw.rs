@@ -13,7 +13,7 @@ use crate::{notfound, to_badgateway, to_badreq};
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
-    Ok(Body::from_json(&last_snap.current_header())?)
+    Body::from_json(&last_snap.current_header())
 }
 
 /// Get a particular block header
@@ -21,8 +21,11 @@ pub async fn get_latest(req: tide::Request<ValClient>) -> tide::Result<Body> {
 pub async fn get_header(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
-    let older = last_snap.get_history(height).await.map_err(to_badgateway)?;
-    Ok(Body::from_json(&older.ok_or_else(notfound)?)?)
+    let older = last_snap
+        .get_history(height.into())
+        .await
+        .map_err(to_badgateway)?;
+    Body::from_json(&older.ok_or_else(notfound)?)
 }
 
 /// Get a particular transaction
@@ -39,7 +42,7 @@ pub async fn get_transaction(req: tide::Request<ValClient>) -> tide::Result<Body
     )
     .into();
     let last_snap = req.state().snapshot().await?;
-    let older = last_snap.get_older(height).await?;
+    let older = last_snap.get_older(height.into()).await?;
     let tx = older.get_transaction(txhash).await?;
     Ok(Body::from_json(&tx.ok_or_else(notfound)?)?)
 }
@@ -63,7 +66,7 @@ pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
     .into();
     let index: u8 = coinid_exploded[1].parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await?;
-    let older = last_snap.get_older(height).await?;
+    let older = last_snap.get_older(height.into()).await?;
     let cdh = older.get_coin(dbg!(CoinID { txhash, index })).await?;
     Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
 }
@@ -77,7 +80,7 @@ pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
         Denom::from_bytes(&hex::decode(&denom_string).map_err(to_badreq)?).context("oh no")?;
 
     let last_snap = req.state().snapshot().await?;
-    let older = last_snap.get_older(height).await?;
+    let older = last_snap.get_older(height.into()).await?;
     let cdh = older
         .get_pool(PoolKey::mel_and(denom))
         .await
@@ -90,7 +93,10 @@ pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
 pub async fn get_full_block(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
-    let older = last_snap.get_older(height).await.map_err(to_badgateway)?;
+    let older = last_snap
+        .get_older(height.into())
+        .await
+        .map_err(to_badgateway)?;
     let block = older.current_block().await.map_err(to_badgateway)?;
     Ok(Body::from_json(&block)?)
 }

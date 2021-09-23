@@ -1,7 +1,7 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
 use themelio_nodeprot::ValClient;
-use themelio_stf::{CoinID, Header, NetID, TxHash};
+use themelio_stf::{BlockHeight, CoinID, Header, NetID, TxHash};
 
 use super::{MicroUnit, RenderTimeTracer};
 
@@ -23,7 +23,7 @@ struct BlockTemplate {
 #[tracing::instrument(skip(req))]
 pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("blockpage");
-    let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
+    let height: BlockHeight = req.param("height").unwrap().parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let block = last_snap
         .get_older(height)
@@ -51,9 +51,12 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
             .map(|v| (v.hash_nosigs(), v.weight()))
             .collect(),
         fee_multiplier: block.header.fee_multiplier as f64 / 65536.0,
-        _reward_amount: MicroUnit(reward_amount, "MEL".into()),
-        total_fees: MicroUnit(block.transactions.iter().map(|v| v.fee).sum(), "MEL".into()),
-        fee_pool: MicroUnit(block.header.fee_pool, "MEL".into()),
+        _reward_amount: MicroUnit(reward_amount.0, "MEL".into()),
+        total_fees: MicroUnit(
+            block.transactions.iter().map(|v| v.fee.0).sum(),
+            "MEL".into(),
+        ),
+        fee_pool: MicroUnit(block.header.fee_pool.0, "MEL".into()),
     }
     .render()
     .unwrap()
