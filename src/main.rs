@@ -6,6 +6,8 @@ use themelio_nodeprot::{TrustedHeight, ValClient};
 use themelio_stf::NetID;
 use tide::StatusCode;
 use tmelcrypt::HashVal;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 mod html;
 mod raw;
 
@@ -31,9 +33,13 @@ pub struct Args {
 #[tracing::instrument]
 async fn main_inner() -> anyhow::Result<()> {
     let log_conf = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "themelio_bxms=debug,themelio_nodeprot=debug,warn".into());
+        .unwrap_or_else(|_| "melscan=debug,themelio_nodeprot=debug,warn".into());
     std::env::set_var("RUST_LOG", log_conf);
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_ansi(false)
+        .finish()
+        .init();
 
     let args = Args::from_args();
     let client = ValClient::new(
