@@ -52,23 +52,9 @@ async fn main_inner() -> anyhow::Result<()> {
     );
     // TODO read this from an argument or a special crate
     if args.testnet {
-        client.trust(TrustedHeight {
-            height: 400167.into(),
-            header_hash: HashVal(
-                hex::decode("bf8a7194dcef69eb3a0c9a3664d58156f68ca4092306ce04eda08bfe794db940")?
-                    .try_into()
-                    .unwrap(),
-            ),
-        });
+        client.trust(themelio_bootstrap::checkpoint_height(NetID::Testnet).unwrap());
     } else {
-        client.trust(TrustedHeight {
-            height: 405289.into(),
-            header_hash: HashVal(
-                hex::decode("6f7b729a1d639b5b529a56530037f7fafc7b1d8c0af29f1ed9ce628d6532b908")?
-                    .try_into()
-                    .unwrap(),
-            ),
-        });
+        client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
     }
     let mut app = tide::with_state(client);
     // Rendered paths

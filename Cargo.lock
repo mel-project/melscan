@@ -1593,6 +1593,7 @@ dependencies = [
  "serde_json",
  "smol",
  "structopt",
+ "themelio-bootstrap",
  "themelio-nodeprot",
  "themelio-stf",
  "tide",
@@ -2693,6 +2694,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "themelio-bootstrap"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4d0d46da87d40c2e5fe5c5ef931a57167f7d927885751365bbc050fe9106acd"
+dependencies = [
+ "once_cell",
+ "themelio-nodeprot",
+ "themelio-stf",
+]
+
+[[package]]
 name = "themelio-nodeprot"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2714,9 +2726,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.6.1"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc75eb1d77997785ea7e006db443d6b1fbe2b14678a5219b0743e2351d86fc8c"
+checksum = "209d6cd11627277f7781e4afce36c518d1511a8faba29b766b46f1b4119f6854"
 dependencies = [
  "arbitrary",
  "dashmap",
