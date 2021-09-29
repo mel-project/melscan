@@ -42,19 +42,93 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js" integrity="sha512-RJJ1NNC88QhN7dwpCY8rm/6OxI+YdQP48DrLGe/eSAd+n+s1PXwQkkpzzAgoJe4cZFW2GALQoxox61gSY2yQfg==" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.js" integrity="sha512-ZK0WjtDcWIgPGnc0ijTg6vGJIsTcMh46KgFKpnZiZWp8mhTXwqOAbJOKVE3tT4ru701KRakCCrFUre7tRn+oiw==" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.min.css" integrity="sha512-e5dJblUsk+67Y38sR7+4reR7UyT7BuT/8y0r4ZcXh59IGjAMY4UA81lHouD+a82FU9sGvAsLZlDLgAiUFeKXPg==" crossorigin="anonymous" />
+    <style>
+        .info-circle {
+            font-size: .7rem;
+            border: black solid 1px;
+            border-radius: 50%;
+            width: 1.2em;
+            height: 1.2em;
+            line-height: 0;
+            position: relative;
+        }
+
+        .info-circle:hover {
+            cursor: pointer;
+        }
+
+        .info-i {
+            position: absolute;
+            bottom: 50%;
+            width: 100%;
+            text-align: center;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            width: 20em;
+            font-size: .8em;
+            background-color: white;
+            border: 1px solid #cccccc;
+            padding: .2em;
+            border-radius: 6px;
+
+            position: absolute;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+
+            left: 1.7em;
+            top: -50%;
+
+        }
+
+        .tooltip .tooltiptext::after {
+            content: " ";
+            position: absolute;
+            top: 1em;
+            right: 100%;
+            /* To the left of the tooltip */
+            margin-top: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent #cccccc transparent transparent;
+        }
+
+
+
+        /* Show the tooltip text when you mouse over the tooltip container */
+        .tooltip:hover .tooltiptext {
+            opacity: 1;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+        integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"
+        integrity="sha512-RJJ1NNC88QhN7dwpCY8rm/6OxI+YdQP48DrLGe/eSAd+n+s1PXwQkkpzzAgoJe4cZFW2GALQoxox61gSY2yQfg=="
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.js"
+        integrity="sha512-ZK0WjtDcWIgPGnc0ijTg6vGJIsTcMh46KgFKpnZiZWp8mhTXwqOAbJOKVE3tT4ru701KRakCCrFUre7tRn+oiw=="
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.min.css"
+        integrity="sha512-e5dJblUsk+67Y38sR7+4reR7UyT7BuT/8y0r4ZcXh59IGjAMY4UA81lHouD+a82FU9sGvAsLZlDLgAiUFeKXPg=="
+        crossorigin="anonymous" />
     {% block head %}{% endblock %}
 </head>
 
 <body style="padding-left: 20px; padding-right: 20px">
     <!-- Header -->
-    <nav class="mx-auto max-w-screen-lg mt-8 text-xl leading-tight" }>{% if testnet %}<span class="font-bold text-black italic text-opacity-50">Testnet </span>{% else %}{% endif %}{% block nav %}{% endblock %}<br>
-        <span class="text-sm text-blue-600 hover:underline"><b>{% if testnet %}<a href="https://scan.themelio.org">Switch to mainnet</a>{% else %}<a href="https://scan-testnet.themelio.org">Switch to testnet</a>{% endif %}</b></span>
+    <nav class="mx-auto max-w-screen-lg mt-8 text-xl leading-tight" }>{% if testnet %}<span
+            class="font-bold text-black italic text-opacity-50">Testnet </span>{% else %}{% endif %}{% block nav %}{%
+        endblock %}<br>
+        <span class="text-sm text-blue-600 hover:underline"><b>{% if testnet %}<a
+                    href="https://scan.themelio.org">Switch to mainnet</a>{% else %}<a
+                    href="https://scan-testnet.themelio.org">Switch to testnet</a>{% endif %}</b></span>
     </nav>
 
     {% block body %}{% endblock %}
