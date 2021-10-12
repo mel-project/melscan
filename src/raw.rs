@@ -7,7 +7,7 @@ use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
-use crate::html::homepage::BlockSummary;
+use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::{notfound, to_badgateway, to_badreq};
 
 /// Get the latest status
@@ -100,4 +100,29 @@ pub async fn get_full_block(req: tide::Request<ValClient>) -> tide::Result<Body>
         .map_err(to_badgateway)?;
     let block = older.current_block().await.map_err(to_badgateway)?;
     Body::from_json(&block)
+}
+
+/// Get block summary
+#[tracing::instrument(skip(req))]
+pub async fn get_block_summary(req: tide::Request<ValClient>) -> tide::Result<Body> {
+    let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
+    let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
+    let older = last_snap
+        .get_older(height.into())
+        .await
+        .map_err(to_badgateway)?;
+    let block = older.current_block().await.map_err(to_badgateway)?;
+
+    let reward_coin = older
+    .get_coin(CoinID::proposer_reward(height.into()))
+    .await
+    .map_err(to_badgateway)?;
+
+    let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
+
+    Body::from_json(&BlockSummary {
+        header: block.header,
+        total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
+        reward_amount: MicroUnit(reward_amount.into(), "MEL".into()),
+    })
 }

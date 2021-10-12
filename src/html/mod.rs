@@ -11,8 +11,10 @@ pub use homepage::*;
 pub use pool::*;
 pub use transaction::*;
 
+
+#[derive(serde::Serialize)]
 // A wrapper for microunit-denominated values
-pub struct MicroUnit(u128, String);
+pub struct MicroUnit(pub u128, pub String);
 
 impl Display for MicroUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

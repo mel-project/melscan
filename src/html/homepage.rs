@@ -18,6 +18,7 @@ struct HomepageTemplate {
     pool: PoolSummary,
 }
 
+#[derive(serde::Serialize)]
 // A block summary for the homepage.
 pub struct BlockSummary {
     pub header: Header,
