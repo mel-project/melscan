@@ -19,10 +19,10 @@ struct HomepageTemplate {
 }
 
 // A block summary for the homepage.
-struct BlockSummary {
-    header: Header,
-    total_weight: u128,
-    reward_amount: MicroUnit,
+pub struct BlockSummary {
+    pub header: Header,
+    pub total_weight: u128,
+    pub reward_amount: MicroUnit,
 }
 
 // A transaction summary for the homepage.

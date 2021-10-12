@@ -7,6 +7,7 @@ use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
+use crate::html::homepage::BlockSummary;
 use crate::{notfound, to_badgateway, to_badreq};
 
 /// Get the latest status
