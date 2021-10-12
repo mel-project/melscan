@@ -108,19 +108,13 @@
 <script>
   var block_row_template = (block) => `<tr>
             <td class="font-medium"><a href="/blocks/${block.header.height}" class="text-blue-600">${block.header.height}</a></td>
-            <td>${total_weight(block)} wu</td>
-            <td>${reward_amount(block)}</td>
+            <td>${block.total_weight} wu</td>
+            <td>${block.reward_amount.join(" ")}</td>
           </tr>`
 
 
-  function total_weight(block) {
-    return block.transactions.reduce((prev, curr)=>prev += curr.weight, 0)
-  }
-  function reward_amount(block) {
-    return block.transactions.reduce((prev, curr)=>prev += curr.weight, 0)
-  }
   async function get_block(height){
-    return $.ajax(`/raw/blocks/${height}/full`)
+    return $.ajax(`/raw/blocks/${height}/summary`)
   }
   async function get_latest_block(){
     let get_highest_block =  () => $.ajax("/raw/latest")
@@ -131,7 +125,8 @@
   async function update_rows(current_blocks){
     let latest = await get_latest_block()
     if(latest.header.height > current_blocks[0].height){
-      current_blocks.unshift({full: latest, height: latest.header.height})
+      current_blocks.unshift(latest)
+      console.log(latest)
       $("#block-rows").prepend(block_row_template(latest))
     }
   }
