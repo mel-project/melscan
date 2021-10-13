@@ -9,12 +9,11 @@ use tide::Body;
 
 use super::{MicroUnit, RenderTimeTracer};
 
-#[derive(Template)]
+#[derive(Template, serde::Serialize)]
 #[template(path = "homepage.html")]
 struct HomepageTemplate {
     testnet: bool,
     blocks: Vec<BlockSummary>,
-    transactions: Vec<TransactionSummary>,
     pool: PoolSummary,
 }
 
@@ -27,7 +26,7 @@ pub struct BlockSummary {
     pub transactions: Vec<TransactionSummary>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
     hash: String,
@@ -37,6 +36,7 @@ pub struct TransactionSummary {
     mel_moved: MicroUnit,
 }
 
+#[derive(serde::Serialize)]
 // A pool summary for the homepage.
 struct PoolSummary {
     mel_per_sym: f64,
@@ -50,7 +50,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
 
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let mut blocks = Vec::new();
-    let mut transactions = Vec::new();
+    let mut transactions: Vec<TransactionSummary> = Vec::new();
 
     let mut futs = FuturesOrdered::new();
     for height in (0u64..=last_snap.current_header().height.0).rev().take(30) {
@@ -73,34 +73,17 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
 
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner?;
-        blocks.push(BlockSummary {
+        
+        // push transactions
+        if transactions.len() < 30 {
+           
+        }
+        blocks.push(BlockSummary { 
             header: block.header,
             total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
             reward_amount: MicroUnit(reward.into(), "MEL".into()),
-            transactions
+            transactions: transactions.clone(),
         });
-        // push transactions
-        if transactions.len() < 30 {
-            for transaction in block.transactions {
-                if transactions.len() < 30 {
-                    transactions.push(TransactionSummary {
-                        hash: hex::encode(&transaction.hash_nosigs().0),
-                        shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
-                        height: block.header.height.0,
-                        _weight: transaction.weight(),
-                        mel_moved: MicroUnit(
-                            transaction
-                                .outputs
-                                .iter()
-                                .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-                                .sum::<u128>()
-                                + transaction.fee.0,
-                            "MEL".into(),
-                        ),
-                    })
-                }
-            }
-        }
     }
 
     let mel_per_dosc = (last_snap
@@ -129,7 +112,6 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let mut body: Body = HomepageTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         blocks,
-        transactions,
         pool,
     }
     .render()

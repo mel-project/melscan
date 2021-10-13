@@ -64,11 +64,7 @@
           {% for block in blocks %}
           <tr>
             <script>
-              blocks.push({
-                height: parseInt("{{block.header.height}}"),
-                total_weight: "{{block.total_weight}}",
-                reward_amount: "{{block.reward_amount}}"
-              })
+              blocks.push({{block|json}})
               </script>
             <td class="font-medium"><a href="/blocks/{{block.header.height}}" class="text-blue-600">{{block.header.height}}</a></td>
             <td>{{block.total_weight}} wu</td>
@@ -90,12 +86,17 @@
           </tr>
         </thead>
         <tbody class="leading-loose text-sm">
-          {% for tx in transactions %}
-          <tr>
-            <td><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.shorthash}}...</a></td>
-            <td>{{tx.height}}</td>
-            <td>{{ tx.mel_moved }}</td>
-          </tr>
+
+          {% for block in blocks %}
+            {% for tx in block.transactions %}
+
+            <tr>
+              <td><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.shorthash}}...</a></td>
+              <td>{{tx.height}}</td>
+              <td>{{ tx.mel_moved }}</td>
+            </tr>
+            
+            {% endfor %}
           {% endfor %}
       </table>
     </div>
@@ -124,9 +125,10 @@
 
   async function update_rows(current_blocks){
     let latest = await get_latest_block()
-    if(latest.header.height > current_blocks[0].height){
+    console.debug("Checking for new block", current_blocks)
+    if(latest.header.height > current_blocks[0].header.height){
       current_blocks.unshift(latest)
-      console.log(latest)
+      console.info("Block Found", latest)
       $("#block-rows").prepend(block_row_template(latest))
     }
   }

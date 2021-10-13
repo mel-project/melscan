@@ -22,7 +22,7 @@ tracing-subscriber = "0.2.24"
 log= "0.4.14"
 tracing= "0.1.28"
 
-askama= "0.10.5"
+askama= {version = "0.10.5", features = ["serde-json"]}
 
 serde={ version = "1.0.130", features = ["derive"] }
 num-traits= "0.2.14"

@@ -1,7 +1,7 @@
-pub mod homepage;
 use std::{fmt::Display, time::Instant};
-
 use themelio_stf::{Denom, MICRO_CONVERTER};
+
+pub mod homepage;
 mod block;
 mod pool;
 mod transaction;
@@ -12,7 +12,7 @@ pub use pool::*;
 pub use transaction::*;
 
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 // A wrapper for microunit-denominated values
 pub struct MicroUnit(pub u128, pub String);
 

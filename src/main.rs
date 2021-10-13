@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use std::{convert::TryInto, net::SocketAddr};
 
 use std::fmt::Debug;
