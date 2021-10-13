@@ -11,6 +11,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 mod html;
 mod raw;
+mod utils;
 
 fn main() -> anyhow::Result<()> {
     smol::block_on(main_inner())

@@ -6,9 +6,8 @@ use num_traits::{Inv, ToPrimitive};
 use themelio_nodeprot::ValClient;
 use themelio_stf::{CoinID, Denom, Header, NetID, PoolKey};
 use tide::Body;
-
 use super::{MicroUnit, RenderTimeTracer};
-
+use crate::utils::*;
 #[derive(Template, serde::Serialize)]
 #[template(path = "homepage.html")]
 struct HomepageTemplate {
@@ -51,28 +50,10 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let mut blocks = Vec::new();
     let mut transactions: Vec<TransactionSummary> = Vec::new();
-
-    let mut futs = FuturesOrdered::new();
-    for height in (0u64..=last_snap.current_header().height.0).rev().take(30) {
-        let last_snap = last_snap.clone();
-        futs.push(async move {
-            log::debug!("rendering block {}", height);
-            let old_snap = last_snap
-                .get_older(height.into())
-                .await
-                .map_err(to_badgateway)?;
-            let reward_coin = old_snap
-                .get_coin(CoinID::proposer_reward(height.into()))
-                .await
-                .map_err(to_badgateway)?;
-            let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
-            let old_block = old_snap.current_block().await?;
-            Ok::<_, tide::Error>((old_block, reward_amount))
-        });
-    }
+    let mut futs = get_old_blocks(&last_snap, 30);
 
     while let Some(inner) = futs.next().await {
-        let (block, reward) = inner?;
+        let (block, reward) = inner.map_err(to_badgateway)?;
         
         // push transactions
         if transactions.len() < 30 {
