@@ -24,10 +24,12 @@ pub struct BlockSummary {
     pub header: Header,
     pub total_weight: u128,
     pub reward_amount: MicroUnit,
+    pub transactions: Vec<TransactionSummary>,
 }
 
+#[derive(serde::Serialize)]
 // A transaction summary for the homepage.
-struct TransactionSummary {
+pub struct TransactionSummary {
     hash: String,
     shorthash: String,
     height: u64,
@@ -75,6 +77,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
             header: block.header,
             total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
             reward_amount: MicroUnit(reward.into(), "MEL".into()),
+            transactions
         });
         // push transactions
         if transactions.len() < 30 {

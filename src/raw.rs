@@ -120,9 +120,11 @@ pub async fn get_block_summary(req: tide::Request<ValClient>) -> tide::Result<Bo
 
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
+    let transactions: Vec::new();
     Body::from_json(&BlockSummary {
         header: block.header,
         total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
         reward_amount: MicroUnit(reward_amount.into(), "MEL".into()),
+        transactions
     })
 }
