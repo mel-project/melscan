@@ -9,7 +9,7 @@
 {% block top_scripts %}
 <script>
   var blocks = []
-  
+
 </script>
 {% endblock %}
 
@@ -18,11 +18,11 @@
   <div class="info-circle">
     <div class="info-i">i</div>
   </div>
-  <div class="tooltiptext">   background-color: white;
-    border: 1px solid #cccccc;   background-color: white;
-    border: 1px solid #cccccc;   background-color: white;
-    border: 1px solid #cccccc;   background-color: white;
-    border: 1px solid #cccccc;   backg</div>
+  <div class="tooltiptext"> background-color: white;
+    border: 1px solid #cccccc; background-color: white;
+    border: 1px solid #cccccc; background-color: white;
+    border: 1px solid #cccccc; background-color: white;
+    border: 1px solid #cccccc; backg</div>
 </div>
 <div class="container mx-auto max-w-screen-lg">
   <div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
@@ -31,13 +31,17 @@
     </div>
 
     <div>
-      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 / pool.mel_per_dosc).round() / 10000.0}} rDOSC</span>
+      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 /
+        pool.mel_per_dosc).round() / 10000.0}} rDOSC</span>
       <br>
-      <small class="text-blue-600 font-bold"><a href="/pools/64">See details →</a></small> · <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0 * 100.0).round() / 100.0}}%</span> from peg</small>
+      <small class="text-blue-600 font-bold"><a href="/pools/64">See details →</a></small> · <small
+        class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0
+          * 100.0).round() / 100.0}}%</span> from peg</small>
     </div>
 
     <div>
-      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 / pool.mel_per_sym).round() / 10000.0}} sym</span><br>
+      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 /
+        pool.mel_per_sym).round() / 10000.0}} sym</span><br>
       <small class="text-blue-600 font-bold"><a href="/pools/73">See details →</a></small>
     </div>
 
@@ -60,13 +64,14 @@
             <th class="block-reward">Proposer reward</th>
           </tr>
         </thead>
-        <tbody id="block-rows"class="leading-loose text-sm">
+        <tbody id="block-rows" class="leading-loose text-sm">
           {% for block in blocks %}
           <tr>
             <script>
               blocks.push({{block|json}})
-              </script>
-            <td class="font-medium"><a href="/blocks/{{block.header.height}}" class="text-blue-600">{{block.header.height}}</a></td>
+            </script>
+            <td class="font-medium"><a href="/blocks/{{block.header.height}}"
+                class="text-blue-600">{{block.header.height}}</a></td>
             <td>{{block.total_weight}} wu</td>
             <td>{{ block.reward_amount }}</td>
           </tr>
@@ -85,19 +90,9 @@
             <th>Mel moved</th>
           </tr>
         </thead>
-        <tbody class="leading-loose text-sm">
+        <tbody id="transaction-rows" class="leading-loose text-sm">
 
-          {% for block in blocks %}
-            {% for tx in block.transactions %}
-
-            <tr>
-              <td><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.shorthash}}...</a></td>
-              <td>{{tx.height}}</td>
-              <td>{{ tx.mel_moved }}</td>
-            </tr>
-            
-            {% endfor %}
-          {% endfor %}
+        </tbody>
       </table>
     </div>
 
@@ -107,34 +102,48 @@
 {% endblock %}
 {% block bottom_scripts %}
 <script>
-  var block_row_template = (block) => `<tr>
+  let block_row_template = (block) => `<tr>
             <td class="font-medium"><a href="/blocks/${block.header.height}" class="text-blue-600">${block.header.height}</a></td>
             <td>${block.total_weight} wu</td>
             <td>${block.reward_amount.join(" ")}</td>
           </tr>`
 
+  let transaction_row_template = (tx) => {
+    return `<tr class="js-template">
+            <td><a href="/blocks/${tx.height}/${tx.hash}" class="text-blue-600">${tx.shorthash}...</a></td>
+            <td>${tx.height}</td>
+            <td>${ tx.mel_moved.join(" ") }</td>
+          </tr>`}
 
-  async function get_block(height){
+  async function get_block(height) {
     return $.ajax(`/raw/blocks/${height}/summary`)
   }
-  async function get_latest_block(){
-    let get_highest_block =  () => $.ajax("/raw/latest")
+  async function get_latest_block() {
+    let get_highest_block = () => $.ajax("/raw/latest")
     let height = (await get_highest_block()).height
     return get_block(height)
   }
 
-  async function update_rows(current_blocks){
+  function prepend_transaction_rows(transactions){
+    $("#transaction-rows").prepend(transactions.map(transaction_row_template))
+
+  }
+
+  async function update_rows(current_blocks) {
     let latest = await get_latest_block()
     console.debug("Checking for new block", current_blocks)
-    if(latest.header.height > current_blocks[0].header.height){
+    if (latest.header.height > current_blocks[0].header.height) {
       current_blocks.unshift(latest)
       console.info("Block Found", latest)
+      $("#transaction-rows").prepend(latest.transactions.map(transaction_row_template))
       $("#block-rows").prepend(block_row_template(latest))
     }
   }
 
   async function main() {
-    setInterval(()=>update_rows(blocks), 3000)
+    console.log(blocks)
+    prepend_transaction_rows(blocks.map((block) => block.transactions).reverse().flat())
+    setInterval(() => update_rows(blocks), 3000)
     console.log(blocks)
   }
   main()

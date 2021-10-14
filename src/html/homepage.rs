@@ -28,11 +28,11 @@ pub struct BlockSummary {
 #[derive(serde::Serialize, Clone)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
-    hash: String,
-    shorthash: String,
-    height: u64,
-    _weight: u128,
-    mel_moved: MicroUnit,
+    pub hash: String,
+    pub shorthash: String,
+    pub height: u64,
+    pub _weight: u128,
+    pub mel_moved: MicroUnit,
 }
 
 #[derive(serde::Serialize)]
@@ -49,15 +49,31 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
 
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let mut blocks = Vec::new();
-    let mut transactions: Vec<TransactionSummary> = Vec::new();
     let mut futs = get_old_blocks(&last_snap, 30);
 
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner.map_err(to_badgateway)?;
-        
+        let mut transactions: Vec<TransactionSummary> = Vec::new();
+
         // push transactions
-        if transactions.len() < 30 {
-           
+        for transaction in &block.transactions {
+            if transactions.len() < 30 {
+                transactions.push(TransactionSummary {
+                    hash: hex::encode(&transaction.hash_nosigs().0),
+                    shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
+                    height: block.header.height.0,
+                    _weight: transaction.weight(),
+                    mel_moved: MicroUnit(
+                        transaction
+                            .outputs
+                            .iter()
+                            .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                            .sum::<u128>()
+                            + transaction.fee.0,
+                        "MEL".into(),
+                    ),
+                })
+            }
         }
         blocks.push(BlockSummary { 
             header: block.header,

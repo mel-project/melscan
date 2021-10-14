@@ -7,6 +7,7 @@ use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
+use crate::html::TransactionSummary;
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::{notfound, to_badgateway, to_badreq};
 
@@ -120,7 +121,26 @@ pub async fn get_block_summary(req: tide::Request<ValClient>) -> tide::Result<Bo
 
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
-    let transactions= Vec::new();
+    let mut transactions= Vec::new();
+    for transaction in &block.transactions {
+        if transactions.len() < 30 {
+            transactions.push(TransactionSummary {
+                hash: hex::encode(&transaction.hash_nosigs().0),
+                shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
+                height: block.header.height.0,
+                _weight: transaction.weight(),
+                mel_moved: MicroUnit(
+                    transaction
+                        .outputs
+                        .iter()
+                        .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                        .sum::<u128>()
+                        + transaction.fee.0,
+                    "MEL".into(),
+                ),
+            })
+        }
+    }
     Body::from_json(&BlockSummary {
         header: block.header,
         total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
