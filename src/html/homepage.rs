@@ -53,28 +53,8 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
 
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner.map_err(to_badgateway)?;
-        let mut transactions: Vec<TransactionSummary> = Vec::new();
+        let transactions: Vec<TransactionSummary> = get_transactions(&block, 30);
 
-        // push transactions
-        for transaction in &block.transactions {
-            if transactions.len() < 30 {
-                transactions.push(TransactionSummary {
-                    hash: hex::encode(&transaction.hash_nosigs().0),
-                    shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
-                    height: block.header.height.0,
-                    _weight: transaction.weight(),
-                    mel_moved: MicroUnit(
-                        transaction
-                            .outputs
-                            .iter()
-                            .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-                            .sum::<u128>()
-                            + transaction.fee.0,
-                        "MEL".into(),
-                    ),
-                })
-            }
-        }
         blocks.push(BlockSummary { 
             header: block.header,
             total_weight: block.transactions.iter().map(|v| v.weight()).sum(),

@@ -1,7 +1,7 @@
 use futures_util::{Future, stream::FuturesOrdered};
 use themelio_nodeprot::ValClientSnapshot;
-use themelio_stf::{Block, CoinID, CoinValue};
-use crate::to_badgateway;
+use themelio_stf::{Block, CoinID, CoinValue, Denom};
+use crate::{html::{MicroUnit, TransactionSummary}, to_badgateway};
 
 
 pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: u64) 
@@ -24,3 +24,47 @@ pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: u64)
     }
     futs
 }
+
+pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSummary>{
+    let mut transactions: Vec<TransactionSummary> = Vec::new();
+    for transaction in &block.transactions {
+        if transactions.len() < max_count {
+            transactions.push(TransactionSummary {
+                hash: hex::encode(&transaction.hash_nosigs().0),
+                shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
+                height: block.header.height.0,
+                _weight: transaction.weight(),
+                mel_moved: MicroUnit(
+                    transaction
+                        .outputs
+                        .iter()
+                        .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                        .sum::<u128>()
+                        + transaction.fee.0,
+                    "MEL".into(),
+                ),
+            })
+        }
+    }
+    transactions
+}
+
+// pub fn get_transactions_iterator(block: &Block, max_count: usize) -> impl Iterator<Item=TransactionSummary>{
+//     &block.transactions.iter().map(|transaction|{
+//             TransactionSummary {
+//                 hash: hex::encode(&transaction.hash_nosigs().0),
+//                 shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
+//                 height: block.header.height.0,
+//                 _weight: transaction.weight(),
+//                 mel_moved: MicroUnit(
+//                     transaction
+//                         .outputs
+//                         .iter()
+//                         .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+//                         .sum::<u128>()
+//                         + transaction.fee.0,
+//                     "MEL".into(),
+//                 ),
+//             }
+//     })
+// }

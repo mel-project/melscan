@@ -9,7 +9,7 @@
 
     <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
     {% block top_scripts %}{% endblock %}
-    
+
     <style>
         @import "https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900";
 
@@ -71,6 +71,7 @@
             position: relative;
             display: inline-block;
         }
+
         .tooltip .tooltiptext {
             width: 20em;
             font-size: .8em;
@@ -82,8 +83,7 @@
             position: absolute;
             z-index: 1;
             opacity: 0;
-            transition: opacity 0.5s ease;
-
+            transition: opacity 0.25s ease;
             left: 1.7em;
             top: -50%;
 
@@ -108,19 +108,103 @@
             opacity: 1;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
-        integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
-        crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"
-        integrity="sha512-RJJ1NNC88QhN7dwpCY8rm/6OxI+YdQP48DrLGe/eSAd+n+s1PXwQkkpzzAgoJe4cZFW2GALQoxox61gSY2yQfg=="
-        crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.js"
-        integrity="sha512-ZK0WjtDcWIgPGnc0ijTg6vGJIsTcMh46KgFKpnZiZWp8mhTXwqOAbJOKVE3tT4ru701KRakCCrFUre7tRn+oiw=="
-        crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.min.css"
-        integrity="sha512-e5dJblUsk+67Y38sR7+4reR7UyT7BuT/8y0r4ZcXh59IGjAMY4UA81lHouD+a82FU9sGvAsLZlDLgAiUFeKXPg=="
-        crossorigin="anonymous" />
-    {% block head %}{% endblock %}
+    <style>
+        .lds-ellipsis {
+            --pip-size: .3em;
+            --spacing-scale: 6.5;
+            --spacing-offset: .5em;
+            --animation-duration: 2s;
+            display: inline-block;
+            position: relative;
+            margin-left: .5em;
+            width: 4em;
+            height: 1em;
+        }
+
+        .lds-ellipsis div {
+            position: absolute;
+            top: .5em;
+            left: .5em;
+            width: var(--pip-size);
+            height: var(--pip-size);
+            /* border-radius: 50%; */
+            background: rgba(103, 180, 240, 0.576);
+            animation-timing-function: cubic-bezier(0, 1, 1, 0);
+        }
+
+        .lds-ellipsis div:nth-child(1) {
+            left: calc(1em / var(--spacing-scale));
+            animation: lds-ellipsis1 var(--animation-duration) infinite;
+        }
+
+        .lds-ellipsis div:nth-child(2) {
+            left: calc(1em / var(--spacing-scale));
+            animation: lds-ellipsis2 var(--animation-duration) infinite;
+        }
+
+        .lds-ellipsis div:nth-child(3) {
+            left: calc(4em / var(--spacing-scale));
+            animation: lds-ellipsis2 var(--animation-duration) infinite;
+        }
+
+        .lds-ellipsis div:nth-child(4) {
+            left: calc(7em / var(--spacing-scale));
+            animation: lds-ellipsis3 var(--animation-duration) infinite;
+        }
+
+        @keyframes lds-ellipsis1 {
+            0% {
+                transform: scale(0);
+            }
+
+            50% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes lds-ellipsis3 {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(0);
+            }
+            100% {
+                transform: scale(0);
+            }
+        }
+
+        @keyframes lds-ellipsis2 {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            50% {
+                transform: translate(calc(3em / var(--spacing-scale)), 0);
+            }
+            100% {
+                transform: translate(calc(3em / var(--spacing-scale)), 0);
+            }
+        }
+    </style>
+</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+    crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"
+    integrity="sha512-RJJ1NNC88QhN7dwpCY8rm/6OxI+YdQP48DrLGe/eSAd+n+s1PXwQkkpzzAgoJe4cZFW2GALQoxox61gSY2yQfg=="
+    crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.js"
+    integrity="sha512-ZK0WjtDcWIgPGnc0ijTg6vGJIsTcMh46KgFKpnZiZWp8mhTXwqOAbJOKVE3tT4ru701KRakCCrFUre7tRn+oiw=="
+    crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.min.css"
+    integrity="sha512-e5dJblUsk+67Y38sR7+4reR7UyT7BuT/8y0r4ZcXh59IGjAMY4UA81lHouD+a82FU9sGvAsLZlDLgAiUFeKXPg=="
+    crossorigin="anonymous" />
+{% block head %}{% endblock %}
 </head>
 
 <body style="padding-left: 20px; padding-right: 20px">
@@ -137,4 +221,5 @@
 
 </body>
 {% block bottom_scripts %}{% endblock %}
+
 </html>
