@@ -6,13 +6,6 @@
 <a href="/" class="text-black hover:text-opacity-60 hover:underline">Melscan</a>
 {% endblock %}
 
-{% block top_scripts %}
-<script>
-  var blocks = []
-
-</script>
-{% endblock %}
-
 {% block body %}
 {{tooltips.test|safe}}
 <div class="container mx-auto max-w-screen-lg">
@@ -61,9 +54,7 @@
         <tbody id="block-rows" class="leading-loose text-sm">
           {% for block in blocks %}
           <tr>
-            <script>
-              blocks.push({{block|json}})
-            </script>
+
             <td class="font-medium"><a href="/blocks/{{block.header.height}}"
                 class="text-blue-600">{{block.header.height}}</a></td>
             <td>{{block.total_weight}} wu</td>
@@ -117,6 +108,10 @@
   }
 </style>
 <script>
+      //in here on its own because it breaks the javascript parser
+      var blocks = {{blocks|json}}
+</script>
+<script>
   let block_row_template = (block, classes) => `<tr class="fade ${classes || ""} ">
             <td class="font-medium"><a href="/blocks/${block.header.height}" class="text-blue-600">${block.header.height}</a></td>
             <td>${block.total_weight} wu</td>
@@ -168,7 +163,6 @@
     prepend_transaction_rows(old_transactions, "")
     // check for new blocks on chain and append them if necessary
     setInterval(() => update_rows(blocks), 2000)
-    console.log(blocks)
   }
   main()
 </script>

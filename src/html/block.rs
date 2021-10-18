@@ -1,9 +1,10 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
+use lazy_static::lazy_static;
 use serde::__private::de::IdentifierDeserializer;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Header, NetID, TxHash};
-
+use std::collections::BTreeMap as Map;
 use super::{MicroUnit, RenderTimeTracer, InfoBubble};
 
 #[derive(Template)]
@@ -19,18 +20,15 @@ struct BlockTemplate {
     fee_multiplier: f64,
     _reward_amount: MicroUnit,
     total_fees: MicroUnit,
-    tooltips: ToolTips
+    tooltips: Map<String, InfoBubble>,
 }
 
-#[derive(serde::Deserialize)]
-pub struct ToolTips {
-    hash: InfoBubble,
-    height: InfoBubble,
-    fee_pool: InfoBubble,
-}
 
 #[tracing::instrument(skip(req))]
 pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
+    // lazy_static! {
+    //     static ref TOOLTIPS: ToolTips = serde_json::from_str(include_str!("../tooltips.json")).unwrap();
+    // }
     let _render = RenderTimeTracer::new("blockpage");
     let height: BlockHeight = req.param("height").unwrap().parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;

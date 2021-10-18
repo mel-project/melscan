@@ -1587,6 +1587,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "hex",
+ "lazy_static",
  "log",
  "num-traits",
  "once_cell",
