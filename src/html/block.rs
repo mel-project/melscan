@@ -1,12 +1,13 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
+use serde::__private::de::IdentifierDeserializer;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Header, NetID, TxHash};
 
 use super::{MicroUnit, RenderTimeTracer};
 
 #[derive(Template)]
-#[template(path = "block.html")]
+#[template(path = "block.html", escape = "none")]
 struct BlockTemplate {
     testnet: bool,
     header: Header,
@@ -18,7 +19,19 @@ struct BlockTemplate {
     fee_multiplier: f64,
     _reward_amount: MicroUnit,
     total_fees: MicroUnit,
+    tooltips: ToolTips
 }
+
+#[derive(serde::Deserialize)]
+struct ToolTips {
+    hash: InfoBubble,
+    height: InfoBubble,
+    fee_pool: InfoBubble,
+}
+
+#[derive(Template, serde::Deserialize)]
+#[template(path = "info-bubble.html", escape = "none")]
+pub struct InfoBubble(String);
 
 #[tracing::instrument(skip(req))]
 pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
@@ -57,6 +70,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
             "MEL".into(),
         ),
         fee_pool: MicroUnit(block.header.fee_pool.0, "MEL".into()),
+        tooltips: serde_json::from_str(include_str!("../tooltips.json")).unwrap(),
     }
     .render()
     .unwrap()

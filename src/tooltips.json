@@ -1,0 +1,5 @@
+{
+    "hash": "Unique identifier of this specific block",
+    "height": "The number of preceding blocks on the chain + 1 to account for this block",
+    "fee_pool": ""
+}

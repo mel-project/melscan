@@ -25,6 +25,7 @@ pub struct BlockSummary {
     pub transactions: Vec<TransactionSummary>,
 }
 
+
 #[derive(serde::Serialize, Clone)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
