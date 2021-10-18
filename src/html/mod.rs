@@ -1,5 +1,6 @@
 use std::{fmt::Display, time::Instant};
 use themelio_stf::{Denom, MICRO_CONVERTER};
+use askama::Template;
 
 pub mod homepage;
 mod block;
@@ -61,3 +62,8 @@ fn friendly_denom(denom: Denom) -> String {
         Denom::NewCoin => "(new denom)".into(),
     }
 }
+
+
+#[derive(Template, serde::Deserialize, serde::Serialize)]
+#[template(path = "info-bubble.html", escape = "none")]
+pub struct InfoBubble(String);

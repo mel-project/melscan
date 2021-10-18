@@ -6,7 +6,7 @@ use num_traits::{Inv, ToPrimitive};
 use themelio_nodeprot::ValClient;
 use themelio_stf::{CoinID, Denom, Header, NetID, PoolKey};
 use tide::Body;
-use super::{MicroUnit, RenderTimeTracer};
+use super::{MicroUnit, RenderTimeTracer, InfoBubble};
 use crate::utils::*;
 #[derive(Template, serde::Serialize)]
 #[template(path = "homepage.html")]
@@ -14,8 +14,14 @@ struct HomepageTemplate {
     testnet: bool,
     blocks: Vec<BlockSummary>,
     pool: PoolSummary,
+    tooltips: ToolTips,
 }
 
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ToolTips {
+    test: InfoBubble,
+}
 #[derive(serde::Serialize)]
 // A block summary for the homepage.
 pub struct BlockSummary {
@@ -91,6 +97,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
         testnet: req.state().netid() == NetID::Testnet,
         blocks,
         pool,
+        tooltips: ToolTips {test: InfoBubble ("test tip".into())}
     }
     .render()
     .unwrap()
