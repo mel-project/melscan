@@ -1,6 +1,8 @@
 use std::{fmt::Display, time::Instant};
 use themelio_stf::{Denom, MICRO_CONVERTER};
 use askama::Template;
+use lazy_static::lazy_static;
+use std::collections::BTreeMap as Map;
 
 pub mod homepage;
 mod block;
@@ -13,10 +15,15 @@ pub use pool::*;
 pub use transaction::*;
 
 
+
+
 #[derive(serde::Serialize, Clone)]
 // A wrapper for microunit-denominated values
 pub struct MicroUnit(pub u128, pub String);
-
+lazy_static!{
+    static ref TOOLTIPS_STR: &'static str = include_str!("../tooltips.json");
+    pub static ref TOOLTIPS:Map<String, InfoBubble> = serde_json::from_str(&TOOLTIPS_STR).unwrap();
+}
 impl Display for MicroUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

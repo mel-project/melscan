@@ -4,10 +4,10 @@ use themelio_stf::{Block, CoinID, CoinValue, Denom};
 use crate::{html::{MicroUnit, TransactionSummary}, to_badgateway};
 
 
-pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: u64) 
+pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: usize) 
 -> FuturesOrdered<impl Future<Output = anyhow::Result<(Block, CoinValue)>>> {
     let mut futs = FuturesOrdered::new();
-    for height in (depth..=last_snap.current_header().height.0).rev().take(30) {
+    for height in (0..=last_snap.current_header().height.0).rev().take(depth) {
         let last_snap = last_snap.clone();
         futs.push(async move {
             log::debug!("rendering block {}", height);

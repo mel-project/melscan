@@ -7,7 +7,6 @@
 {% endblock %}
 
 {% block body %}
-{{tooltips.test|safe}}
 <div class="container mx-auto max-w-screen-lg">
   <div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
     <div class="col-span-2 mb-3">
@@ -147,6 +146,11 @@
       //maintain a list of all blocks newest to oldest (for future use?)
       current_blocks.unshift(latest)
 
+      //divide reward by 1,000,000
+      latest.reward_amount[0] /= 1000000
+      latest.transactions.forEach(transaction => {
+        transaction.mel_moved[0] /= 1000000
+      });
       console.info("Block Found", latest)
       prepend_transaction_rows(latest.transactions, "new-row")
       $("#block-rows").prepend(block_row_template(latest, "new-row"))

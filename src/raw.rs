@@ -7,7 +7,7 @@ use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
-use crate::html::TransactionSummary;
+use crate::html::{TransactionSummary, pool_items};
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::utils::*;
 use crate::{notfound, to_badgateway, to_badreq};
@@ -130,4 +130,16 @@ pub async fn get_block_summary(req: tide::Request<ValClient>) -> tide::Result<Bo
         reward_amount: MicroUnit(reward_amount.into(), "MEL".into()),
         transactions
     })
+}
+
+pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<Body> {
+    let denom = req.param("denom").map(|v| v.to_string())?;
+    let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
+        .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
+    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
+    let last_height = snapshot.current_header().height;
+    
+    let pool = pool_items(req.state(), denom, 2880, 300).await?;
+
+    Body::from_json(&pool)
 }

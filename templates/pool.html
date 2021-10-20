@@ -86,68 +86,6 @@
 
   </div>
 
-  <script>
-    const last_day = JSON.parse('{{ last_day_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-    const last_week = JSON.parse('{{ last_week_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-    const last_month = JSON.parse('{{ last_month_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-    const all_time = JSON.parse('{{ all_time_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-
-    var drawRange = last_month;
-    var drawAccessor = 'price';
-
-    function loadLastDay() {
-      drawRange = last_day;
-      load();
-    }
-
-    function loadLastWeek() {
-      drawRange = last_week;
-      load();
-    }
-
-    function loadLastMonth() {
-      drawRange = last_month;
-      load();
-    }
-
-    function loadAllTime() {
-      drawRange = all_time;
-      load();
-    }
-
-    function loadLiquidity() {
-      drawAccessor = 'liquidity';
-      load();
-    }
-
-    function loadPrice() {
-      drawAccessor = 'price';
-      load();
-    }
-
-    function load() {
-      MG.data_graphic({
-        data: drawRange,
-        full_width: true,
-        full_height: true,
-        x_accessor: 'date',
-        y_accessor: drawAccessor,
-        target: "#graph",
-        buffer: 0,
-        yax_units: "mel",
-        yax_units_append: true,
-        left: 70,
-        top: 10,
-        bottom: 40,
-        right: 10,
-        interpolate: d3.curveMonotoneX
-      });
-    }
-
-    // run after d3 etc loads
-    window.addEventListener('DOMContentLoaded', function () {
-      load();
-    });
-  </script>
+  
 </div>
 {% endblock %}

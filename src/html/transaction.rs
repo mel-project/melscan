@@ -3,7 +3,7 @@ use std::{
     convert::TryInto,
 };
 
-use super::{friendly_denom, MicroUnit, RenderTimeTracer};
+use super::{friendly_denom, MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
@@ -11,7 +11,7 @@ use themelio_nodeprot::ValClient;
 use themelio_stf::{melvm::Address, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
 
 #[derive(Template)]
-#[template(path = "transaction.html")]
+#[template(path = "transaction.html", escape = "none")]
 struct TransactionTemplate {
     testnet: bool,
     txhash: TxHash,
@@ -26,6 +26,7 @@ struct TransactionTemplate {
     net_loss: BTreeMap<String, Vec<MicroUnit>>,
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
+    tooltips: &'static TOOLTIPS,
 }
 
 #[tracing::instrument(skip(req))]
@@ -160,6 +161,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
             .iter()
             .map(|(denom, val)| MicroUnit(val.0, friendly_denom(*denom)))
             .collect(),
+        tooltips: &TOOLTIPS,
     }
     .render()
     .unwrap()

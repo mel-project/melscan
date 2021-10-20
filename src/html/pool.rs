@@ -9,18 +9,14 @@ use serde::Serialize;
 use smol::prelude::*;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{Denom, NetID, PoolKey, MICRO_CONVERTER};
-
 use super::{friendly_denom, RenderTimeTracer};
+
 
 #[derive(Template)]
 #[template(path = "pool.html")]
 struct PoolTemplate {
     testnet: bool,
     denom: String,
-    last_day_json: String,
-    last_week_json: String,
-    last_month_json: String,
-    all_time_json: String,
     last_item: PoolDataItem,
 }
 
@@ -30,20 +26,11 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let denom = req.param("denom").map(|v| v.to_string())?;
     let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
-    let last_height = snapshot.current_header().height;
-    let last_day = pool_items(req.state(), denom, 2880).await?;
-    let last_week = pool_items(req.state(), denom, 20160).await?;
-    let last_month = pool_items(req.state(), denom, 86400).await?;
-    let all_time = pool_items(req.state(), denom, last_height.into()).await?;
+    let last_day = pool_items(req.state(), denom, 1, 1).await?;
     let mut body: tide::Body = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         denom: friendly_denom(denom),
-        last_day_json: serde_json::to_string(&last_day).unwrap(),
-        last_month_json: serde_json::to_string(&last_month).unwrap(),
-        last_week_json: serde_json::to_string(&last_week).unwrap(),
-        all_time_json: serde_json::to_string(&all_time).unwrap(),
-        last_item: last_week.last().context("no last")?.clone(),
+        last_item: last_day.last().context("no last")?.clone(),
     }
     .render()
     .unwrap()
@@ -52,15 +39,17 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     Ok(body)
 }
 
-async fn pool_items(
+pub async fn pool_items(
     client: &ValClient,
     denom: Denom,
     blocks: u64,
+    stepsize: u64,
+
 ) -> tide::Result<Vec<PoolDataItem>> {
     let snapshot = client.snapshot().await.map_err(to_badgateway)?;
     let last_height = snapshot.current_header().height.0;
     let blocks = last_height.min(blocks);
-    const DIVIDER: u64 = 300;
+    let DIVIDER: u64 = stepsize;
     // at most DIVIDER points
     let snapshot = &snapshot;
     let mut item_futs = FuturesUnordered::new();
@@ -119,7 +108,7 @@ async fn pool_items(
 }
 
 #[derive(Serialize, Clone)]
-struct PoolDataItem {
+pub struct PoolDataItem {
     date: chrono::NaiveDateTime,
     height: u64,
     price: f64,

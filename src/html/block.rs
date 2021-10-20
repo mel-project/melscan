@@ -5,7 +5,7 @@ use serde::__private::de::IdentifierDeserializer;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Header, NetID, TxHash};
 use std::collections::BTreeMap as Map;
-use super::{MicroUnit, RenderTimeTracer, InfoBubble};
+use super::{MicroUnit, RenderTimeTracer, InfoBubble, TOOLTIPS};
 
 #[derive(Template)]
 #[template(path = "block.html", escape = "none")]
@@ -20,7 +20,7 @@ struct BlockTemplate {
     fee_multiplier: f64,
     _reward_amount: MicroUnit,
     total_fees: MicroUnit,
-    tooltips: Map<String, InfoBubble>,
+    tooltips: &'static TOOLTIPS,
 }
 
 
@@ -64,7 +64,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
             "MEL".into(),
         ),
         fee_pool: MicroUnit(block.header.fee_pool.0, "MEL".into()),
-        tooltips: serde_json::from_str(include_str!("../tooltips.json")).unwrap(),
+        tooltips: &TOOLTIPS,
     }
     .render()
     .unwrap()
