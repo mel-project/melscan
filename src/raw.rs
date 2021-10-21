@@ -1,13 +1,14 @@
 use std::convert::TryInto;
 
 use anyhow::Context;
+use askama::filters::upper;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 
 use tide::Body;
 use tmelcrypt::HashVal;
 
-use crate::html::{TransactionSummary, pool_items};
+use crate::html::{TransactionSummary, pool_item, pool_items};
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::utils::*;
 use crate::{notfound, to_badgateway, to_badreq};
@@ -139,7 +140,26 @@ pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<B
     let denom = Denom::from_bytes(&hex::decode("73").map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
 
-    let pool = pool_items(client, lower_block, upper_block, 300, denom);
-
-    Body::from_json(&pool.await?)
+    let pool = { 
+        if lower_block == upper_block {
+            let snapshot = client.snapshot().await?
+            .get_older(lower_block.into()).await.map_err(to_badgateway)?;
+            vec![pool_item(&snapshot, denom).await?]
+        }
+        else {
+            pool_items(client, lower_block, upper_block, 300, denom).await?
+        }
+    };
+    Body::from_json(&pool)
 }
+
+// pub async fn get_pooldata(req: tide::Request<ValClient>) -> tide::Result<Body> {
+//     let client = req.state();
+//     let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badgateway)?;
+//     let denom = Denom::from_bytes(&hex::decode("73").map_err(to_badreq)?)
+//         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
+
+//     let snapshot = client.snapshot().await?
+//     .get_older(lower_block.into()).await.map_err(to_badgateway)?;
+//     Body::from_json(&pool_item(&snapshot, denom).await?)
+// }

@@ -75,6 +75,7 @@ async fn main_inner() -> anyhow::Result<()> {
         .get(raw::get_coin);
     app.at("/raw/blocks/:height/pools/:denom")
         .get(raw::get_pool);
+    // app.at("/raw/pool-data-batch/:lowerblock").get(raw::get_pooldata);
     app.at("/raw/pool-data-batch/:lowerblock/:upperblock").get(raw::get_pooldata_range);
     app.with(tide::utils::After(|mut res: tide::Response| async move {
         if let Some(err) = res.error() {
