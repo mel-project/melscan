@@ -3,9 +3,9 @@
 {% block title %} Melscan {% endblock %}
 
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.js"></script>
 <style>
-
   #head button {
     font-size: 90%;
     margin-left: 4px;
@@ -88,41 +88,56 @@
 
   </div>
 
-  
+
 </div>
 <script>
-  var denom = {{denom|json}}
-  var last_item = {{last_item|json}}
+  var denom = {{ denom|json}}
+  var last_item = {{ last_item|json}}
 </script>
 <script>
-async function createChart() {
-  const formatter = new Intl.DateTimeFormat('en', { month: 'long' });
-  var ctx = document.getElementById('myChart').getContext('2d');
-  console.log(denom);
-  var pooldata = await $.ajax(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
-  console.info(pooldata)
-  var myChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: pooldata.map(i=>formatter.format(new Date(i.date))),
-      datasets: [{
-          label: '# of Votes',
-          data: pooldata.map(i=>i.liquidity),
+  async function createChart() {
+    const formatter = new Intl.DateTimeFormat('en', { month: 'long' });
+    var ctx = document.getElementById('myChart').getContext('2d');
+    console.log(denom);
+    var pooldata = await $.ajax(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
+    var labels = pooldata.map(i => formatter.format(new Date(i.date)));
+
+    console.info(pooldata)
+    var myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: `MEL/${denom} liquidity`,
+          data: pooldata.map(i => i.liquidity ),
           fill: 'origin',
           borderWidth: 1
-      }]
-    },
-    options: {
+        }]
+      },
+      options: {
         scales: {
-            y: {
-                beginAtZero: true
+          x: [{
+            scaleLabel: {
+              display: true,
+              labelString: 'Date',
+            },
+            type: 'time',
+            time: {
+              parser: 'MM',
+              unit: 'day',
+              displayFormats: {
+                day: 'MMM-DD'
+              }
             }
+          }]
         }
+      }
     }
-  });
-  return myChart
-}
-var chart = createChart()
+    )
+
+    return myChart
+  }
+  var chart = createChart()
 
 </script>
 
