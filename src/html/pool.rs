@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
-use askama::Template;
+use askama::{Template, filters::upper};
 use futures_util::stream::FuturesUnordered;
 use num_traits::ToPrimitive;
 use serde::Serialize;
@@ -26,7 +26,7 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let denom = req.param("denom").map(|v| v.to_string())?;
     let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-    let last_day = pool_items(&req.state().snapshot().await.map_err(to_badgateway)?, denom, 1, 1).await?;
+    let last_day = pool_items(req.state(),1, 1, 1, denom).await?;
     let mut body: tide::Body = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         denom: friendly_denom(denom),
@@ -40,19 +40,22 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
 }
 
 pub async fn pool_items(
-    snapshot: &ValClientSnapshot,
+    client: &ValClient,
+    lower_block: u64,
+    upper_block: u64,
+    num_blocks: u64,
     denom: Denom,
-    blocks: u64,
-    stepsize: u64,
+
 
 ) -> tide::Result<Vec<PoolDataItem>> {
+    let snapshot = client.snapshot().await.map_err(to_badgateway)?;
     let last_height = snapshot.current_header().height.0;
-    let blocks = last_height.min(blocks);
-    let DIVIDER: u64 = stepsize;
+    let blocks = upper_block - lower_block;
+    let DIVIDER: u64 = num_blocks;
     // at most DIVIDER points
     let snapshot = &snapshot;
     let mut item_futs = FuturesUnordered::new();
-    for height in (last_height - blocks..=last_height)
+    for height in (lower_block..= upper_block)
         .rev()
         .step_by((blocks / DIVIDER) as usize)
     {
