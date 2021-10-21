@@ -135,9 +135,11 @@ pub async fn get_block_summary(req: tide::Request<ValClient>) -> tide::Result<Bo
 
 pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let client = req.state();
-    let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badgateway)?;
-    let upper_block: u64 =  req.param("upperblock")?.parse().map_err(to_badgateway)?;
-    let denom = Denom::from_bytes(&hex::decode("73").map_err(to_badreq)?)
+    let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badreq)?;
+    let upper_block: u64 =  req.param("upperblock")?.parse().map_err(to_badreq)?;
+    let denom_string: String = req.param("denom")?.into();
+
+    let denom = Denom::from_bytes(&hex::decode(&denom_string).map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
 
     let pool = { 
