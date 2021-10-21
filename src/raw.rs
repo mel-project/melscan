@@ -133,13 +133,17 @@ pub async fn get_block_summary(req: tide::Request<ValClient>) -> tide::Result<Bo
 }
 
 pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<Body> {
-    let denom = req.param("denom").map(|v| v.to_string())?;
-    let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
+    let client = req.state();
+    let snapshot = client.snapshot().await.map_err(to_badgateway)?;
+    let height = 1000;
+    let old_snap = snapshot
+    .get_older(height.into())
+    .await
+    .map_err(to_badgateway)?;
+    let denom = Denom::from_bytes(&hex::decode("73").map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
-    let last_height = snapshot.current_header().height;
-    
-    let pool = pool_items(req.state(), denom, 2880, 300).await?;
 
-    Body::from_json(&pool)
+    let pool = pool_items(&old_snap, denom,100 * 300, 300);
+
+    Body::from_json(&pool.await?)
 }

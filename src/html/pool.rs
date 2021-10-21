@@ -7,7 +7,7 @@ use futures_util::stream::FuturesUnordered;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use smol::prelude::*;
-use themelio_nodeprot::ValClient;
+use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{Denom, NetID, PoolKey, MICRO_CONVERTER};
 use super::{friendly_denom, RenderTimeTracer};
 
@@ -26,7 +26,7 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let denom = req.param("denom").map(|v| v.to_string())?;
     let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-    let last_day = pool_items(req.state(), denom, 1, 1).await?;
+    let last_day = pool_items(&req.state().snapshot().await.map_err(to_badgateway)?, denom, 1, 1).await?;
     let mut body: tide::Body = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         denom: friendly_denom(denom),
@@ -40,13 +40,12 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
 }
 
 pub async fn pool_items(
-    client: &ValClient,
+    snapshot: &ValClientSnapshot,
     denom: Denom,
     blocks: u64,
     stepsize: u64,
 
 ) -> tide::Result<Vec<PoolDataItem>> {
-    let snapshot = client.snapshot().await.map_err(to_badgateway)?;
     let last_height = snapshot.current_header().height.0;
     let blocks = last_height.min(blocks);
     let DIVIDER: u64 = stepsize;
