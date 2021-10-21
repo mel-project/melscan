@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use std::str::FromStr;
 
 use anyhow::Context;
 use askama::filters::upper;
@@ -137,11 +138,10 @@ pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<B
     let client = req.state();
     let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badreq)?;
     let upper_block: u64 =  req.param("upperblock")?.parse().map_err(to_badreq)?;
-    let denom_string: String = req.param("denom")?.into();
-
-    let denom = Denom::from_bytes(&hex::decode(&denom_string).map_err(to_badreq)?)
-        .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-
+    
+    let denom = req.param("denom").map(|v| v.to_string())?;
+    let denom = Denom::from_str(&denom).map_err(to_badreq)?;
+    
     let pool = { 
         if lower_block == upper_block {
             let snapshot = client.snapshot().await?

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use super::{friendly_denom, RenderTimeTracer};
 use crate::{notfound, to_badgateway, to_badreq};
@@ -23,8 +23,7 @@ struct PoolTemplate {
 pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("poolpage");
     let denom = req.param("denom").map(|v| v.to_string())?;
-    let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
-        .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
+    let denom = Denom::from_str(&denom).map_err(to_badreq)?;
 
     let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
     let last_day = pool_item(&snapshot, denom).await?;
