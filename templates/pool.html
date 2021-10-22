@@ -95,13 +95,14 @@
   var last_item = {{ last_item|json}}
 </script>
 <script>
-  async function createChart() {
+async function createChart() {
     const formatter = new Intl.DateTimeFormat('en', { month: 'long' });
     var ctx = document.getElementById('myChart').getContext('2d');
     console.log(denom);
+    console.log(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
     var pooldata = await $.ajax(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
     var labels = pooldata.map(i => formatter.format(new Date(i.date)));
-
+    var last = "";
     console.info(pooldata)
     var myChart = new Chart(ctx, {
       type: 'line',
@@ -112,32 +113,36 @@
           data: pooldata.map(i => i.liquidity ),
           fill: 'origin',
           borderWidth: 1
-        }]
+        }],
       },
-      options: {
-        scales: {
-          x: [{
-            scaleLabel: {
-              display: true,
-              labelString: 'Date',
-            },
-            type: 'time',
-            time: {
-              parser: 'MM',
-              unit: 'day',
-              displayFormats: {
-                day: 'MMM-DD'
-              }
+        options: {
+          // xAxis: {
+          //   type: "time"
+          // },
+          scales: {
+            x: {
+              ticks: {
+                    // Include a dollar sign in the ticks
+                    callback: function(value, index, values) {
+                        console.log(labels[index])
+                        if(labels[index] == last){
+                          return ""
+                        }
+                        else{
+                          last = labels[index]
+                        }
+                        return last;
+                    }
+                }
             }
-          }]
         }
       }
     }
     )
 
-    return myChart
-  }
-  var chart = createChart()
+  return myChart
+}
+var chart = createChart()
 
 </script>
 

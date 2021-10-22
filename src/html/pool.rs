@@ -4,12 +4,14 @@ use super::{friendly_denom, RenderTimeTracer};
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::{filters::upper, Template};
+use chrono::{NaiveDate, NaiveDateTime};
 use futures_util::stream::FuturesUnordered;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use smol::prelude::*;
 use themelio_nodeprot::{ValClient, ValClientSnapshot};
-use themelio_stf::{Denom, NetID, PoolKey, MICRO_CONVERTER};
+use themelio_stf::{BlockHeight, Denom, MICRO_CONVERTER, NetID, PoolKey};
+use async_trait::async_trait;
 
 #[derive(Template)]
 #[template(path = "pool.html")]
@@ -19,6 +21,77 @@ struct PoolTemplate {
     last_item: PoolDataItem,
 }
 
+#[derive(Serialize, Clone)]
+pub struct PoolDataItem {
+    date: chrono::NaiveDateTime,
+    height: u64,
+    price: f64,
+    liquidity: f64,
+}
+
+#[async_trait]
+pub trait AsPoolDataItem {
+    async fn as_pool_data_item(&self, denom: Denom) -> tide::Result<PoolDataItem>;
+    async fn get_older_pool_data_item(&self, denom: Denom, height: u64) -> tide::Result<PoolDataItem>;
+}
+
+
+#[async_trait]
+impl AsPoolDataItem for ValClientSnapshot {
+    // returns a PoolDataItem that assumes the snapshot represents the most recent block
+    async fn as_pool_data_item(&self, denom: Denom) -> tide::Result<PoolDataItem> {
+        let height = self.current_header().height.0;
+        let pool_key = PoolKey::mel_and(denom);
+        let pool_info = self
+            .get_pool(pool_key)
+            .await?
+            .ok_or_else(notfound)?;
+        let price = pool_info.implied_price().to_f64().unwrap_or_default();
+        let price = if denom == pool_key.left {
+            1.0 / price
+        } else {
+            price
+        };
+        let liquidity = if denom == pool_key.left {
+            pool_info.rights
+        } else {
+            pool_info.lefts
+        } as f64
+            * 2.0
+            / MICRO_CONVERTER as f64;
+        Ok(PoolDataItem {
+            date: PoolDataItem::block_time(0),
+            height: height,
+            price,
+            liquidity,
+        })
+    }
+    async fn get_older_pool_data_item(&self, denom: Denom, height: u64) -> tide::Result<PoolDataItem>{
+        let last_height = self.current_header().height.0;
+        let snapshot = self.get_older(height.into())
+        .await.map_err(to_badgateway)?;
+        let mut item = snapshot.as_pool_data_item(denom).await?;
+        Ok(item.set_time(last_height - height).clone())
+    }
+
+}
+
+impl PoolDataItem {
+    pub fn block_time(distance_from_now: u64) -> NaiveDateTime{
+        chrono::Utc::now()
+                .checked_sub_signed(
+                    chrono::Duration::from_std(Duration::from_secs(30) * (distance_from_now) as u32)
+                        .unwrap(),
+                )
+                .unwrap()
+                .naive_utc()
+    }
+    pub fn set_time(&mut self, distance_from_now: u64) -> &mut Self {
+        self.date = PoolDataItem::block_time(distance_from_now);
+        self
+    }
+}
+
 #[tracing::instrument(skip(req))]
 pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("poolpage");
@@ -26,7 +99,8 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let denom = Denom::from_str(&denom).map_err(to_badreq)?;
 
     let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
-    let last_day = pool_item(&snapshot, denom).await?;
+    let last_day = snapshot.as_pool_data_item(denom).await?;
+
     let mut body: tide::Body = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         denom: friendly_denom(denom),
@@ -39,43 +113,12 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     Ok(body)
 }
 
-pub async fn pool_item(snapshot: &ValClientSnapshot, denom: Denom) -> tide::Result<PoolDataItem> {
-    let last_height = snapshot.current_header().height.0;
-    let pool_key = PoolKey::mel_and(denom);
-    let pool_info = snapshot
-        .get_pool(pool_key)
-        .await
-        .map_err(to_badgateway)?
-        .ok_or_else(notfound)?;
-    let price = pool_info.implied_price().to_f64().unwrap_or_default();
-    let price = if denom == pool_key.left {
-        1.0 / price
-    } else {
-        price
-    };
-    let liquidity = if denom == pool_key.left {
-        pool_info.rights
-    } else {
-        pool_info.lefts
-    } as f64
-        * 2.0
-        / MICRO_CONVERTER as f64;
-    Ok::<_, tide::Error>(PoolDataItem {
-        date: chrono::Utc::now()
-            .checked_sub_signed(
-                chrono::Duration::from_std(Duration::from_secs(30) * (last_height) as u32)
-                    .unwrap(),
-            )
-            .unwrap()
-            .naive_utc(),
-        height: last_height,
-        price,
-        liquidity,
-    })
 
-    // let items = pool_items(&client, last_height, last_height, 1, denom).await?;
-    // Ok(Some(items.last().unwrap().clone()))
-}
+
+
+
+
+
 pub async fn pool_items(
     client: &ValClient,
     lower_block: u64,
@@ -95,8 +138,7 @@ pub async fn pool_items(
     {
         item_futs.push(
             async move {
-                let snapshot = snapshot.get_older(height.into()).await.map_err(to_badgateway)?;
-                pool_item(&snapshot, denom).await
+                snapshot.get_older_pool_data_item(denom, height).await
             }
         );
     }
@@ -108,12 +150,4 @@ pub async fn pool_items(
     }
     output.sort_unstable_by_key(|v| v.height);
     Ok(output)
-}
-
-#[derive(Serialize, Clone)]
-pub struct PoolDataItem {
-    date: chrono::NaiveDateTime,
-    height: u64,
-    price: f64,
-    liquidity: f64,
 }

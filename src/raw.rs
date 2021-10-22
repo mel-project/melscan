@@ -9,7 +9,7 @@ use themelio_stf::{CoinID, Denom, PoolKey, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
-use crate::html::{TransactionSummary, pool_item, pool_items};
+use crate::html::{TransactionSummary, pool_items, AsPoolDataItem};
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::utils::*;
 use crate::{notfound, to_badgateway, to_badreq};
@@ -144,9 +144,8 @@ pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<B
     
     let pool = { 
         if lower_block == upper_block {
-            let snapshot = client.snapshot().await?
-            .get_older(lower_block.into()).await.map_err(to_badgateway)?;
-            vec![pool_item(&snapshot, denom).await?]
+            let snapshot = client.snapshot().await?;
+            vec![snapshot.get_older_pool_data_item(denom, lower_block).await?]
         }
         else {
             pool_items(client, lower_block, upper_block, 300, denom).await?
