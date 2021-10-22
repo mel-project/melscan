@@ -124,11 +124,12 @@ async function createChart() {
               ticks: {
                     // Include a dollar sign in the ticks
                     callback: function(value, index, values) {
-                        console.log(labels[index])
+                        // console.log(labels[index])
                         if(labels[index] == last){
-                          return ""
+                          return null
                         }
                         else{
+                          console.log("new label", labels[index])
                           last = labels[index]
                         }
                         return last;
