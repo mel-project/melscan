@@ -3,8 +3,8 @@
 {% block title %} Melscan {% endblock %}
 
 {% block head %}
-<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script> -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
 <style>
   #head button {
     font-size: 90%;
@@ -76,13 +76,13 @@
 
     <div class="md:col-span-9 col-span-12 md:row-span-3 card">
       <div class="grid grid-cols-2" id="head">
-        <div class="text-left"><button onclick="loadLiquidity()">Liquidity</button><button
-            onclick="loadPrice()">Price</button></div>
+        <div class="text-left"><button onclick="melscan.handlers.loadLiquidity()">Liquidity</button><button
+            onclick="melscan.handlers.loadPrice()">Price</button></div>
         <div class="text-right"><button onclick="loadLastDay()">1D</button><button
             onclick="loadLastWeek()">1W</button><button onclick="loadLastMonth()">1M</button><button
             onclick="loadAllTime()">All</button></div>
       </div>
-      <canvas id="myChart" width="400" height="400"></canvas>
+      <canvas id="chart" width="400" height="400"></canvas>
 
     </div>
 
@@ -91,60 +91,103 @@
 
 </div>
 <script>
-  var denom = {{ denom|json}}
-  var last_item = {{ last_item|json}}
+  var denom = JSON.parse(`{{denom|json}}`)
+  var last_item = JSON.parse(`{{last_item|json}}`)
+  console.info(denom, last_item)
 </script>
 <script>
-async function createChart() {
+  function createTicks(labels) {
+    let last = "";
     const formatter = new Intl.DateTimeFormat('en', { month: 'long' });
-    var ctx = document.getElementById('myChart').getContext('2d');
+    return (value, index, values) => {
+      if (formatter.format(labels[index]) == formatter.format(last)) {
+        return null
+      }
+      else {
+        last = labels[index]
+      }
+      return formatter.format(last);
+    }
+  }
+  function createLegendLabel(denom, info) {
+    return `MEL/${denom} ${info}`
+  }
+  async function createChart(pooldata) {
+    let ctx = document.getElementById('chart').getContext('2d');
     console.log(denom);
     console.log(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
-    var pooldata = await $.ajax(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
-    var labels = pooldata.map(i => formatter.format(new Date(i.date)));
-    var last = "";
+    let labels = pooldata.map(i => new Date(i.date));
     console.info(pooldata)
-    var myChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: `MEL/${denom} liquidity`,
-          data: pooldata.map(i => i.liquidity ),
-          fill: 'origin',
-          borderWidth: 1
-        }],
+
+    let options = {
+      scales: {
+        x: {
+          ticks: {
+            callback: createTicks(labels)
+          }
+        }
       },
-        options: {
-          // xAxis: {
-          //   type: "time"
-          // },
-          scales: {
-            x: {
-              ticks: {
-                    // Include a dollar sign in the ticks
-                    callback: function(value, index, values) {
-                        // console.log(labels[index])
-                        if(labels[index] == last){
-                          return null
-                        }
-                        else{
-                          console.log("new label", labels[index])
-                          last = labels[index]
-                        }
-                        return last;
-                    }
-                }
-            }
+      plugins: {
+        zoom: {
+          zoom: {
+            wheel: {
+              enabled: true,
+            },
+            pinch: {
+              enabled: true
+            },
+            mode: 'xy',
+          }
         }
       }
     }
-    )
-
-  return myChart
-}
-var chart = createChart()
-
+  }
+  let chart = new Chart(ctx, {
+    type: 'line',
+    options,
+    data: {
+      labels,
+      datasets: [{
+        label: createLegendLabel(denom, "liquidity"),
+        data: pooldata.map(i => i.liquidity),
+        fill: 'origin',
+        borderWidth: 1
+      }],
+    },
+  })
+  chart.setDatasetVisibility(1, false)
+  chart.update()
+  return chart
+  }
+  async function main() {
+    var pooldata = await $.ajax(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
+    var chart = await createChart(pooldata)
+    var handlers = {}
+    console.log(handlers)
+    // handlers.toggleDataVisibility = (index, update = true) => {
+    //   if(chart.getDataVisibility(index)){
+    //     chart.setDatasetVisibility(index, false)
+    //     chart.hide(index)
+    //   }
+    //   else {
+    //     chart.setDatasetVisibility(index, true)
+    //     chart.show(index)
+    //   }
+    // }
+    handlers.loadLiquidity = () => {
+      chart.data.datasets[0].label = createLegendLabel(denom, "liquidity"),
+        chart.data.datasets[0].data = pooldata.map(i => i.liquidity)
+      chart.update()
+    }
+    handlers.loadPrice = () => {
+      chart.data.datasets[0].label = createLegendLabel(denom, "price"),
+        chart.data.datasets[0].data = pooldata.map(i => i.price)
+      chart.update()
+    }
+    return { pooldata, handlers, chart }
+  }
+  var melscan = {}
+  main().then(i => Object.assign(melscan, i))
 </script>
 
 {% endblock %}

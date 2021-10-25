@@ -17,6 +17,7 @@ use async_trait::async_trait;
 #[template(path = "pool.html")]
 struct PoolTemplate {
     testnet: bool,
+    friendly_denom: String,
     denom: String,
     last_item: PoolDataItem,
 }
@@ -47,12 +48,14 @@ impl AsPoolDataItem for ValClientSnapshot {
             .await?
             .ok_or_else(notfound)?;
         let price = pool_info.implied_price().to_f64().unwrap_or_default();
-        let price = if denom == pool_key.left {
+        let price = 
+        if denom == pool_key.left {
             1.0 / price
         } else {
             price
         };
-        let liquidity = if denom == pool_key.left {
+        let liquidity = 
+        if denom == pool_key.left {
             pool_info.rights
         } else {
             pool_info.lefts
@@ -92,31 +95,6 @@ impl PoolDataItem {
     }
 }
 
-#[tracing::instrument(skip(req))]
-pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
-    let _render = RenderTimeTracer::new("poolpage");
-    let denom = req.param("denom").map(|v| v.to_string())?;
-    let denom = Denom::from_str(&denom).map_err(to_badreq)?;
-
-    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
-    let last_day = snapshot.as_pool_data_item(denom).await?;
-
-    let mut body: tide::Body = PoolTemplate {
-        testnet: req.state().netid() == NetID::Testnet,
-        denom: friendly_denom(denom),
-        last_item: last_day.clone(),
-    }
-    .render()
-    .unwrap()
-    .into();
-    body.set_mime("text/html");
-    Ok(body)
-}
-
-
-
-
-
 
 
 pub async fn pool_items(
@@ -151,3 +129,30 @@ pub async fn pool_items(
     output.sort_unstable_by_key(|v| v.height);
     Ok(output)
 }
+
+
+#[tracing::instrument(skip(req))]
+pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
+    let _render = RenderTimeTracer::new("poolpage");
+    let denom = req.param("denom").map(|v| v.to_string())?;
+    let denom = Denom::from_str(&denom).map_err(to_badreq)?;
+
+    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
+    let last_day = snapshot.as_pool_data_item(denom).await?;
+
+    let mut body: tide::Body = PoolTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
+        denom: denom.to_string(),
+        friendly_denom: friendly_denom(denom),
+        last_item: last_day.clone(),
+    }
+    .render()
+    .unwrap()
+    .into();
+    body.set_mime("text/html");
+    Ok(body)
+}
+
+
+
+
