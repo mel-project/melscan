@@ -5,6 +5,12 @@
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.0.2/luxon.min.js"
+  integrity="sha512-frUCURIeB0OKMPgmDEwT3rC4NH2a4gn06N3Iw6T1z0WfrQZd7gNfJFbHrNsZP38PVXOp6nUiFtBqVvmCj+ARhw=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"
+  integrity="sha512-NxlWEbNbTV6acWnTsWRLIiwzOw0IwHQOYUCKBiu/NqZ+5jSy7gjMbpYI+/4KvaNuZ1qolbw+Vnd76pbIUYEG8g=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   #head button {
     font-size: 90%;
@@ -93,22 +99,40 @@
 <script>
   var denom = JSON.parse(`{{denom|json}}`)
   var last_item = JSON.parse(`{{last_item|json}}`)
-  console.info(denom, last_item)
+  var DateTime = luxon.DateTime
+  var Duration = luxon.Duration
+  console.info(`Denom: ${denom} \nLast Item: ${JSON.stringify(last_item)}`)
 </script>
 <script>
-  function createTicks(labels) {
-    let last = "";
-    const formatter = new Intl.DateTimeFormat('en', { month: 'long' });
-    return (value, index, values) => {
-      if (formatter.format(labels[index]) == formatter.format(last)) {
-        return null
-      }
-      else {
-        last = labels[index]
-      }
-      return formatter.format(last);
-    }
+  async function getPoolData(denom, lower, upper) {
+    let poolData = await $.ajax(`/raw/pool-data-batch/${denom}/${lower}/${upper}`)
+    // replace the date string with a date object
+    return poolData.map(i => (Object.assign({}, i, { date: DateTime.fromISO(i.date) })))
+
   }
+  function createTicks(labels) {
+    console.info("Labels:", labels)
+    const fmt_month = new Intl.DateTimeFormat('en', { month: 'long' });
+    const fmt_day = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' });
+    const fmt_hour = new Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric' });
+    let last = ""
+    return (val, index, ticks) => {
+      let formatted = fmt_day.format(labels[index].date)
+      // console.log(val)
+      if (index === 0  || last == formatted)
+        return null
+      if (index === ticks.length - 1){
+        console.info("Ticks", ticks)
+      }
+      
+      let tick = ticks[index]
+      tick.datum = labels[index]
+      last = formatted
+      return formatted
+    }
+
+  }
+
   function createLegendLabel(denom, info) {
     return `MEL/${denom} ${info}`
   }
@@ -116,54 +140,79 @@
     let ctx = document.getElementById('chart').getContext('2d');
     console.log(denom);
     console.log(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
-    let labels = pooldata.map(i => new Date(i.date));
+    let labels = pooldata;
     console.info(pooldata)
 
-    let options = {
-      scales: {
-        x: {
-          ticks: {
-            callback: createTicks(labels)
-          }
-        }
+    const scales = {
+      x: {
+        ticks: {
+          callback: createTicks(labels)
+        },
+        min: 0,
+        max: Date.now() * 3,
       },
-      plugins: {
-        zoom: {
-          zoom: {
-            wheel: {
-              enabled: true,
-            },
-            pinch: {
-              enabled: true
-            },
-            mode: 'xy',
-          }
+      y: {
+        min: 0,
+        max: Math.max(...pooldata.map(i => i.liquidity)) * 1.20
+      },
+    };
+    const zoomOptions = {
+      limits: {
+        y: { min: 0, max: 20000, minRange: 50 },
+        x: { min: 0, max: Date.now() * 3 },
+      },
+      pan: {
+        enabled: true,
+        mode: 'xy',
+        onPanRejected: console.error
+
+      },
+      zoom: {
+        wheel: {
+          enabled: true,
+        },
+        pinch: {
+          enabled: true
+        },
+        mode: 'xy',
+        onZoomComplete({ chart }) {
         }
       }
-    }
+    };
+    let options = {
+      scales,
+      plugins: {
+        zoom: zoomOptions
+      },
+      interaction: {
+        mode: 'nearest'
+      }
+    };
+
+    let chart = new Chart(ctx, {
+      type: 'line',
+      options,
+      data: {
+        labels,
+        datasets: [{
+          label: createLegendLabel(denom, "liquidity"),
+          data: pooldata.map((i, j) => [i.date.toMillis(), i.liquidity]),
+          fill: 'origin',
+          borderWidth: 1
+        }],
+      },
+    })
+    chart.setDatasetVisibility(1, false)
+    chart.update()
+    return chart
   }
-  let chart = new Chart(ctx, {
-    type: 'line',
-    options,
-    data: {
-      labels,
-      datasets: [{
-        label: createLegendLabel(denom, "liquidity"),
-        data: pooldata.map(i => i.liquidity),
-        fill: 'origin',
-        borderWidth: 1
-      }],
-    },
-  })
-  chart.setDatasetVisibility(1, false)
-  chart.update()
-  return chart
-  }
+
   async function main() {
-    var pooldata = await $.ajax(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
+    let lower = 0;
+    let upper = last_item.height;
+    var pooldata = await getPoolData(denom, lower, upper)
     var chart = await createChart(pooldata)
     var handlers = {}
-    console.log(handlers)
     // handlers.toggleDataVisibility = (index, update = true) => {
     //   if(chart.getDataVisibility(index)){
     //     chart.setDatasetVisibility(index, false)
