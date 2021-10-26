@@ -3,6 +3,9 @@
 {% block title %} Melscan {% endblock %}
 
 {% block head %}
+<script>
+  module = {}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.min.js"></script>
@@ -116,14 +119,25 @@
 
   }
 
+  function getDataRange(pooldata, handleTicks){
+    return (value, index, ticks)=>{
+      if(ticks.length - 1 === index){
+        handleTicks(ticks)
+      }
+      return value
+    }
+  }
   function createLegendLabel(denom, info) {
     return `MEL/${denom} ${info}`
   }
-  async function chartOptions(pooldata) {
+  function chartOptions(pooldata, afterTicks) {
 
     const scales = {
       
       x: {
+        ticks: {
+          callback: getDataRange(pooldata, afterTicks)
+        },
         type: 'time',
         time: {
           displayFormats: {
@@ -179,7 +193,6 @@
       type: 'line',
       options,
       data: {
-        labels,
         datasets: [{
           label,
           data,
@@ -188,14 +201,26 @@
         }],
       },
     })
-    chart.setDatasetVisibility(1, false)
-    chart.update()
+    return chart
+  }
+  function afterTicks(pooldata){
+    return (ticks)=>{
+      console.info('Ticks', ticks)
+      updateData(ticks[0].block, ticks[ticks.length -1 ].block)
+    }
+  }
+  function updateData(lower, upper){
+    console.log(lower, upper)
   }
   async function main() {
     let lower = 0;
     let upper = last_item.height;
     var pooldata = await getPoolData(denom, lower, upper)
-    var chart = await createChart(pooldata.map(i=>[i.date, i.liquidity], createLabel(denom, 'Liquidity')))
+    let options = chartOptions(pooldata, debounce(afterTicks(pooldata), 300));
+    let data = pooldata.map(i=>[i.date, i.liquidity]);
+    let legend_label = createLegendLabel(denom, 'Liquidity')
+    var chart = await createChart(data, legend_label, options)
+    console.info('Chart:',chart)
     var handlers = {}
     // handlers.toggleDataVisibility = (index, update = true) => {
     //   if(chart.getDataVisibility(index)){
