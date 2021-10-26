@@ -5,12 +5,15 @@
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.0.2/luxon.min.js"
   integrity="sha512-frUCURIeB0OKMPgmDEwT3rC4NH2a4gn06N3Iw6T1z0WfrQZd7gNfJFbHrNsZP38PVXOp6nUiFtBqVvmCj+ARhw=="
   crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"
   integrity="sha512-NxlWEbNbTV6acWnTsWRLIiwzOw0IwHQOYUCKBiu/NqZ+5jSy7gjMbpYI+/4KvaNuZ1qolbw+Vnd76pbIUYEG8g=="
   crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash.debounce@4.0.8/index.min.js"></script>
 <style>
   #head button {
     font-size: 90%;
@@ -105,51 +108,30 @@
 </script>
 <script>
   async function getPoolData(denom, lower, upper) {
+    let url = `/raw/pool-data-batch/${denom}/${lower}/${upper}`
+    console.info(`Getting data /raw/pool-data-batch/${denom}/0/${last_item.height}`)
     let poolData = await $.ajax(`/raw/pool-data-batch/${denom}/${lower}/${upper}`)
     // replace the date string with a date object
     return poolData.map(i => (Object.assign({}, i, { date: DateTime.fromISO(i.date) })))
-
-  }
-  function createTicks(labels) {
-    console.info("Labels:", labels)
-    const fmt_month = new Intl.DateTimeFormat('en', { month: 'long' });
-    const fmt_day = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' });
-    const fmt_hour = new Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric' });
-    let last = ""
-    return (val, index, ticks) => {
-      let formatted = fmt_day.format(labels[index].date)
-      // console.log(val)
-      if (index === 0  || last == formatted)
-        return null
-      if (index === ticks.length - 1){
-        console.info("Ticks", ticks)
-      }
-      
-      let tick = ticks[index]
-      tick.datum = labels[index]
-      last = formatted
-      return formatted
-    }
 
   }
 
   function createLegendLabel(denom, info) {
     return `MEL/${denom} ${info}`
   }
-  async function createChart(pooldata) {
-    let ctx = document.getElementById('chart').getContext('2d');
-    console.log(denom);
-    console.log(`/raw/pool-data-batch/${denom}/0/${last_item.height}`)
-    let labels = pooldata;
-    console.info(pooldata)
+  async function chartOptions(pooldata) {
 
     const scales = {
+      
       x: {
-        ticks: {
-          callback: createTicks(labels)
+        type: 'time',
+        time: {
+          displayFormats: {
+            quarter: 'MMM YYYY'
+          }
         },
-        min: 0,
-        max: Date.now() * 3,
+        min: pooldata[0].date.toMillis(),
+        max: pooldata[pooldata.length - 1].date.toMillis(),
       },
       y: {
         min: 0,
@@ -159,7 +141,7 @@
     const zoomOptions = {
       limits: {
         y: { min: 0, max: 20000, minRange: 50 },
-        x: { min: 0, max: Date.now() * 3 },
+        x: { min: pooldata[0].date.toMillis(), max: Date.now() },
       },
       pan: {
         enabled: true,
@@ -174,7 +156,7 @@
         pinch: {
           enabled: true
         },
-        mode: 'xy',
+        mode: 'x',
         onZoomComplete({ chart }) {
         }
       }
@@ -188,15 +170,19 @@
         mode: 'nearest'
       }
     };
-
+  
+    return options
+  }
+  async function createChart(data, label, options) {
+    let ctx = document.getElementById('chart').getContext('2d')
     let chart = new Chart(ctx, {
       type: 'line',
       options,
       data: {
         labels,
         datasets: [{
-          label: createLegendLabel(denom, "liquidity"),
-          data: pooldata.map((i, j) => [i.date.toMillis(), i.liquidity]),
+          label,
+          data,
           fill: 'origin',
           borderWidth: 1
         }],
@@ -204,14 +190,12 @@
     })
     chart.setDatasetVisibility(1, false)
     chart.update()
-    return chart
   }
-
   async function main() {
     let lower = 0;
     let upper = last_item.height;
     var pooldata = await getPoolData(denom, lower, upper)
-    var chart = await createChart(pooldata)
+    var chart = await createChart(pooldata.map(i=>[i.date, i.liquidity], createLabel(denom, 'Liquidity')))
     var handlers = {}
     // handlers.toggleDataVisibility = (index, update = true) => {
     //   if(chart.getDataVisibility(index)){
