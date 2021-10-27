@@ -130,11 +130,10 @@
   function createLegendLabel(denom, info) {
     return `MEL/${denom} ${info}`
   }
-  function chartOptions(pooldata, afterTicks) {
+  function chartOptions(pooldata) {
+    let updatePoolData = updateData(pooldata)
     const scales = {
       x: {
-        ticks: {
-        },
         type: 'time',
         time: {
           displayFormats: {
@@ -157,7 +156,8 @@
       pan: {
         enabled: true,
         mode: 'xy',
-        onPanRejected: console.error
+        onPanRejected: console.error,
+        onPanComplete: debounce(updatePoolData,500)
 
       },
       zoom: {
@@ -168,8 +168,8 @@
           enabled: true
         },
         mode: 'x',
-        onZoomComplete({ chart }) {
-        }
+        onZoomComplete: debounce(updatePoolData,400)
+
       }
     };
     let options = {
@@ -200,14 +200,13 @@
     })
     return chart
   }
-  function afterTicks(chart, pooldata){
-    return async (ticks)=>{
-      console.info('Ticks', ticks)
-      let [lower, upper] = await updateData(denom, pooldata, ticks)
-      chart.melscan = Object.assign(chart.melscan || {}, {range: {upper, lower}})
+
+  function updateData(pooldata){
+    return async ()=>{
+      
     }
   }
-  async function updateData(denom, pooldata, ticks){
+  async function findBlockRange(denom, pooldata, ticks){
     if(pooldata.length == 0)
         return [0, last_item.height]
       else{
@@ -230,7 +229,6 @@
     console.info('pooldata: ', pooldata)
     let legend_label = createLegendLabel(denom, 'Liquidity')
     var chart = await createChart(data, legend_label, options)
-    chart.options.scales.x.ticks.callback = getDataRange(debounce(afterTicks(chart, pooldata), 300))
     chart.update()
     // setInterval(()=>{
     //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
