@@ -108,6 +108,7 @@
   var DateTime = luxon.DateTime
   var Duration = luxon.Duration
   console.info(`Denom: ${denom} \nLast Item: ${JSON.stringify(last_item)}`)
+  
 </script>
 <script>
   async function getPoolData(denom, lower, upper) {
@@ -181,17 +182,24 @@
     };
     let options = {
       scales,
+      tooltips: {
+        intersect: false,
+        mode: 'index',
+      },
       plugins: {
         zoom: zoomOptions
       },
       interaction: {
-        mode: 'nearest'
+        intersect: false,
+        mode: 'index',
+        axis: 'x'
       }
     };
 
     return options
   }
   async function createChart(pooldata, label, options) {
+
     let ctx = document.getElementById('chart').getContext('2d')
     let chart = new Chart(ctx, {
       type: 'line',
@@ -214,7 +222,7 @@
   }
   function uniq(a, property) {
     var seen = {};
-    return a.filter((item) =>{
+    return a.filter((item) => {
       let prop = property(item)
       return seen.hasOwnProperty(prop) ? false : (seen[prop] = true);
     });
@@ -224,19 +232,19 @@
       let { min, max } = chart.scales.x
       console.log(new Date(min), new Date(max))
       let [lower, upper] = findBlockRange(pooldata, min, max)
-      $(chart.ctx.canvas).css('cursor','wait')
+      $(chart.ctx.canvas).css('cursor', 'wait')
       let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
 
 
       pooldata.push(...new_data)
-      let uniq_data = uniq(pooldata,(i) => i.height)
+      let uniq_data = uniq(pooldata, (i) => i.height)
       pooldata.length = 0
       pooldata.push(...uniq_data)
       pooldata.sort((i, j) => i.date.toMillis() > j.date.toMillis())
-      $(chart.ctx.canvas).css('cursor','pointer')
+      $(chart.ctx.canvas).css('cursor', 'pointer')
       console.log(pooldata)
       chart.stop()
-      // chart.update()
+      chart.update('none')
     }
   }
   function findBlockRange(pooldata, minTime, maxTime) {
