@@ -224,6 +224,7 @@
       let { min, max } = chart.scales.x
       console.log(new Date(min), new Date(max))
       let [lower, upper] = findBlockRange(pooldata, min, max)
+      $(chart.ctx.canvas).css('cursor','wait')
       let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
 
 
@@ -232,7 +233,7 @@
       pooldata.length = 0
       pooldata.push(...uniq_data)
       pooldata.sort((i, j) => i.date.toMillis() > j.date.toMillis())
-
+      $(chart.ctx.canvas).css('cursor','pointer')
       console.log(pooldata)
       chart.stop()
       // chart.update()
