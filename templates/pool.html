@@ -15,8 +15,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"
   integrity="sha512-NxlWEbNbTV6acWnTsWRLIiwzOw0IwHQOYUCKBiu/NqZ+5jSy7gjMbpYI+/4KvaNuZ1qolbw+Vnd76pbIUYEG8g=="
   crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lodash.debounce@4.0.8/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1"></script>
+<script src="https://cdn.jsdelivr.net/npm/lodash.debounce@4.0.8/index.min.js"></script>
 <style>
   #head button {
     font-size: 90%;
@@ -111,17 +111,17 @@
 </script>
 <script>
   async function getPoolData(denom, lower, upper) {
-    let url = `/raw/pool-data-batch/${denom}/${lower}/${upper}`
-    console.info(`Getting data /raw/pool-data-batch/${denom}/0/${last_item.height}`)
-    let poolData = await $.ajax(`/raw/pool-data-batch/${denom}/${lower}/${upper}`)
+    let url = `/raw/pool-data-batch/${denom}/${lower - lower % 300}/${upper - upper % 300}`
+    console.info(url)
+    let poolData = await $.ajax(url)
     // replace the date string with a date object
     return poolData.map(i => (Object.assign({}, i, { date: DateTime.fromISO(i.date) })))
 
   }
 
-  function getDataRange(handleTicks){
-    return (value, index, ticks)=>{
-      if(ticks.length - 1 === index){
+  function getDataRange(handleTicks) {
+    return (value, index, ticks) => {
+      if (ticks.length - 1 === index) {
         handleTicks(ticks)
       }
       return value
@@ -135,9 +135,16 @@
     const scales = {
       x: {
         type: 'time',
+        // ticks: {
+        //   autoSkip: true,
+        //   autoSkipPadding: 50,
+        //   maxRotation: 0
+        // },
         time: {
           displayFormats: {
-            quarter: 'MMM YYYY'
+            hour: 'HH:mm',
+            minute: 'HH:mm',
+            second: 'HH:mm:ss'
           }
         },
         min: pooldata[0].date.toMillis(),
@@ -155,9 +162,9 @@
       },
       pan: {
         enabled: true,
-        mode: 'xy',
+        mode: 'x',
         onPanRejected: console.error,
-        onPanComplete: debounce(updatePoolData,500)
+        onPanComplete: debounce(updatePoolData, 500)
 
       },
       zoom: {
@@ -168,7 +175,7 @@
           enabled: true
         },
         mode: 'x',
-        onZoomComplete: debounce(updatePoolData,400)
+        onZoomComplete: debounce(updatePoolData, 400)
 
       }
     };
@@ -181,10 +188,10 @@
         mode: 'nearest'
       }
     };
-  
+
     return options
   }
-  async function createChart(data, label, options) {
+  async function createChart(pooldata, label, options) {
     let ctx = document.getElementById('chart').getContext('2d')
     let chart = new Chart(ctx, {
       type: 'line',
@@ -192,40 +199,65 @@
       data: {
         datasets: [{
           label,
-          data,
+          data: pooldata,
           fill: 'origin',
-          borderWidth: 1
+          borderWidth: 3,
+          radius: 0,
+          parsing: {
+            yAxisKey: 'liquidity',
+            xAxisKey: 'date'
+          },
         }],
       },
     })
     return chart
   }
+  function uniq(a, property) {
+    var seen = {};
+    return a.filter((item) =>{
+      let prop = property(item)
+      return seen.hasOwnProperty(prop) ? false : (seen[prop] = true);
+    });
+  }
+  function updateData(pooldata) {
+    return async ({ chart }) => {
+      let { min, max } = chart.scales.x
+      console.log(new Date(min), new Date(max))
+      let [lower, upper] = findBlockRange(pooldata, min, max)
+      let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
 
-  function updateData(pooldata){
-    return async ()=>{
-      
+
+      pooldata.push(...new_data)
+      let uniq_data = uniq(pooldata,(i) => i.height)
+      pooldata.length = 0
+      pooldata.push(...uniq_data)
+      pooldata.sort((i, j) => i.date.toMillis() > j.date.toMillis())
+
+      console.log(pooldata)
+      chart.stop()
+      // chart.update()
     }
   }
-  async function findBlockRange(denom, pooldata, ticks){
-    if(pooldata.length == 0)
-        return [0, last_item.height]
-      else{
-        let lower = pooldata.find(data=> data.date.toMillis() > ticks[0].value).height
-        let upper = findReverse(pooldata, data => data.date.toMillis() < ticks[ticks.length - 1].value).height
-        return [lower, upper]
-      }
+  function findBlockRange(pooldata, minTime, maxTime) {
+    if (pooldata.length == 0)
+      return [0, pooldata.length - 1]
+    else {
+      let lower = pooldata.findIndex(data => data.date.toMillis() > minTime)
+      let upper = findIndexReverse(pooldata, data => data.date.toMillis() < maxTime)
+      return [lower, upper]
+    }
   }
-  function findReverse(list, predicate){
-    for(let i = list.length - 1; i >= 0; i--){
-      if(predicate(list[i])) return list[i]
+  function findIndexReverse(list, predicate) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (predicate(list[i])) return i
     }
   }
   async function main() {
     let lower = 0;
     let upper = last_item.height;
     var pooldata = await getPoolData(denom, lower, upper)
-    let options = chartOptions(pooldata, );
-    let data = pooldata.map(i=>[i.date, i.liquidity]);
+    let options = chartOptions(pooldata,);
+    let data = pooldata;
     console.info('pooldata: ', pooldata)
     let legend_label = createLegendLabel(denom, 'Liquidity')
     var chart = await createChart(data, legend_label, options)
@@ -234,7 +266,7 @@
     //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
     //   chart.update()
     // },1000)
-    console.info('Chart:',chart)
+    console.info('Chart:', chart)
     var handlers = {}
     // handlers.toggleDataVisibility = (index, update = true) => {
     //   if(chart.getDataVisibility(index)){
