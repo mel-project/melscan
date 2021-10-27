@@ -119,7 +119,7 @@
 
   }
 
-  function getDataRange(pooldata, handleTicks){
+  function getDataRange(handleTicks){
     return (value, index, ticks)=>{
       if(ticks.length - 1 === index){
         handleTicks(ticks)
@@ -131,12 +131,9 @@
     return `MEL/${denom} ${info}`
   }
   function chartOptions(pooldata, afterTicks) {
-
     const scales = {
-      
       x: {
         ticks: {
-          callback: getDataRange(pooldata, afterTicks)
         },
         type: 'time',
         time: {
@@ -203,23 +200,42 @@
     })
     return chart
   }
-  function afterTicks(pooldata){
-    return (ticks)=>{
+  function afterTicks(chart, pooldata){
+    return async (ticks)=>{
       console.info('Ticks', ticks)
-      updateData(ticks[0].block, ticks[ticks.length -1 ].block)
+      let [lower, upper] = await updateData(denom, pooldata, ticks)
+      chart.melscan = Object.assign(chart.melscan || {}, {range: {upper, lower}})
     }
   }
-  function updateData(lower, upper){
-    console.log(lower, upper)
+  async function updateData(denom, pooldata, ticks){
+    if(pooldata.length == 0)
+        return [0, last_item.height]
+      else{
+        let lower = pooldata.find(data=> data.date.toMillis() > ticks[0].value).height
+        let upper = findReverse(pooldata, data => data.date.toMillis() < ticks[ticks.length - 1].value).height
+        return [lower, upper]
+      }
+  }
+  function findReverse(list, predicate){
+    for(let i = list.length - 1; i >= 0; i--){
+      if(predicate(list[i])) return list[i]
+    }
   }
   async function main() {
     let lower = 0;
     let upper = last_item.height;
     var pooldata = await getPoolData(denom, lower, upper)
-    let options = chartOptions(pooldata, debounce(afterTicks(pooldata), 300));
+    let options = chartOptions(pooldata, );
     let data = pooldata.map(i=>[i.date, i.liquidity]);
+    console.info('pooldata: ', pooldata)
     let legend_label = createLegendLabel(denom, 'Liquidity')
     var chart = await createChart(data, legend_label, options)
+    chart.options.scales.x.ticks.callback = getDataRange(debounce(afterTicks(chart, pooldata), 300))
+    chart.update()
+    // setInterval(()=>{
+    //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
+    //   chart.update()
+    // },1000)
     console.info('Chart:',chart)
     var handlers = {}
     // handlers.toggleDataVisibility = (index, update = true) => {
