@@ -88,11 +88,12 @@
 
     <div class="md:col-span-9 col-span-12 md:row-span-3 card">
       <div class="grid grid-cols-2" id="head">
-        <div class="text-left"><button onclick="melscan.handlers.loadLiquidity()">Liquidity</button><button
-            onclick="melscan.handlers.loadPrice()">Price</button></div>
-        <div class="text-right"><button onclick="loadLastDay()">1D</button><button
-            onclick="loadLastWeek()">1W</button><button onclick="loadLastMonth()">1M</button><button
-            onclick="loadAllTime()">All</button></div>
+        <div class="text-left"><button onclick="handlers.loadLiquidity()">Liquidity</button><button
+            onclick="handlers.loadPrice()">Price</button></div>
+        <div class="text-right"><button onclick="handlers.loadLastDay()">1D</button><button
+            onclick="handlers.loadLastWeek()">1W</button><button
+            onclick="handlers.loadLastMonth()">1M</button><button
+            onclick="handlers.loadAllTime()">All</button></div>
       </div>
       <canvas id="chart" width="400" height="400"></canvas>
 
@@ -113,7 +114,7 @@
 <script>
   async function getPoolData(denom, lower, upper) {
     let url = `/raw/pool-data-batch/${denom}/${lower - lower % 300}/${upper - upper % 300}`
-    console.info(url)
+    console.log('Request:', url)
     let poolData = await $.ajax(url)
     // replace the date string with a date object
     // create immutable objects with freeze
@@ -140,16 +141,15 @@
   function updateData(pooldata) {
     return async ({ chart }) => {
       let { min, max } = chart.scales.x
-      console.log(new Date(min), new Date(max))
       let [lower, upper] = findBlockRange(pooldata, min, max)
 
       $(chart.ctx.canvas).css('cursor', 'wait')
 
       let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
-      if(pooldata.length + new_data.length > 1200){
-        new_data.push(...pooldata.filter((i,j)=>j%2 == 0))
+      if (pooldata.length + new_data.length > 1200) {
+        new_data.push(...pooldata.filter((i, j) => j % 2 == 0))
       }
-      else{
+      else {
         new_data.push(...pooldata)
       }
       let uniq_data = uniq(new_data, (i) => i.height)
@@ -157,7 +157,7 @@
       pooldata.push(...uniq_data)
       pooldata.sort((i, j) => i.date.toMillis() > j.date.toMillis())
 
-      console.log(pooldata)
+      console.debug(pooldata)
       chart.stop()
       chart.update('none')
       $(chart.ctx.canvas).css('cursor', 'pointer')
@@ -192,9 +192,9 @@
         // },
         time: {
           displayFormats: {
-            hour: 'HH:mm',
-            minute: 'HH:mm',
-            second: 'HH:mm:ss'
+            hour: 'hh:mm',
+            minute: 'hh:mm',
+            second: 'hh:mm:ss'
           }
         },
         min: pooldata[0].date.toMillis(),
@@ -205,14 +205,18 @@
         max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20
       },
     };
+    const tooltipOptions = {
+      
+    }
     const zoomOptions = {
       limits: {
-        y: { min: 0, max: 20000, minRange: 50 },
+        y: { min: 0, minRange: 50 },
         x: { min: pooldata[0].date.toMillis(), max: Date.now() },
       },
       pan: {
         enabled: true,
         mode: 'x',
+        overScaleMode: 'xy',
         onPanRejected: console.error,
         onPanComplete: fetchFunction
 
@@ -231,12 +235,13 @@
     };
     let options = {
       scales,
-      tooltips: {
-        intersect: false,
-        mode: 'index',
-      },
+      // tooltips: {
+      //   intersect: false,
+      //   mode: 'index',
+      // },
       plugins: {
-        zoom: zoomOptions
+        zoom: zoomOptions,
+        tooltip: tooltipOptions
       },
       interaction: {
         intersect: false,
@@ -246,8 +251,8 @@
       transitions: {
         zoom: {
           animation: {
-            duration: 1000,
-            easing: 'easeOutCubic'
+            duration: 2000,
+            easing: 'easeInExpo'
           }
         }
       }
@@ -256,7 +261,7 @@
     return options
   }
   function chartSpec(pooldata, y_axis, label, options) {
-     return {
+    return {
       type: 'line',
       options,
       data: {
@@ -290,11 +295,11 @@
 
 
     let legend_label = createLegendLabel(denom, y_axis)
-    var spec =  chartSpec(pooldata, y_axis, legend_label, options)
+    var spec = chartSpec(pooldata, y_axis, legend_label, options)
 
     let ctx = document.getElementById('chart').getContext('2d')
     let chart = new Chart(ctx, spec)
-    console.info("Chart Specification: ",spec)
+    console.info("Chart Specification: ", spec)
 
     chart.update()
     // setInterval(()=>{
@@ -315,18 +320,34 @@
     // }
     handlers.loadLiquidity = () => {
       Object.assign(chart.options, chartOptions(pooldata, 'liquidity')),
-      chart.data.datasets[0].parsing.yAxisKey = 'liquidity'
+        chart.data.datasets[0].parsing.yAxisKey = 'liquidity'
       chart.update()
     }
     handlers.loadPrice = () => {
       Object.assign(chart.options, chartOptions(pooldata, 'price')),
-      chart.data.datasets[0].parsing.yAxisKey = 'price'
+        chart.data.datasets[0].parsing.yAxisKey = 'price'
       chart.update()
     }
+    handlers.loadBeforeNow = (time) => {
+      return () => {
+        let timescale = { min: DateTime.now().minus(time).toMillis(), max: DateTime.now().toMillis() }
+        chart.zoomScale('x', timescale, 'easeInExpo')
+        fetchFunction({chart})
+      }
+    }
+    handlers.loadLastDay = handlers.loadBeforeNow({day: 1})
+    handlers.loadLastWeek = handlers.loadBeforeNow({week: 1})
+    handlers.loadLastMonth = handlers.loadBeforeNow({month: 1})
+    handlers.loadAllTime = ()=>chart.resetZoom('easeInExpo')
+
     return { pooldata, handlers, chart }
   }
   var melscan = {}
-  main().then(i => Object.assign(melscan, i))
+  var handlers;
+  main().then(i => {
+    Object.assign(melscan, i)
+    handlers = melscan.handlers
+    })
 </script>
 
 {% endblock %}
