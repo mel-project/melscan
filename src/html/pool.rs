@@ -11,7 +11,7 @@ use serde::Serialize;
 use smol::prelude::*;
 use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{BlockHeight, Denom, MICRO_CONVERTER, NetID, PoolKey};
-use super::{TOOLTIPS};
+use super::{TOOLTIPS, InfoBubble};
 
 use async_trait::async_trait;
 
@@ -23,7 +23,7 @@ struct PoolTemplate {
     denom: String,
     last_item: PoolDataItem,
     tooltips: &'static TOOLTIPS,
-
+    denom_tooltip: &'static InfoBubble,
 }
 
 #[derive(Serialize, Clone)]
@@ -142,20 +142,24 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let denom = req.param("denom").map(|v| v.to_string())?;
     let denom = Denom::from_str(&denom).map_err(to_badreq)?;
 
+    let friendly_denom = friendly_denom(denom);
     let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
     let last_day = snapshot.as_pool_data_item(denom).await?;
 
-    let mut body: tide::Body = PoolTemplate {
+    let pool_template = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         denom: denom.to_string(),
-        friendly_denom: friendly_denom(denom),
-        last_item: last_day.clone(),
+        denom_tooltip: &TOOLTIPS[&friendly_denom],
+        friendly_denom: friendly_denom,
+        last_item: last_day,
         tooltips: &TOOLTIPS,
-    }
+    };
+    let mut body: tide::Body = pool_template
     .render()
     .unwrap()
     .into();
     body.set_mime("text/html");
+    println!("{}", pool_template.tooltips[&pool_template.friendly_denom]);
     Ok(body)
 }
 

@@ -61,8 +61,8 @@
 
 {% block body %}
 <div class="container mx-auto max-w-screen-lg">
-  <div class="mb-3 mt-8">
-    <h3 class="text-2xl font-bold">Token {{denom}}</h3>
+  <div class="mb-3 mt-8" style="display: flex">
+    <h3 class="text-2xl font-bold">Token {{denom}}</h3>{{denom_tooltip}}
   </div>
 
   <div class="grid grid-cols-12 md:grid-flow-col grid-flow-row">
@@ -105,7 +105,13 @@
 </script>
 <script>
   async function getPoolData(denom, lower, upper) {
-    let url = `/raw/pool-data-batch/${denom}/${lower - lower % 300}/${upper - upper % 300}`
+    if(upper - upper % 300 + 300 > last_item.height){
+      upper = last_item.height
+    }
+    else{
+      upper = upper - upper % 300 + 300
+    }
+    let url = `/raw/pool-data-batch/${denom}/${lower - lower % 300}/${upper}`
     console.log('Request:', url)
     let poolData = await $.ajax(url)
     // replace the date string with a date object
@@ -261,7 +267,12 @@
             easing: 'easeOutQuad'
           }
         }
-      }
+      },
+      point: {
+        radius: 0,
+        pointStyle: 'rect',
+        hoverRadius: 10,
+      },
     };
 
     return options
@@ -281,6 +292,9 @@
             yAxisKey: y_axis,
             xAxisKey: 'date'
           },
+          backgroundColor: '#a4d2f366',
+          borderColor: '#a4d2f3ff',
+
         }],
       },
     }
@@ -345,7 +359,7 @@
       return () => {
         let timescale = { min: DateTime.now().minus(time).toMillis(), max: DateTime.now().toMillis() }
         chart.zoomScale('x', timescale, 'easeInExpo')
-        // fetchFunction({chart})
+        fetchFunction({chart})
       }
     }
     handlers.loadLastDay = handlers.loadBeforeNow({ day: 1 })
