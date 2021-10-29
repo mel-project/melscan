@@ -11,15 +11,19 @@ use serde::Serialize;
 use smol::prelude::*;
 use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{BlockHeight, Denom, MICRO_CONVERTER, NetID, PoolKey};
+use super::{TOOLTIPS};
+
 use async_trait::async_trait;
 
 #[derive(Template)]
-#[template(path = "pool.html")]
+#[template(path = "pool.html", escape = "none")]
 struct PoolTemplate {
     testnet: bool,
     friendly_denom: String,
     denom: String,
     last_item: PoolDataItem,
+    tooltips: &'static TOOLTIPS,
+
 }
 
 #[derive(Serialize, Clone)]
@@ -28,6 +32,7 @@ pub struct PoolDataItem {
     height: u64,
     price: f64,
     liquidity: f64,
+    
 }
 
 #[async_trait]
@@ -145,6 +150,7 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
         denom: denom.to_string(),
         friendly_denom: friendly_denom(denom),
         last_item: last_day.clone(),
+        tooltips: &TOOLTIPS,
     }
     .render()
     .unwrap()
