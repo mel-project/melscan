@@ -62,7 +62,7 @@ async fn main_inner() -> anyhow::Result<()> {
     // Rendered paths
     app.at("/").get(html::get_homepage);
     app.at("/blocks/:height").get(html::get_blockpage);
-    app.at("/pools/:denom").get(html::get_poolpage);
+    app.at("/pools/:denom_left/:denom_right").get(html::get_poolpage);
     app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
     app.at("/raw/latest").get(raw::get_latest);
@@ -76,7 +76,7 @@ async fn main_inner() -> anyhow::Result<()> {
     app.at("/raw/blocks/:height/pools/:denom")
         .get(raw::get_pool);
     // app.at("/raw/pool-data-batch/:lowerblock").get(raw::get_pooldata);
-    app.at("/raw/pool-data-batch/:denom/:lowerblock/:upperblock").get(raw::get_pooldata_range);
+    app.at("/raw/pooldata/:denom_left/:denom_right/:lowerblock/:upperblock").get(raw::get_pooldata_range);
     app.with(tide::utils::After(|mut res: tide::Response| async move {
         if let Some(err) = res.error() {
             // put the error string in the response

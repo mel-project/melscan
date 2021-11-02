@@ -37,34 +37,22 @@ pub struct PoolDataItem {
 
 #[async_trait]
 pub trait AsPoolDataItem {
-    async fn as_pool_data_item(&self, denom: Denom) -> tide::Result<PoolDataItem>;
-    async fn get_older_pool_data_item(&self, denom: Denom, height: u64) -> tide::Result<PoolDataItem>;
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<PoolDataItem>;
+    async fn get_older_pool_data_item(&self, pool_key: PoolKey, height: u64) -> tide::Result<PoolDataItem>;
 }
 
 
 #[async_trait]
 impl AsPoolDataItem for ValClientSnapshot {
     // returns a PoolDataItem that assumes the snapshot represents the most recent block
-    async fn as_pool_data_item(&self, denom: Denom) -> tide::Result<PoolDataItem> {
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<PoolDataItem> {
         let height = self.current_header().height.0;
-        let pool_key = PoolKey::mel_and(denom);
         let pool_info = self
             .get_pool(pool_key)
             .await?
             .ok_or_else(notfound)?;
         let price = pool_info.implied_price().to_f64().unwrap_or_default();
-        let price = 
-        if denom == pool_key.left {
-            1.0 / price
-        } else {
-            price
-        };
-        let liquidity = 
-        if denom == pool_key.left {
-            pool_info.rights
-        } else {
-            pool_info.lefts
-        } as f64
+        let liquidity = pool_info.lefts as f64
             * 2.0
             / MICRO_CONVERTER as f64;
         Ok(PoolDataItem {
@@ -74,11 +62,11 @@ impl AsPoolDataItem for ValClientSnapshot {
             liquidity,
         })
     }
-    async fn get_older_pool_data_item(&self, denom: Denom, height: u64) -> tide::Result<PoolDataItem>{
+    async fn get_older_pool_data_item(&self, pool_key: PoolKey, height: u64) -> tide::Result<PoolDataItem>{
         let last_height = self.current_header().height.0;
         let snapshot = self.get_older(height.into())
         .await.map_err(to_badgateway)?;
-        let mut item = snapshot.as_pool_data_item(denom).await?;
+        let mut item = snapshot.as_pool_data_item(pool_key).await?;
         Ok(item.set_time(last_height - height).clone())
     }
 
@@ -107,7 +95,7 @@ pub async fn pool_items(
     lower_block: u64,
     upper_block: u64,
     num_blocks: u64,
-    denom: Denom,
+    pool_key: PoolKey,
 ) -> tide::Result<Vec<PoolDataItem>> {
     let snapshot = client.snapshot().await.map_err(to_badgateway)?;
     let blocks = upper_block - lower_block;
@@ -121,7 +109,7 @@ pub async fn pool_items(
     {
         item_futs.push(
             async move {
-                snapshot.get_older_pool_data_item(denom, height).await
+                snapshot.get_older_pool_data_item(pool_key, height).await
             }
         );
     }
@@ -139,16 +127,21 @@ pub async fn pool_items(
 #[tracing::instrument(skip(req))]
 pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("poolpage");
-    let denom = req.param("denom").map(|v| v.to_string())?;
-    let denom = Denom::from_str(&denom).map_err(to_badreq)?;
-
-    let friendly_denom = friendly_denom(denom);
+    let pool_key = {
+        let denom = req.param("denom_left").map(|v| v.to_string())?;
+        let left = Denom::from_str(&denom).map_err(to_badreq)?;
+        let denom = req.param("denom_right").map(|v| v.to_string())?;
+        let right = Denom::from_str(&denom).map_err(to_badreq)?;
+        PoolKey{left,right}
+    };
+    
+    let friendly_denom = friendly_denom(pool_key.right);
     let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
-    let last_day = snapshot.as_pool_data_item(denom).await?;
+    let last_day = snapshot.as_pool_data_item(pool_key).await?;
 
     let pool_template = PoolTemplate {
         testnet: req.state().netid() == NetID::Testnet,
-        denom: denom.to_string(),
+        denom: pool_key.right.to_string(),
         denom_tooltip: &TOOLTIPS[&friendly_denom],
         friendly_denom: friendly_denom,
         last_item: last_day,

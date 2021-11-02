@@ -139,16 +139,21 @@ pub async fn get_pooldata_range(req: tide::Request<ValClient>) -> tide::Result<B
     let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badreq)?;
     let upper_block: u64 =  req.param("upperblock")?.parse().map_err(to_badreq)?;
     
-    let denom = req.param("denom").map(|v| v.to_string())?;
-    let denom = Denom::from_str(&denom).map_err(to_badreq)?;
+    let pool_key = {
+        let denom = req.param("denom_left").map(|v| v.to_string())?;
+        let left = Denom::from_str(&denom).map_err(to_badreq)?;
+        let denom = req.param("denom_right").map(|v| v.to_string())?;
+        let right = Denom::from_str(&denom).map_err(to_badreq)?;
+        PoolKey{left,right}
+    };
     
     let pool = { 
         if lower_block == upper_block {
             let snapshot = client.snapshot().await?;
-            vec![snapshot.get_older_pool_data_item(denom, lower_block).await?]
+            vec![snapshot.get_older_pool_data_item(pool_key, lower_block).await?]
         }
         else {
-            pool_items(client, lower_block, upper_block, 300, denom).await?
+            pool_items(client, lower_block, upper_block, 300, pool_key).await?
         }
     };
     Body::from_json(&pool)
