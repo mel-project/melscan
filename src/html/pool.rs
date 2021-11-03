@@ -1,7 +1,7 @@
 use std::{str::FromStr, time::Duration};
 
 use super::{friendly_denom, RenderTimeTracer};
-use crate::{notfound, to_badgateway, to_badreq};
+use crate::{notfound, to_badgateway, to_badreq, State};
 use anyhow::Context;
 use askama::{filters::upper, Template};
 use chrono::{NaiveDate, NaiveDateTime};
@@ -20,12 +20,15 @@ use async_trait::async_trait;
 struct PoolTemplate {
     testnet: bool,
     friendly_denom: String,
-    denom: String,
+    pool_key: PoolKey,
     last_item: PoolDataItem,
     tooltips: &'static TOOLTIPS,
     denom_tooltip: &'static InfoBubble,
 }
 
+
+// 2 million cached pooldataitems is 64 mb
+// 1 item is 256 bits
 #[derive(Serialize, Clone)]
 pub struct PoolDataItem {
     date: chrono::NaiveDateTime,
@@ -125,7 +128,7 @@ pub async fn pool_items(
 
 
 #[tracing::instrument(skip(req))]
-pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
+pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("poolpage");
     let pool_key = {
         let denom = req.param("denom_left").map(|v| v.to_string())?;
@@ -136,12 +139,12 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     };
     
     let friendly_denom = friendly_denom(pool_key.right);
-    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
+    let snapshot = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
     let last_day = snapshot.as_pool_data_item(pool_key).await?;
 
     let pool_template = PoolTemplate {
-        testnet: req.state().netid() == NetID::Testnet,
-        denom: pool_key.right.to_string(),
+        testnet: req.state().val_client.netid() == NetID::Testnet,
+        pool_key: pool_key,
         denom_tooltip: &TOOLTIPS[&friendly_denom],
         friendly_denom: friendly_denom,
         last_item: last_day,

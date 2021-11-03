@@ -1,7 +1,9 @@
 #![allow(unused_imports)]
+#![feature(once_cell)]
 use std::{convert::TryInto, net::SocketAddr};
 
 use std::fmt::Debug;
+use dashmap::DashMap;
 use structopt::StructOpt;
 use themelio_nodeprot::{TrustedHeight, ValClient};
 use themelio_stf::NetID;
@@ -31,7 +33,11 @@ pub struct Args {
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
 }
-
+#[derive(Clone)]
+pub struct State {
+    raw_pooldata_cache: DashMap<raw::PoolInfoKey, html::PoolDataItem>,
+    val_client: ValClient,
+}
 #[tracing::instrument]
 async fn main_inner() -> anyhow::Result<()> {
     let log_conf = std::env::var("RUST_LOG")
@@ -42,6 +48,7 @@ async fn main_inner() -> anyhow::Result<()> {
         .with_ansi(false)
         .finish()
         .init();
+
 
     let args = Args::from_args();
     let client = ValClient::new(
@@ -58,7 +65,13 @@ async fn main_inner() -> anyhow::Result<()> {
     } else {
         client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
     }
-    let mut app = tide::with_state(client);
+
+    let state = State{
+        raw_pooldata_cache: DashMap::new(),
+        val_client: client
+    };
+
+    let mut app = tide::with_state(state);
     // Rendered paths
     app.at("/").get(html::get_homepage);
     app.at("/blocks/:height").get(html::get_blockpage);

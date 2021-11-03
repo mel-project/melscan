@@ -1,4 +1,5 @@
 use crate::to_badgateway;
+use crate::State;
 use askama::Template;
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
@@ -51,10 +52,10 @@ struct PoolSummary {
 
 /// Homepage
 #[tracing::instrument(skip(req))]
-pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
+pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
     let _render = RenderTimeTracer::new("homepage");
 
-    let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
     let mut blocks = Vec::new();
     let mut futs = get_old_blocks(&last_snap, 30);
 
@@ -94,7 +95,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     };
 
     let mut body: Body = HomepageTemplate {
-        testnet: req.state().netid() == NetID::Testnet,
+        testnet: req.state().val_client.netid() == NetID::Testnet,
         blocks,
         pool,
         tooltips: ToolTips {test: InfoBubble ("test tip".into())}
