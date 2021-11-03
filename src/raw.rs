@@ -140,10 +140,10 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
     })
 }
 
-pub fn create_height_interval(lower_block: u64, upper_block: u64, num_blocks: u64) -> impl Iterator<Item = u64> {
+fn create_height_interval(lower_block: u64, upper_block: u64, num_blocks: u64) -> impl Iterator<Item = u64> {
 
     let blocks = upper_block - lower_block;
-    let divider: u64 = num_blocks.min(upper_block - lower_block);
+    let divider: u64 = num_blocks;
     (lower_block..=upper_block)
     .rev()
     .step_by((blocks / divider) as usize)
@@ -164,23 +164,19 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
         let right = Denom::from_str(&denom).map_err(to_badreq)?;
         PoolKey{left,right}
     };
-    
+    let snapshot = &client.snapshot().await.map_err(to_badgateway)?;
+
     let blockheight_interval = { 
         if lower_block == upper_block {
-            let snapshot = client.snapshot().await?;
             vec![lower_block]
         }
         else {
             let divider = 300;
-            create_height_interval(lower_block, upper_block, divider).collect()
+            create_height_interval(lower_block, upper_block, divider).filter(|height| height < &snapshot.current_header().height.0).collect()
         }
     };
 
-    let snapshot = client.snapshot().await.map_err(to_badgateway)?;
-  
-    let snapshot = &snapshot;
-    let cache = &cache;
-    
+
     let mut item_futs = FuturesUnordered::new();
     for height in &blockheight_interval
     {
@@ -191,14 +187,16 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
                 Ok(item)
             }
             else{
-                snapshot.get_older_pool_data_item(pool_key, *height).await 
+                let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
+                cache.insert(cache_key,item.clone());
+                tide::Result::Ok(item)
             }
         });
     }
     // Gather the stuff
     let mut output = vec![];
     while let Some(res) = item_futs.next().await {
-        log::debug!("loading pooldata {}/{}", output.len(), blockheight_interval.len());
+        log::debug!("loading pooldata {}/{}", output.len() + 1, blockheight_interval.len());
         output.push(res?);
     }
     output.sort_unstable_by_key(|v| v.block_height());
