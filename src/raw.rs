@@ -2,20 +2,16 @@ use std::convert::TryInto;
 use std::str::FromStr;
 
 use anyhow::Context;
-use askama::filters::upper;
 use futures_util::stream::FuturesUnordered;
-use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Denom, PoolKey, TxHash};
 
 use tide::Body;
 use tmelcrypt::HashVal;
-use smol::{block_on, prelude::*};
+use smol::{prelude::*};
 
-use crate::html::{AsPoolDataItem, PoolDataItem, TransactionSummary};
+use crate::html::{AsPoolDataItem};
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::utils::*;
-use std::lazy::Lazy;
-use dashmap::DashMap;
 use crate::{notfound, to_badgateway, to_badreq, State};
 
 #[derive(PartialEq, Eq, Hash, Clone)]

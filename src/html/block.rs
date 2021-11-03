@@ -1,11 +1,7 @@
 use crate::{to_badgateway, to_badreq, State};
 use askama::Template;
-use lazy_static::lazy_static;
-use serde::__private::de::IdentifierDeserializer;
-use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Header, NetID, TxHash};
-use std::collections::BTreeMap as Map;
-use super::{MicroUnit, RenderTimeTracer, InfoBubble, TOOLTIPS};
+use super::{MicroUnit, RenderTimeTracer, TOOLTIPS};
 
 #[derive(Template)]
 #[template(path = "block.html", escape = "none")]

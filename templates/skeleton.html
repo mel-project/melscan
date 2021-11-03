@@ -117,9 +117,11 @@
 
         .tooltip:hover .tooltiptext {
             display: block;
-            opacity: 1;
+            -webkit-animation: fadeInFromNone 0.5s ease-out forwards;
+            -moz-animation: fadeInFromNone 0.5s ease-out forwards;
+            -o-animation: fadeInFromNone 0.5s ease-out forwards;
+            animation: fadeInFromNone 0.5s ease-out forwards;
         }
-
         /* from https://stackoverflow.com/questions/8449933/animation-css3-display-opacity */
         @-webkit-keyframes fadeInFromNone {
             0% {

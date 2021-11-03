@@ -1,11 +1,9 @@
 use crate::to_badgateway;
 use crate::State;
 use askama::Template;
-use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
 use num_traits::{Inv, ToPrimitive};
-use themelio_nodeprot::ValClient;
-use themelio_stf::{CoinID, Denom, Header, NetID, PoolKey};
+use themelio_stf::{Denom, Header, NetID, PoolKey};
 use tide::Body;
 use super::{MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::utils::*;

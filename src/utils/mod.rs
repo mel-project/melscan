@@ -1,7 +1,7 @@
 use futures_util::{Future, stream::FuturesOrdered};
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::{Block, CoinID, CoinValue, Denom};
-use crate::{html::{MicroUnit, TransactionSummary}, to_badgateway};
+use crate::{html::{MicroUnit, TransactionSummary}};
 
 
 pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: usize) 
