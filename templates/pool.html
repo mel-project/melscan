@@ -182,8 +182,8 @@
       if (predicate(list[i])) return i
     }
   }
-  function createLegendLabel(denom, info) {
-    return `MEL/${denom} ${info}`
+  function createLegendLabel(pool_key, info) {
+    return `${pool_key.left}/${pool_key.right} ${info}`
   }
   function chartOptions(pooldata, pooldata_key, fetchFunction) {
     const scales = {
@@ -314,7 +314,7 @@
     console.info('pooldata: ', pooldata)
 
 
-    let legend_label = createLegendLabel(denom, 'Liquidity')
+    let legend_label = createLegendLabel(pool_key, 'Liquidity')
     var spec = chartSpec(pooldata, y_axis, legend_label, options)
 
     let ctx = document.getElementById('chart').getContext('2d')
@@ -343,7 +343,7 @@
       let dataset = chart.data.datasets[0]
 
       dataset.parsing.yAxisKey = 'liquidity'
-      dataset.label = createLegendLabel(denom, 'Liquidity')
+      dataset.label = createLegendLabel(pool_key, 'Liquidity')
       chart.update()
     }
     handlers.loadPrice = () => {
@@ -351,7 +351,7 @@
       let dataset = chart.data.datasets[0]
 
       dataset.parsing.yAxisKey = 'price'
-      dataset.label = createLegendLabel(denom, 'Price')
+      dataset.label = createLegendLabel(pool_key, 'Price')
       chart.update()
     }
     handlers.loadBeforeNow = (time) => {

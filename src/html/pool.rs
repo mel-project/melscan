@@ -121,6 +121,5 @@ pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body>
     };
     let mut body: tide::Body = pool_template.render().unwrap().into();
     body.set_mime("text/html");
-    println!("{}", pool_template.tooltips[&pool_template.friendly_denom]);
     Ok(body)
 }
