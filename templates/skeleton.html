@@ -48,10 +48,13 @@
             font-size: .7rem;
             border: black solid 1px;
             border-radius: 50%;
+            color: black;
+            font-weight: 500;
             width: 1.2em;
             height: 1.2em;
             line-height: 0;
             position: relative;
+            top: .28em;
         }
 
         .info-circle:hover {
@@ -71,17 +74,30 @@
         }
 
         .tooltip .tooltiptext {
+            font-family: 'Public Sans', sans-serif !important;
+            font-weight: normal;
             width: 20em;
-            font-size: .8em;
-            background-color: white;
+            font-size: .8rem;
+            text-align: left;
+
+            background-color: #f8fbf8;
             border: 1px solid #cccccc;
-            padding: .2em;
+            border-radius: .7em;
+            line-height: 1rem;
+            color: black;
+
+            border-top-right-radius: .4em;
+            border-bottom-right-radius: .4em;
+
+            padding: .7em;
+            padding-left: 1.25em;
+
             overflow-wrap: break-word;
             position: absolute;
             z-index: 1;
             opacity: 0;
             display: none;
-            transition: opacity 0.25s ease;
+            transition: all .25s ease;
             left: 1.7em;
             top: -50%;
 
@@ -99,14 +115,79 @@
             border-color: transparent #cccccc transparent transparent;
         }
 
-
-
-        /* Show the tooltip text when you mouse over the tooltip container */
         .tooltip:hover .tooltiptext {
-            display: inherit;
+            display: block;
             opacity: 1;
         }
-        
+
+        /* from https://stackoverflow.com/questions/8449933/animation-css3-display-opacity */
+        @-webkit-keyframes fadeInFromNone {
+            0% {
+                display: none;
+                opacity: 0;
+            }
+
+            1% {
+                display: block;
+                opacity: 0;
+            }
+
+            100% {
+                display: block;
+                opacity: 1;
+            }
+        }
+
+        @-moz-keyframes fadeInFromNone {
+            0% {
+                display: none;
+                opacity: 0;
+            }
+
+            1% {
+                display: block;
+                opacity: 0;
+            }
+
+            100% {
+                display: block;
+                opacity: 1;
+            }
+        }
+
+        @-o-keyframes fadeInFromNone {
+            0% {
+                display: none;
+                opacity: 0;
+            }
+
+            1% {
+                display: block;
+                opacity: 0;
+            }
+
+            100% {
+                display: block;
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInFromNone {
+            0% {
+                display: none;
+                opacity: 0;
+            }
+
+            1% {
+                display: block;
+                opacity: 0;
+            }
+
+            100% {
+                display: block;
+                opacity: 1;
+            }
+        }
     </style>
     <style>
         .lds-ellipsis {
@@ -160,6 +241,7 @@
             50% {
                 transform: scale(1);
             }
+
             100% {
                 transform: scale(1);
             }
@@ -173,6 +255,7 @@
             50% {
                 transform: scale(0);
             }
+
             100% {
                 transform: scale(0);
             }
@@ -186,6 +269,7 @@
             50% {
                 transform: translate(calc(3em / var(--spacing-scale)), 0);
             }
+
             100% {
                 transform: translate(calc(3em / var(--spacing-scale)), 0);
             }

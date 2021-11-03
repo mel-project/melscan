@@ -5,7 +5,13 @@
 {% block nav %}
 <a href="/" class="text-black hover:text-opacity-60 hover:underline">Melscan</a>
 {% endblock %}
-
+{% block head %}
+<style>
+  .info-circle {
+    top: 0;
+  }
+</style>
+{% endblock %}
 {% block body %}
 <div class="container mx-auto max-w-screen-lg">
   <div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
@@ -14,8 +20,9 @@
     </div>
 
     <div>
-      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 /
-        pool.mel_per_dosc).round() / 10000.0}} rDOSC</span>
+      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL {{tooltips["MEL"]}} =</span>
+        {{(10000.0 /
+        pool.mel_per_dosc).round() / 10000.0}} rDOSC {{tooltips["rDOSC"]}}</span>
       <br>
       <small class="text-blue-600 font-bold"><a href="/pools/MEL/N-DOSC">See details →</a></small> · <small
         class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0
@@ -24,7 +31,7 @@
 
     <div>
       <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 /
-        pool.mel_per_sym).round() / 10000.0}} sym</span><br>
+        pool.mel_per_sym).round() / 10000.0}} SYM {{tooltips["SYM"]}}</span><br>
       <small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
     </div>
 
@@ -32,7 +39,7 @@
 
 
   <div class="grid grid-cols-1 md:grid-cols-2 mt-12 mb-12 grid-flow-row">
-    <div  class="col-span-full mb-3">
+    <div class="col-span-full mb-3">
       <h3 class="text-2xl font-bold">Latest activity</h3>
     </div>
 
@@ -40,7 +47,12 @@
       <h3 class="text-xl font-semibold">Latest blocks</h3>
       <div class="info-section">
         <small class="text-black text-opacity-50 font-bold">Most recently confirmed blocks</small>
-        <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+        <div class="lds-ellipsis">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
       </div>
       <table class="table-auto w-full mt-3">
         <thead class="text-left text-sm text-black text-opacity-50">
@@ -67,7 +79,12 @@
       <h3 class="text-xl font-semibold">Latest transactions</h3>
       <div class="info-section">
         <small class="text-black text-opacity-50 font-bold">Transactions in latest blocks</small>
-        <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+        <div class="lds-ellipsis">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
       </div>
       <table class="table-auto w-full mt-3">
         <thead class="text-left text-sm text-black text-opacity-50">
@@ -89,26 +106,29 @@
 {% endblock %}
 {% block bottom_scripts %}
 <style>
-  .fade{
+  .fade {
     transition: all 3s ease-out;
   }
-  .new-row{
+
+  .new-row {
     background-color: rgba(103, 180, 240, 0.576);
     height: 1em;
   }
+
   .slide-fade tr {
     opacity: 1;
   }
-  .info-section{
+
+  .info-section {
     display: flex;
   }
-  #latest-blocks{
+
+  #latest-blocks {
     margin-right: 3em;
   }
 </style>
 <script>
-      //in here on its own because it breaks the javascript parser
-      var blocks = {{blocks|json}}
+  var blocks = JSON.parse(`{{blocks|json}}`);
 </script>
 <script>
   let block_row_template = (block, classes) => `<tr class="fade ${classes || ""} ">
@@ -120,7 +140,7 @@
   let transaction_row_template = (tx, classes) => `<tr class="js-template fade ${classes || ""}">
             <td><a href="/blocks/${tx.height}/${tx.hash}" class="text-blue-600">${tx.shorthash}...</a></td>
             <td>${tx.height}</td>
-            <td>${ tx.mel_moved.join(" ") }</td>
+            <td>${tx.mel_moved.join(" ")}</td>
           </tr>`
 
   async function get_block(height) {
@@ -132,7 +152,7 @@
     return get_block(height)
   }
 
-  function prepend_transaction_rows(transactions, classNames){
+  function prepend_transaction_rows(transactions, classNames) {
     let rows = transactions.map((tx) => transaction_row_template(tx, classNames))
     $("#transaction-rows").prepend(rows)
 
@@ -154,7 +174,7 @@
       console.info("Block Found", latest)
       prepend_transaction_rows(latest.transactions, "new-row")
       $("#block-rows").prepend(block_row_template(latest, "new-row"))
-      setTimeout(()=>$(".new-row").removeClass("new-row"),1500)
+      setTimeout(() => $(".new-row").removeClass("new-row"), 1500)
     }
   }
 
