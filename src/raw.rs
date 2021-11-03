@@ -3,13 +3,15 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use askama::filters::upper;
+use futures_util::stream::FuturesUnordered;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Denom, PoolKey, TxHash};
 
 use tide::Body;
 use tmelcrypt::HashVal;
+use smol::{block_on, prelude::*};
 
-use crate::html::{TransactionSummary, pool_items, AsPoolDataItem};
+use crate::html::{AsPoolDataItem, PoolDataItem, TransactionSummary};
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::utils::*;
 use std::lazy::Lazy;
@@ -17,7 +19,7 @@ use dashmap::DashMap;
 use crate::{notfound, to_badgateway, to_badreq, State};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
-pub struct PoolInfoKey(PoolKey, Denom, BlockHeight);
+pub struct PoolInfoKey(PoolKey, BlockHeight);
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
@@ -138,8 +140,20 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
     })
 }
 
+pub fn create_height_interval(lower_block: u64, upper_block: u64, num_blocks: u64) -> impl Iterator<Item = u64> {
+
+    let blocks = upper_block - lower_block;
+    let divider: u64 = num_blocks.min(upper_block - lower_block);
+    (lower_block..=upper_block)
+    .rev()
+    .step_by((blocks / divider) as usize)
+}
+
+
 pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body> {
-    let client = &req.state().val_client;
+    let state = req.state();
+    let client = &state.val_client;
+    let cache = &state.raw_pooldata_cache;
     let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badreq)?;
     let upper_block: u64 =  req.param("upperblock")?.parse().map_err(to_badreq)?;
     
@@ -151,19 +165,45 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
         PoolKey{left,right}
     };
     
-
-    
-
-    let pool = { 
+    let blockheight_interval = { 
         if lower_block == upper_block {
             let snapshot = client.snapshot().await?;
-            vec![snapshot.get_older_pool_data_item(pool_key, lower_block).await?]
+            vec![lower_block]
         }
         else {
-            pool_items(client, lower_block, upper_block, 300, pool_key).await?
+            let divider = 300;
+            create_height_interval(lower_block, upper_block, divider).collect()
         }
     };
-    Body::from_json(&pool)
+
+    let snapshot = client.snapshot().await.map_err(to_badgateway)?;
+  
+    let snapshot = &snapshot;
+    let cache = &cache;
+    
+    let mut item_futs = FuturesUnordered::new();
+    for height in &blockheight_interval
+    {
+        item_futs.push(async move { 
+            let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
+            if cache.contains_key(&cache_key){
+                let item = cache.get(&cache_key).unwrap().value().clone();
+                Ok(item)
+            }
+            else{
+                snapshot.get_older_pool_data_item(pool_key, *height).await 
+            }
+        });
+    }
+    // Gather the stuff
+    let mut output = vec![];
+    while let Some(res) = item_futs.next().await {
+        log::debug!("loading pooldata {}/{}", output.len(), blockheight_interval.len());
+        output.push(res?);
+    }
+    output.sort_unstable_by_key(|v| v.block_height());
+
+    Body::from_json(&output)
 }
 
 // pub async fn get_pooldata(req: tide::Request<State>) -> tide::Result<Body> {

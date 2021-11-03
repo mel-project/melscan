@@ -49,6 +49,8 @@ pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSumma
     transactions
 }
 
+
+
 // pub fn get_transactions_iterator(block: &Block, max_count: usize) -> impl Iterator<Item=TransactionSummary>{
 //     &block.transactions.iter().map(|transaction|{
 //             TransactionSummary {
