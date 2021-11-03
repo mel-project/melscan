@@ -22,7 +22,7 @@ tracing-subscriber = "0.2.24"
 log= "0.4.14"
 tracing= "0.1.28"
 
-askama= "0.10.5"
+askama= {version = "0.10.5", features = ["serde-json"]}
 
 serde={ version = "1.0.130", features = ["derive"] }
 num-traits= "0.2.14"
@@ -31,3 +31,8 @@ futures-util= "0.3.17"
 chrono={ version = "0.4.19", features = ["serde"] }
 serde_json= "1.0.68"
 themelio-bootstrap="0.1"
+
+lazy_static = "1.4.0"
+# cached = "0.25.1"
+async-trait = "0.1.51"
+dashmap = "4.0.2"

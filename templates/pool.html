@@ -3,6 +3,20 @@
 {% block title %} Melscan {% endblock %}
 
 {% block head %}
+<script>
+  module = {}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.0.2/luxon.min.js"
+  integrity="sha512-frUCURIeB0OKMPgmDEwT3rC4NH2a4gn06N3Iw6T1z0WfrQZd7gNfJFbHrNsZP38PVXOp6nUiFtBqVvmCj+ARhw=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"
+  integrity="sha512-NxlWEbNbTV6acWnTsWRLIiwzOw0IwHQOYUCKBiu/NqZ+5jSy7gjMbpYI+/4KvaNuZ1qolbw+Vnd76pbIUYEG8g=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1"></script>
+<script src="https://cdn.jsdelivr.net/npm/lodash.debounce@4.0.8/index.min.js"></script>
 <style>
   #head button {
     font-size: 90%;
@@ -37,7 +51,9 @@
     justify-content: center;
     flex-direction: column;
   }
-
+  .tooltip .tooltiptext::after {
+      border-color: transparent transparent transparent transparent;
+  }
 </style>
 {% endblock %}
 
@@ -48,96 +64,320 @@
 
 {% block body %}
 <div class="container mx-auto max-w-screen-lg">
-  <div class="mb-3 mt-8">
-    <h3 class="text-2xl font-bold">Token {{denom}}</h3>
+  <div class="mb-3 mt-8" style="display: flex">
+    <h3 class="text-2xl font-bold">Token {{pool_key.right}}</h3>{{denom_tooltip}}
   </div>
 
   <div class="grid grid-cols-12 md:grid-flow-col grid-flow-row">
     <div class="col-span-12 md:col-span-3 card ticker-card">
-      <div><small>Price</small></div>
-      <div class="text-lg font-medium">{{(last_item.price * 1000.0).round() / 1000.0}} mel/{{denom}}</div>
+      <div><small>Price</small>{{tooltips["price"]}}</div>
+      <div class="text-lg font-medium">{{(last_item.price * 1000.0).round() / 1000.0}} {{pool_key.left}}/{{pool_key.right}}</div>
     </div>
     <div class="col-span-12 md:col-span-3 card ticker-card">
-      <div><small>Liquidity</small></div>
+      <div><small>Liquidity</small>{{tooltips["liquidity"]}}</div>
       <div class="text-lg font-medium">{{(last_item.liquidity * 1000.0).round() / 1000.0}} mel</div>
     </div>
     <div class="col-span-12 md:col-span-3 card ticker-card">
-      <div><small>Current height</small></div>
+      <div><small>Current height</small>{{tooltips["height"]}}</div>
       <div class="text-lg font-medium">{{last_item.height}}</div>
     </div>
 
     <div class="md:col-span-9 col-span-12 md:row-span-3 card">
       <div class="grid grid-cols-2" id="head">
-        <div class="text-left"><button onclick="loadLiquidity()">Liquidity</button><button onclick="loadPrice()">Price</button></div>
-        <div class="text-right"><button onclick="loadLastDay()">1D</button><button onclick="loadLastWeek()">1W</button><button onclick="loadLastMonth()">1M</button><button onclick="loadAllTime()">All</button></div>
+        <div class="text-left"><button onclick="handlers.loadLiquidity()">Liquidity</button><button
+            onclick="handlers.loadPrice()">Price</button> {{tooltips["graph"]}}</div>
+        <div class="text-right"><button onclick="handlers.loadLastDay()">1D</button><button
+            onclick="handlers.loadLastWeek()">1W</button><button onclick="handlers.loadLastMonth()">1M</button><button
+            onclick="handlers.loadAllTime()">All</button></div>
       </div>
-      <div class="h-64" id="graph"></div>
+      <canvas id="chart" width="400" height="400"></canvas>
+
     </div>
 
   </div>
 
-  <script>
-    const last_day = JSON.parse('{{ last_day_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-    const last_week = JSON.parse('{{ last_week_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-    const last_month = JSON.parse('{{ last_month_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
-    const all_time = JSON.parse('{{ all_time_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
 
-    var drawRange = last_month;
-    var drawAccessor = 'price';
-
-    function loadLastDay() {
-      drawRange = last_day;
-      load();
-    }
-
-    function loadLastWeek() {
-      drawRange = last_week;
-      load();
-    }
-
-    function loadLastMonth() {
-      drawRange = last_month;
-      load();
-    }
-
-    function loadAllTime() {
-      drawRange = all_time;
-      load();
-    }
-
-    function loadLiquidity() {
-      drawAccessor = 'liquidity';
-      load();
-    }
-
-    function loadPrice() {
-      drawAccessor = 'price';
-      load();
-    }
-
-    function load() {
-      MG.data_graphic({
-        data: drawRange,
-        full_width: true,
-        full_height: true,
-        x_accessor: 'date',
-        y_accessor: drawAccessor,
-        target: "#graph",
-        buffer: 0,
-        yax_units: "mel",
-        yax_units_append: true,
-        left: 70,
-        top: 10,
-        bottom: 40,
-        right: 10,
-        interpolate: d3.curveMonotoneX
-      });
-    }
-
-    // run after d3 etc loads
-    window.addEventListener('DOMContentLoaded', function () {
-      load();
-    });
-  </script>
 </div>
+<script>
+  console.log(`{left: "{{pool_key.left}}", right: "{{pool_key.right}}"}`)
+  var pool_key = JSON.parse(`{"left": "{{pool_key.left}}", "right": "{{pool_key.right}}"}`)
+  var denom = pool_key.right
+  var denom_left = pool_key.left
+  var last_item = JSON.parse(`{{last_item|json}}`)
+  var DateTime = luxon.DateTime
+  var Duration = luxon.Duration
+  console.info(`Denom: ${denom} \nLast Item: ${JSON.stringify(last_item)}`)
+
+</script>
+<script>
+  async function getPoolData(denom, lower, upper) {
+    if(upper - upper % 300 + 300 > last_item.height){
+      upper = last_item.height
+    }
+    else{
+      upper = upper - upper % 300 + 300
+    }
+    let url = `/raw/pooldata/${pool_key.left}/${pool_key.right}/${lower - lower % 300}/${upper}`
+    console.log('Request:', url)
+    let poolData = await $.ajax(url)
+    // replace the date string with a date object
+    // create immutable objects with freeze
+    return poolData.map(i => (Object.assign({}, i, { date: DateTime.fromISO(i.date) }))).map(Object.freeze)
+
+  }
+
+  function getDataRange(handleTicks) {
+    return (value, index, ticks) => {
+      if (ticks.length - 1 === index) {
+        handleTicks(ticks)
+      }
+      return value
+    }
+  }
+
+  function uniq(a, property) {
+    var seen = {};
+    return a.filter((item) => {
+      let prop = property(item)
+      return seen.hasOwnProperty(prop) ? false : (seen[prop] = true);
+    });
+  }
+  function updateData(pooldata) {
+    return async ({ chart }) => {
+      let { min, max } = chart.scales.x
+      let [lower, upper] = findBlockRange(pooldata, min, max)
+
+      $(chart.ctx.canvas).css('cursor', 'wait')
+
+      let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
+      if (pooldata.length + new_data.length > 1200) {
+        new_data.push(...pooldata.filter((i, j) => j % 2 == 0))
+      }
+      else {
+        new_data.push(...pooldata)
+      }
+      let uniq_data = uniq(new_data, (i) => i.height)
+      pooldata.length = 0
+      pooldata.push(...uniq_data)
+      pooldata.sort((i, j) => i.date.toMillis() > j.date.toMillis())
+
+      console.debug(pooldata)
+      chart.stop()
+      chart.update('none')
+      $(chart.ctx.canvas).css('cursor', 'pointer')
+
+    }
+  }
+  function findBlockRange(pooldata, minTime, maxTime) {
+    if (pooldata.length == 0)
+      return [0, pooldata.length - 1]
+    else {
+      let lower = pooldata.findIndex(data => data.date.toMillis() > minTime)
+      let upper = findIndexReverse(pooldata, data => data.date.toMillis() < maxTime)
+      return [lower, upper]
+    }
+  }
+  function findIndexReverse(list, predicate) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (predicate(list[i])) return i
+    }
+  }
+  function createLegendLabel(denom, info) {
+    return `MEL/${denom} ${info}`
+  }
+  function chartOptions(pooldata, pooldata_key, fetchFunction) {
+    const scales = {
+      x: {
+        type: 'time',
+        // ticks: {
+        //   autoSkip: true,
+        //   autoSkipPadding: 50,
+        //   maxRotation: 0
+        // },
+        time: {
+          displayFormats: {
+            hour: 'hh:mm',
+            minute: 'hh:mm',
+            second: 'hh:mm:ss'
+          }
+        },
+        min: pooldata[0].date.toMillis(),
+        max: pooldata[pooldata.length - 1].date.toMillis(),
+      },
+      y: {
+        min: 0,
+        max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20
+      },
+    };
+    const tooltipOptions = {
+      callbacks: {
+        label: function (item) {
+          return `Block: ${item.raw.height}`
+        },
+
+      }
+    }
+    const zoomOptions = {
+      limits: {
+        y: { min: 0, minRange: 50 },
+        x: { min: pooldata[0].date.toMillis(), max: Date.now() },
+      },
+      pan: {
+        enabled: true,
+        mode: 'x',
+        overScaleMode: 'xy',
+        onPan: fetchFunction
+      },
+      zoom: {
+        wheel: {
+          enabled: true,
+        },
+        pinch: {
+          enabled: true
+        },
+        drag: {
+          enabled: true,
+          modifierKey: 'shift'
+        },
+        mode: 'x',
+        onZoom: fetchFunction
+
+      }
+    };
+    let options = {
+      scales,
+      // tooltips: {
+      //   intersect: false,
+      //   mode: 'index',
+      // },
+      plugins: {
+        zoom: zoomOptions,
+        tooltip: tooltipOptions
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index',
+        axis: 'x'
+      },
+      transitions: {
+        zoom: {
+          animation: {
+            duration: 500,
+            easing: 'easeOutQuad'
+          }
+        }
+      },
+      point: {
+        radius: 0,
+        pointStyle: 'rect',
+        hoverRadius: 10,
+      },
+    };
+
+    return options
+  }
+  function chartSpec(pooldata, y_axis, label, options) {
+    return {
+      type: 'line',
+      options,
+      data: {
+        datasets: [{
+          label,
+          data: pooldata,
+          fill: 'origin',
+          borderWidth: 3,
+          radius: 0,
+          parsing: {
+            yAxisKey: y_axis,
+            xAxisKey: 'date'
+          },
+          backgroundColor: '#a4d2f366',
+          borderColor: '#a4d2f3ff',
+
+        }],
+      },
+    }
+
+  }
+
+  async function initChart() {
+
+  }
+  async function main() {
+    //pooldata is a writable array of immutable pooldata objects
+    let pooldata = await getPoolData(denom, 0, last_item.height)
+
+    let fetchFunction = debounce(updateData(pooldata), 1000)
+
+    let y_axis = 'liquidity'
+    let options = chartOptions(pooldata, y_axis, fetchFunction);
+    console.info('pooldata: ', pooldata)
+
+
+    let legend_label = createLegendLabel(denom, 'Liquidity')
+    var spec = chartSpec(pooldata, y_axis, legend_label, options)
+
+    let ctx = document.getElementById('chart').getContext('2d')
+    let chart = new Chart(ctx, spec)
+    console.info("Chart Specification: ", spec)
+
+    chart.update()
+    // setInterval(()=>{
+    //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
+    //   chart.update()
+    // },1000)
+    console.info('Chart:', chart)
+    var handlers = {}
+    // handlers.toggleDataVisibility = (index, update = true) => {
+    //   if(chart.getDataVisibility(index)){
+    //     chart.setDatasetVisibility(index, false)
+    //     chart.hide(index)
+    //   }
+    //   else {
+    //     chart.setDatasetVisibility(index, true)
+    //     chart.show(index)
+    //   }
+    // }
+    handlers.loadLiquidity = () => {
+      Object.assign(chart.options, chartOptions(pooldata, 'liquidity'))
+      let dataset = chart.data.datasets[0]
+
+      dataset.parsing.yAxisKey = 'liquidity'
+      dataset.label = createLegendLabel(denom, 'Liquidity')
+      chart.update()
+    }
+    handlers.loadPrice = () => {
+      Object.assign(chart.options, chartOptions(pooldata, 'price'))
+      let dataset = chart.data.datasets[0]
+
+      dataset.parsing.yAxisKey = 'price'
+      dataset.label = createLegendLabel(denom, 'Price')
+      chart.update()
+    }
+    handlers.loadBeforeNow = (time) => {
+      return () => {
+        let timescale = { min: DateTime.now().minus(time).toMillis(), max: DateTime.now().toMillis() }
+        chart.zoomScale('x', timescale, 'easeInExpo')
+        fetchFunction({chart})
+      }
+    }
+    handlers.loadLastDay = handlers.loadBeforeNow({ day: 1 })
+    handlers.loadLastWeek = handlers.loadBeforeNow({ week: 1 })
+    handlers.loadLastMonth = handlers.loadBeforeNow({ month: 1 })
+    handlers.loadAllTime = () => chart.resetZoom('easeOutQuad')
+
+    return { pooldata, handlers, chart }
+  }
+  var melscan = {}
+  var handlers;
+  var chart;
+  var tooltip;
+  main().then(i => {
+    Object.assign(melscan, i)
+    handlers = melscan.handlers
+    chart = melscan.chart
+    tooltip = chart.options.plugins.tooltip
+  })
+</script>
+
 {% endblock %}

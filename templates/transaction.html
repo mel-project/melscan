@@ -21,11 +21,16 @@
           <td><a href="/blocks/{{height}}" class="text-blue-600 font-medium">{{height}}</a></td>
         </tr>
         <tr>
-          <td class="text-black text-opacity-50 font-bold">Kind</td>
-          <td class="font-medium">{{transaction.kind}}</td>
+          <td class="text-black text-opacity-50 font-bold">
+            <span class="name">Kind</span>
+            {{ tooltips["kind"] }}
+          </td>
+          <td class="font-medium">{{transaction.kind }}</td>
         </tr>
         <tr>
-          <td class="text-black text-opacity-50 font-bold">Hash</td>
+          <td class="text-black text-opacity-50 font-bold">
+            <span class="name">Hash</span>
+          </td>
           <td class="font-medium">{{ txhash }}</td>
         </tr>
         <tr>
@@ -41,14 +46,20 @@
       </td>
       </tr>
       <tr>
-        <td class="text-black text-opacity-50 font-bold">Fee</td>
+        <td class="text-black text-opacity-50 font-bold">
+          <span class="name">Fee</span>
+          {{ tooltips["fee"] }}
+        </td>
         <td>{{ fee }}<br>
           <span class="text-black text-opacity-50">{{ base_fee }} <i>base</i></span><br>
           <span class="text-black text-opacity-50">{{ tips }} <i>tips</i></span><br>
         </td>
       </tr>
       <tr>
-        <td class="text-black text-opacity-50 font-bold">Weight</td>
+        <td class="text-black text-opacity-50 font-bold">
+          <span class="name">Weight</span>
+          {{ tooltips["weight"] }}
+        </td>
         <td>{{ transaction.weight() }} wu</td>
       </tr>
       </tbody>
@@ -57,7 +68,10 @@
 
   <div class="grid grid-cols-1 text-sm">
     <div class="m-3">
-      <span class="text-black text-opacity-50 font-bold">Net senders</span><br>
+      <span class="text-black text-opacity-50 font-bold">
+        <span class="name">Net senders</span>
+        {{ tooltips["netSenders"] }}
+      </span><br>
       <table class="table-fixed w-full text-left">
         <tbody>
           {% for loss_entry in net_loss %}
@@ -75,7 +89,8 @@
     </div>
 
     <div class="m-3">
-      <span class="text-black text-opacity-50 font-bold">Net receivers</span><br>
+      <span class="name">Net recievers</span>
+      {{ tooltips["netRecievers"] }}
       <table class="table-fixed w-full text-left">
         <tbody>
           {% for gain_entry in net_gain %}

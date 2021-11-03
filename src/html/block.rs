@@ -1,12 +1,14 @@
-use crate::{to_badgateway, to_badreq};
+use crate::{to_badgateway, to_badreq, State};
 use askama::Template;
+use lazy_static::lazy_static;
+use serde::__private::de::IdentifierDeserializer;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Header, NetID, TxHash};
-
-use super::{MicroUnit, RenderTimeTracer};
+use std::collections::BTreeMap as Map;
+use super::{MicroUnit, RenderTimeTracer, InfoBubble, TOOLTIPS};
 
 #[derive(Template)]
-#[template(path = "block.html")]
+#[template(path = "block.html", escape = "none")]
 struct BlockTemplate {
     testnet: bool,
     header: Header,
@@ -18,13 +20,18 @@ struct BlockTemplate {
     fee_multiplier: f64,
     _reward_amount: MicroUnit,
     total_fees: MicroUnit,
+    tooltips: &'static TOOLTIPS,
 }
 
+
 #[tracing::instrument(skip(req))]
-pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
+pub async fn get_blockpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
+    // lazy_static! {
+    //     static ref TOOLTIPS: ToolTips = serde_json::from_str(include_str!("../tooltips.json")).unwrap();
+    // }
     let _render = RenderTimeTracer::new("blockpage");
     let height: BlockHeight = req.param("height").unwrap().parse().map_err(to_badreq)?;
-    let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
     let block = last_snap
         .get_older(height)
         .await
@@ -41,7 +48,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
     let mut body: tide::Body = BlockTemplate {
-        testnet: req.state().netid() == NetID::Testnet,
+        testnet: req.state().val_client.netid() == NetID::Testnet,
         header: block.header,
         txcount: block.transactions.len(),
         txweight: block.transactions.iter().map(|v| v.weight()).sum(),
@@ -57,6 +64,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
             "MEL".into(),
         ),
         fee_pool: MicroUnit(block.header.fee_pool.0, "MEL".into()),
+        tooltips: &TOOLTIPS,
     }
     .render()
     .unwrap()

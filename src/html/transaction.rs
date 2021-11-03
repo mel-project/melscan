@@ -3,15 +3,15 @@ use std::{
     convert::TryInto,
 };
 
-use super::{friendly_denom, MicroUnit, RenderTimeTracer};
-use crate::{notfound, to_badgateway, to_badreq};
+use super::{friendly_denom, MicroUnit, RenderTimeTracer, TOOLTIPS};
+use crate::{notfound, to_badgateway, to_badreq, State};
 use anyhow::Context;
 use askama::Template;
 use themelio_nodeprot::ValClient;
 use themelio_stf::{melvm::Address, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
 
 #[derive(Template)]
-#[template(path = "transaction.html")]
+#[template(path = "transaction.html", escape = "none")]
 struct TransactionTemplate {
     testnet: bool,
     txhash: TxHash,
@@ -26,17 +26,19 @@ struct TransactionTemplate {
     net_loss: BTreeMap<String, Vec<MicroUnit>>,
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
+    tooltips: &'static TOOLTIPS,
 }
 
 #[tracing::instrument(skip(req))]
 #[allow(clippy::comparison_chain)]
-pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
+pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("txpage");
 
     let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
     let txhash: TxHash = TxHash(req.param("txhash").unwrap().parse().map_err(to_badreq)?);
     let snap = req
         .state()
+        .val_client
         .snapshot()
         .await
         .map_err(to_badgateway)?
@@ -132,7 +134,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     }
 
     let mut body: tide::Body = TransactionTemplate {
-        testnet: req.state().netid() == NetID::Testnet,
+        testnet: req.state().val_client.netid() == NetID::Testnet,
         txhash,
         txhash_abbr: hex::encode(&txhash.0[..5]),
         height,
@@ -160,6 +162,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
             .iter()
             .map(|(denom, val)| MicroUnit(val.0, friendly_denom(*denom)))
             .collect(),
+        tooltips: &TOOLTIPS,
     }
     .render()
     .unwrap()

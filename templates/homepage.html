@@ -5,10 +5,14 @@
 {% block nav %}
 <a href="/" class="text-black hover:text-opacity-60 hover:underline">Melscan</a>
 {% endblock %}
-
-
+{% block head %}
+<style>
+  .info-circle {
+    top: 0;
+  }
+</style>
+{% endblock %}
 {% block body %}
-
 <div class="container mx-auto max-w-screen-lg">
   <div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
     <div class="col-span-2 mb-3">
@@ -16,14 +20,19 @@
     </div>
 
     <div>
-      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 / pool.mel_per_dosc).round() / 10000.0}} rDOSC</span>
+      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL {{tooltips["MEL"]}} =</span>
+        {{(10000.0 /
+        pool.mel_per_dosc).round() / 10000.0}} rDOSC {{tooltips["rDOSC"]}}</span>
       <br>
-      <small class="text-blue-600 font-bold"><a href="/pools/64">See details →</a></small> · <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0 * 100.0).round() / 100.0}}%</span> from peg</small>
+      <small class="text-blue-600 font-bold"><a href="/pools/MEL/N-DOSC">See details →</a></small> · <small
+        class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0
+          * 100.0).round() / 100.0}}%</span> from peg</small>
     </div>
 
     <div>
-      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 / pool.mel_per_sym).round() / 10000.0}} sym</span><br>
-      <small class="text-blue-600 font-bold"><a href="/pools/73">See details →</a></small>
+      <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL =</span> {{(10000.0 /
+        pool.mel_per_sym).round() / 10000.0}} SYM {{tooltips["SYM"]}}</span><br>
+      <small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
     </div>
 
   </div>
@@ -34,21 +43,31 @@
       <h3 class="text-2xl font-bold">Latest activity</h3>
     </div>
 
-    <div>
+    <div id="latest-blocks">
       <h3 class="text-xl font-semibold">Latest blocks</h3>
-      <small class="text-black text-opacity-50 font-bold">Most recently confirmed blocks</small>
+      <div class="info-section">
+        <small class="text-black text-opacity-50 font-bold">Most recently confirmed blocks</small>
+        <div class="lds-ellipsis">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
       <table class="table-auto w-full mt-3">
         <thead class="text-left text-sm text-black text-opacity-50">
           <tr>
-            <th>Height</th>
-            <th>Total weight</th>
-            <th>Proposer reward</th>
+            <th class="block-height">Height</th>
+            <th class="block-weight">Total weight</th>
+            <th class="block-reward">Proposer reward</th>
           </tr>
         </thead>
-        <tbody class="leading-loose text-sm">
+        <tbody id="block-rows" class="leading-loose text-sm">
           {% for block in blocks %}
           <tr>
-            <td class="font-medium"><a href="/blocks/{{block.header.height}}" class="text-blue-600">{{block.header.height}}</a></td>
+
+            <td class="font-medium"><a href="/blocks/{{block.header.height}}"
+                class="text-blue-600">{{block.header.height}}</a></td>
             <td>{{block.total_weight}} wu</td>
             <td>{{ block.reward_amount }}</td>
           </tr>
@@ -58,7 +77,15 @@
 
     <div>
       <h3 class="text-xl font-semibold">Latest transactions</h3>
-      <small class="text-black text-opacity-50 font-bold">Transactions in latest blocks</small>
+      <div class="info-section">
+        <small class="text-black text-opacity-50 font-bold">Transactions in latest blocks</small>
+        <div class="lds-ellipsis">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
       <table class="table-auto w-full mt-3">
         <thead class="text-left text-sm text-black text-opacity-50">
           <tr>
@@ -67,18 +94,100 @@
             <th>Mel moved</th>
           </tr>
         </thead>
-        <tbody class="leading-loose text-sm">
-          {% for tx in transactions %}
-          <tr>
-            <td><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.shorthash}}...</a></td>
-            <td>{{tx.height}}</td>
-            <td>{{ tx.mel_moved }}</td>
-          </tr>
-          {% endfor %}
+        <tbody id="transaction-rows" class="leading-loose text-sm">
+
+        </tbody>
       </table>
     </div>
 
 
   </div>
 </div>
+{% endblock %}
+{% block bottom_scripts %}
+<style>
+  .fade {
+    transition: all 3s ease-out;
+  }
+
+  .new-row {
+    background-color: rgba(103, 180, 240, 0.576);
+    height: 1em;
+  }
+
+  .slide-fade tr {
+    opacity: 1;
+  }
+
+  .info-section {
+    display: flex;
+  }
+
+  #latest-blocks {
+    margin-right: 3em;
+  }
+</style>
+<script>
+  var blocks = JSON.parse(`{{blocks|json}}`);
+</script>
+<script>
+  let block_row_template = (block, classes) => `<tr class="fade ${classes || ""} ">
+            <td class="font-medium"><a href="/blocks/${block.header.height}" class="text-blue-600">${block.header.height}</a></td>
+            <td>${block.total_weight} wu</td>
+            <td>${block.reward_amount.join(" ")}</td>
+          </tr>`
+
+  let transaction_row_template = (tx, classes) => `<tr class="js-template fade ${classes || ""}">
+            <td><a href="/blocks/${tx.height}/${tx.hash}" class="text-blue-600">${tx.shorthash}...</a></td>
+            <td>${tx.height}</td>
+            <td>${tx.mel_moved.join(" ")}</td>
+          </tr>`
+
+  async function get_block(height) {
+    return $.ajax(`/raw/blocks/${height}/summary`)
+  }
+  async function get_latest_block() {
+    let get_highest_block = () => $.ajax("/raw/latest")
+    let height = (await get_highest_block()).height
+    return get_block(height)
+  }
+
+  function prepend_transaction_rows(transactions, classNames) {
+    let rows = transactions.map((tx) => transaction_row_template(tx, classNames))
+    $("#transaction-rows").prepend(rows)
+
+  }
+
+  async function update_rows(current_blocks) {
+    let latest = await get_latest_block()
+    console.debug("Checking for new block", current_blocks)
+    if (latest.header.height > current_blocks[0].header.height) {
+
+      //maintain a list of all blocks newest to oldest (for future use?)
+      current_blocks.unshift(latest)
+
+      //divide reward by 1,000,000
+      latest.reward_amount[0] /= 1000000
+      latest.transactions.forEach(transaction => {
+        transaction.mel_moved[0] /= 1000000
+      });
+      console.info("Block Found", latest)
+      prepend_transaction_rows(latest.transactions, "new-row")
+      $("#block-rows").prepend(block_row_template(latest, "new-row"))
+      setTimeout(() => $(".new-row").removeClass("new-row"), 1500)
+    }
+  }
+
+  async function main() {
+    console.log(blocks)
+    // get all transactions from all loaded blocks into a flat list from newest to oldest
+    let old_transactions = blocks.map((block) => block.transactions).reverse().flat();
+    // these transactions must be appended now because askama doesn't render them into the html
+    // askama can't do nested for loops properly
+    prepend_transaction_rows(old_transactions, "")
+    // check for new blocks on chain and append them if necessary
+    setInterval(() => update_rows(blocks), 2000)
+  }
+  main()
+</script>
 {% endblock %}
