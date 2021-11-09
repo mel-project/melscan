@@ -1,18 +1,14 @@
-use std::slice::Iter;
-use std::{ops::RangeInclusive, str::FromStr, time::Duration};
+use std::{ str::FromStr, time::Duration};
 
 use super::{friendly_denom, RenderTimeTracer};
 use super::{InfoBubble, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq, State};
-use anyhow::Context;
-use askama::{filters::upper, Template};
-use chrono::{NaiveDate, NaiveDateTime};
-use futures_util::stream::FuturesUnordered;
+use askama::{ Template};
+use chrono::{NaiveDateTime};
 use num_traits::ToPrimitive;
 use serde::Serialize;
-use smol::prelude::*;
-use themelio_nodeprot::{ValClient, ValClientSnapshot};
-use themelio_stf::{BlockHeight, Denom, NetID, PoolKey, MICRO_CONVERTER};
+use themelio_nodeprot::{ValClientSnapshot};
+use themelio_stf::{Denom, NetID, PoolKey, MICRO_CONVERTER};
 
 use async_trait::async_trait;
 
@@ -125,6 +121,5 @@ pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body>
     };
     let mut body: tide::Body = pool_template.render().unwrap().into();
     body.set_mime("text/html");
-    println!("{}", pool_template.tooltips[&pool_template.friendly_denom]);
     Ok(body)
 }

@@ -2,20 +2,16 @@ use std::convert::TryInto;
 use std::str::FromStr;
 
 use anyhow::Context;
-use askama::filters::upper;
 use futures_util::stream::FuturesUnordered;
-use themelio_nodeprot::ValClient;
 use themelio_stf::{BlockHeight, CoinID, Denom, PoolKey, TxHash};
 
+use smol::prelude::*;
 use tide::Body;
 use tmelcrypt::HashVal;
-use smol::{block_on, prelude::*};
 
-use crate::html::{AsPoolDataItem, PoolDataItem, TransactionSummary};
+use crate::html::AsPoolDataItem;
 use crate::html::{homepage::BlockSummary, MicroUnit};
 use crate::utils::*;
-use std::lazy::Lazy;
-use dashmap::DashMap;
 use crate::{notfound, to_badgateway, to_badreq, State};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -23,7 +19,12 @@ pub struct PoolInfoKey(PoolKey, BlockHeight);
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
-    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req
+        .state()
+        .val_client
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?;
     Body::from_json(&last_snap.current_header())
 }
 
@@ -31,7 +32,12 @@ pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
 #[tracing::instrument(skip(req))]
 pub async fn get_header(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
-    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req
+        .state()
+        .val_client
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?;
     let older = last_snap
         .get_history(height.into())
         .await
@@ -103,7 +109,12 @@ pub async fn get_pool(req: tide::Request<State>) -> tide::Result<Body> {
 #[tracing::instrument(skip(req))]
 pub async fn get_full_block(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
-    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req
+        .state()
+        .val_client
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?;
     let older = last_snap
         .get_older(height.into())
         .await
@@ -116,7 +127,12 @@ pub async fn get_full_block(req: tide::Request<State>) -> tide::Result<Body> {
 #[tracing::instrument(skip(req))]
 pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
-    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req
+        .state()
+        .val_client
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?;
     let older = last_snap
         .get_older(height.into())
         .await
@@ -124,71 +140,73 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
     let block = older.current_block().await.map_err(to_badgateway)?;
 
     let reward_coin = older
-    .get_coin(CoinID::proposer_reward(height.into()))
-    .await
-    .map_err(to_badgateway)?;
+        .get_coin(CoinID::proposer_reward(height.into()))
+        .await
+        .map_err(to_badgateway)?;
 
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
     let transactions = get_transactions(&block, 30);
-    
+
     Body::from_json(&BlockSummary {
         header: block.header,
         total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
         reward_amount: MicroUnit(reward_amount.into(), "MEL".into()),
-        transactions
+        transactions,
     })
 }
 
-fn create_height_interval(lower_block: u64, upper_block: u64, num_blocks: u64) -> impl Iterator<Item = u64> {
-
+fn create_height_interval(
+    lower_block: u64,
+    upper_block: u64,
+    num_blocks: u64,
+) -> impl Iterator<Item = u64> {
     let blocks = upper_block - lower_block;
-    let divider: u64 = num_blocks;
+    let divider: u64 = (blocks / num_blocks).max(1);
     (lower_block..=upper_block)
-    .rev()
-    .step_by((blocks / divider) as usize)
+        .rev()
+        .step_by((divider) as usize)
 }
-
 
 pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body> {
     let state = req.state();
     let client = &state.val_client;
     let cache = &state.raw_pooldata_cache;
     let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badreq)?;
-    let upper_block: u64 =  req.param("upperblock")?.parse().map_err(to_badreq)?;
-    
+    let upper_block: u64 = req.param("upperblock")?.parse().map_err(to_badreq)?;
+
     let pool_key = {
         let denom = req.param("denom_left").map(|v| v.to_string())?;
         let left = Denom::from_str(&denom).map_err(to_badreq)?;
         let denom = req.param("denom_right").map(|v| v.to_string())?;
         let right = Denom::from_str(&denom).map_err(to_badreq)?;
-        PoolKey{left,right}
+        PoolKey { left, right }
     };
     let snapshot = &client.snapshot().await.map_err(to_badgateway)?;
 
-    let blockheight_interval = { 
+    let blockheight_interval = {
         if lower_block == upper_block {
             vec![lower_block]
-        }
-        else {
+        } else {
             let divider = 300;
-            create_height_interval(lower_block, upper_block, divider).filter(|height| height < &snapshot.current_header().height.0).collect()
+            let current_height = snapshot.current_header().height.0;
+            // create the interval and remove blocks higher than the current height
+            create_height_interval(lower_block, upper_block, divider)
+                .filter(|height| height < &current_height)
+                .collect()
         }
     };
 
-
     let mut item_futs = FuturesUnordered::new();
-    for height in &blockheight_interval
-    {
-        item_futs.push(async move { 
+    for height in &blockheight_interval {
+        item_futs.push(async move {
             let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
-            if cache.contains_key(&cache_key){
+            if cache.contains_key(&cache_key) {
                 let item = cache.get(&cache_key).unwrap().value().clone();
                 Ok(item)
-            }
-            else{
+            } else {
                 let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
-                cache.insert(cache_key,item.clone());
+                cache.insert(cache_key, item.clone());
                 tide::Result::Ok(item)
             }
         });
@@ -196,7 +214,11 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
     // Gather the stuff
     let mut output = vec![];
     while let Some(res) = item_futs.next().await {
-        log::debug!("loading pooldata {}/{}", output.len() + 1, blockheight_interval.len());
+        log::debug!(
+            "loading pooldata {}/{}",
+            output.len() + 1,
+            blockheight_interval.len()
+        );
         output.push(res?);
     }
     output.sort_unstable_by_key(|v| v.block_height());

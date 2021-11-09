@@ -7,7 +7,6 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq, State};
 use anyhow::Context;
 use askama::Template;
-use themelio_nodeprot::ValClient;
 use themelio_stf::{melvm::Address, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
 
 #[derive(Template)]

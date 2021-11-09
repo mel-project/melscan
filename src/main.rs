@@ -1,14 +1,11 @@
-#![allow(unused_imports)]
-#![feature(once_cell)]
-use std::{convert::TryInto, net::SocketAddr};
+use std::{net::SocketAddr};
 
 use std::fmt::Debug;
 use dashmap::DashMap;
 use structopt::StructOpt;
-use themelio_nodeprot::{TrustedHeight, ValClient};
+use themelio_nodeprot::{ValClient};
 use themelio_stf::NetID;
 use tide::StatusCode;
-use tmelcrypt::HashVal;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 mod html;
