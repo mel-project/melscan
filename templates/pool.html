@@ -199,14 +199,6 @@
         min: 0,
         max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20,
         display: true,
-        title: {
-          display: true,
-          text: `1 ${pool_key.right} =`,
-          font: {
-            style: 'bold',
-            lineHeight: 1.2
-          },
-        }
       },
     };
     const tooltipOptions = {
@@ -230,14 +222,13 @@
       },
       zoom: {
         wheel: {
-          enabled: true,
+          enabled: false,
         },
         pinch: {
           enabled: true
         },
         drag: {
           enabled: true,
-          modifierKey: 'shift'
         },
         mode: 'x',
         onZoom: fetchFunction
@@ -309,7 +300,7 @@
 
     let fetchFunction = debounce(updateData(pooldata), 200);
 
-    let y_axis = 'liquidity'
+    let y_axis = 'price'
     let options = chartOptions(pooldata, y_axis, fetchFunction);
     console.info('pooldata: ', pooldata)
 
@@ -326,7 +317,6 @@
     //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
     //   chart.update()
     // },1000)
-    console.info('Chart:', chart)
     var handlers = {}
     // handlers.toggleDataVisibility = (index, update = true) => {
     //   if(chart.getDataVisibility(index)){
@@ -339,7 +329,7 @@
     //   }
     // }
     handlers.loadLiquidity = () => {
-      Object.assign(chart.options, chartOptions(pooldata, 'liquidity'))
+      Object.assign(chart.options, chartOptions(pooldata, 'liquidity', fetchFunction))
       let dataset = chart.data.datasets[0]
 
       dataset.parsing.yAxisKey = 'liquidity'
@@ -347,7 +337,7 @@
       chart.update()
     }
     handlers.loadPrice = () => {
-      Object.assign(chart.options, chartOptions(pooldata, 'price'))
+      Object.assign(chart.options, chartOptions(pooldata, 'price', fetchFunction))
       let dataset = chart.data.datasets[0]
 
       dataset.parsing.yAxisKey = 'price'
@@ -377,7 +367,7 @@
     handlers = melscan.handlers
     chart = melscan.chart
     tooltip = chart.options.plugins.tooltip
-    { {/*  handlers.loadPrice()  */ } }
+    handlers.loadPrice()
   })
 </script>
 

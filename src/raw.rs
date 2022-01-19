@@ -1,11 +1,11 @@
-use std::convert::TryInto;
 use std::str::FromStr;
+use std::{convert::TryInto, sync::Arc};
 
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
-use smol::prelude::*;
+use smol::{lock::Semaphore, prelude::*};
 use themelio_structs::{BlockHeight, CoinID, Denom, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
@@ -212,9 +212,12 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
     //     }
     // }
 
+    let semaphore = Arc::new(Semaphore::new(16));
     let mut item_futs = FuturesUnordered::new();
     for height in &blockheight_interval {
+        let semaphore = semaphore.clone();
         item_futs.push(async move {
+            let _guard = semaphore.acquire().await;
             let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
             if cache.contains_key(&cache_key) {
                 log::debug!("cache hit {}", height);
@@ -224,6 +227,7 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
                 log::debug!("cache miss {} ({})", height, cache.len());
                 let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
                 cache.insert(cache_key, item.clone());
+                drop(_guard);
                 tide::Result::Ok(item)
             }
         });

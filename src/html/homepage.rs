@@ -75,7 +75,7 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
     }
 
     let mel_per_dosc = (last_snap
-        .get_pool(PoolKey::new(Denom::Mel, Denom::NomDosc))
+        .get_pool(PoolKey::new(Denom::Mel, Denom::Erg))
         .await
         .map_err(to_badgateway)?
         .unwrap()

@@ -61,7 +61,7 @@ fn friendly_denom(denom: Denom) -> String {
     match denom {
         Denom::Mel => "MEL".into(),
         Denom::Sym => "SYM".into(),
-        Denom::NomDosc => "nDOSC".into(),
+        Denom::Erg => "ERG".into(),
         Denom::Custom(hash) => format!("Custom ({}..)", hex::encode(&hash.0[..5])),
         Denom::NewCoin => "(new denom)".into(),
     }
