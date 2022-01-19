@@ -85,8 +85,9 @@
         <div class="text-left"><button onclick="handlers.loadLiquidity()">Liquidity</button><button onclick="handlers.loadPrice()">Price</button> {{tooltips["graph"]}}</div>
         <div class="text-right"><button onclick="handlers.loadLastDay()">1D</button><button onclick="handlers.loadLastWeek()">1W</button><button onclick="handlers.loadLastMonth()">1M</button><button onclick="handlers.loadAllTime()">All</button></div>
       </div>
-      <canvas id="chart" width="400" height="200"></canvas>
-
+      <div class="chart-container" style="width: 100%; height: 300px">
+        <canvas id="chart"></canvas>
+      </div>
     </div>
 
   </div>
@@ -106,13 +107,7 @@
 </script>
 <script>
   async function getPoolData(denom, lower, upper) {
-    if (upper - upper % 300 + 300 > last_item.height) {
-      upper = last_item.height
-    }
-    else {
-      upper = upper - upper % 300 + 300
-    }
-    let url = `/raw/pooldata/${pool_key.left}/${pool_key.right}/${lower - lower % 300}/${upper}`
+    let url = `/raw/pooldata/${pool_key.left}/${pool_key.right}/${lower}/${upper}`
     console.log('Request:', url)
     let poolData = await $.ajax(url)
     // replace the date string with a date object
@@ -139,6 +134,7 @@
   }
   function updateData(pooldata) {
     return async ({ chart }) => {
+      console.log("****** UPDATE DATA")
       let { min, max } = chart.scales.x
       let [lower, upper] = findBlockRange(pooldata, min, max)
 
@@ -201,7 +197,16 @@
       },
       y: {
         min: 0,
-        max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20
+        max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20,
+        display: true,
+        title: {
+          display: true,
+          text: `1 ${pool_key.right} =`,
+          font: {
+            style: 'bold',
+            lineHeight: 1.2
+          },
+        }
       },
     };
     const tooltipOptions = {
@@ -236,7 +241,6 @@
         },
         mode: 'x',
         onZoom: fetchFunction
-
       }
     };
     let options = {
@@ -267,6 +271,8 @@
         pointStyle: 'rect',
         hoverRadius: 10,
       },
+      responsive: true,
+      maintainAspectRatio: false,
     };
 
     return options
@@ -288,7 +294,6 @@
           },
           backgroundColor: '#d8eae5',
           borderColor: '#006e54',
-
         }],
       },
     }
@@ -302,7 +307,7 @@
     //pooldata is a writable array of immutable pooldata objects
     let pooldata = await getPoolData(denom, 0, last_item.height)
 
-    let fetchFunction = debounce(updateData(pooldata), 1000)
+    let fetchFunction = debounce(updateData(pooldata), 200);
 
     let y_axis = 'liquidity'
     let options = chartOptions(pooldata, y_axis, fetchFunction);
@@ -372,7 +377,7 @@
     handlers = melscan.handlers
     chart = melscan.chart
     tooltip = chart.options.plugins.tooltip
-    handlers.loadPrice()
+    { {/*  handlers.loadPrice()  */ } }
   })
 </script>
 

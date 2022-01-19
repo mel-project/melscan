@@ -169,8 +169,8 @@ fn create_height_interval(
     let blocks = upper_block - lower_block;
     let divider: u64 = (blocks / num_blocks).max(1);
     (lower_block..=upper_block)
-        .rev()
         .step_by((divider) as usize)
+        .chain(std::iter::once(upper_block))
 }
 
 pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body> {
@@ -196,7 +196,7 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
             let divider = 300;
             let current_height = snapshot.current_header().height.0;
             // create the interval and remove blocks higher than the current height
-            create_height_interval(lower_block, upper_block, divider)
+            create_height_interval(lower_block.max(1), upper_block, divider)
                 .filter(|height| height < &current_height)
                 .collect()
         }
