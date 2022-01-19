@@ -1,12 +1,13 @@
+use super::{MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::to_badgateway;
+use crate::utils::*;
 use crate::State;
 use askama::Template;
 use futures_util::StreamExt;
 use num_traits::{Inv, ToPrimitive};
-use themelio_stf::{Denom, Header, NetID, PoolKey};
+use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
+use themelio_structs::{Denom, Header, NetID};
 use tide::Body;
-use super::{MicroUnit, RenderTimeTracer, TOOLTIPS};
-use crate::utils::*;
 
 #[derive(Template)]
 #[template(path = "homepage.html", escape = "none")]
@@ -17,8 +18,6 @@ struct HomepageTemplate {
     tooltips: &'static TOOLTIPS,
 }
 
-
-
 #[derive(serde::Serialize)]
 // A block summary for the homepage.
 pub struct BlockSummary {
@@ -27,7 +26,6 @@ pub struct BlockSummary {
     pub reward_amount: MicroUnit,
     pub transactions: Vec<TransactionSummary>,
 }
-
 
 #[derive(serde::Serialize, Clone)]
 // A transaction summary for the homepage.
@@ -51,7 +49,12 @@ struct PoolSummary {
 pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
     let _render = RenderTimeTracer::new("homepage");
 
-    let last_snap = req.state().val_client.snapshot().await.map_err(to_badgateway)?;
+    let last_snap = req
+        .state()
+        .val_client
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?;
     let mut blocks = Vec::new();
     let mut futs = get_old_blocks(&last_snap, 30);
 
@@ -59,9 +62,13 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
         let (block, reward) = inner.map_err(to_badgateway)?;
         let transactions: Vec<TransactionSummary> = get_transactions(&block, 30);
 
-        blocks.push(BlockSummary { 
+        blocks.push(BlockSummary {
             header: block.header,
-            total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
+            total_weight: block
+                .transactions
+                .iter()
+                .map(|v| v.weight(covenant_weight_from_bytes))
+                .sum(),
             reward_amount: MicroUnit(reward.into(), "MEL".into()),
             transactions: transactions.clone(),
         });

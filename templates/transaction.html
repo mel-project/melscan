@@ -60,7 +60,7 @@
           <span class="name">Weight</span>
           {{ tooltips["weight"] }}
         </td>
-        <td>{{ transaction.weight() }} wu</td>
+        <td>{{ transaction.weight(themelio_stf::melvm::covenant_weight_from_bytes) }} wu</td>
       </tr>
       </tbody>
     </table>

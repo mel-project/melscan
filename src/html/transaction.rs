@@ -7,7 +7,10 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq, State};
 use anyhow::Context;
 use askama::Template;
-use themelio_stf::{melvm::Address, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
+use themelio_stf::melvm::covenant_weight_from_bytes;
+use themelio_structs::{
+    Address, CoinData, CoinDataHeight, CoinID, Denom, NetID, Transaction, TxHash,
+};
 
 #[derive(Template)]
 #[template(path = "transaction.html", escape = "none")]
@@ -54,7 +57,7 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
     let denoms: BTreeSet<_> = transaction
         .outputs
         .iter()
-        .map(|v| -> themelio_stf::Denom { v.denom })
+        .map(|v| -> Denom { v.denom })
         .collect();
     let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
@@ -111,7 +114,9 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
         .map_err(to_badgateway)?
         .current_header()
         .fee_multiplier;
-    let base_fee = transaction.base_fee(fee_mult, 0).0;
+    let base_fee = transaction
+        .base_fee(fee_mult, 0, covenant_weight_from_bytes)
+        .0;
     let tips = fee.0.saturating_sub(base_fee);
 
     let mut inputs_with_cdh = vec![];

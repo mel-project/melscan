@@ -1,16 +1,17 @@
-use std::{ str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 use super::{friendly_denom, RenderTimeTracer};
 use super::{InfoBubble, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq, State};
-use askama::{ Template};
-use chrono::{NaiveDateTime};
+use askama::Template;
+use chrono::NaiveDateTime;
 use num_traits::ToPrimitive;
 use serde::Serialize;
-use themelio_nodeprot::{ValClientSnapshot};
-use themelio_stf::{Denom, NetID, PoolKey, MICRO_CONVERTER};
+use themelio_nodeprot::ValClientSnapshot;
+use themelio_stf::PoolKey;
 
 use async_trait::async_trait;
+use themelio_structs::{Denom, NetID, MICRO_CONVERTER};
 
 #[derive(Template)]
 #[template(path = "pool.html", escape = "none")]
@@ -84,12 +85,10 @@ impl PoolDataItem {
         self.date = PoolDataItem::block_time(distance_from_now);
         self
     }
-    pub fn block_height(&self) -> u64{
+    pub fn block_height(&self) -> u64 {
         self.height
     }
 }
-
-
 
 #[tracing::instrument(skip(req))]
 pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body> {

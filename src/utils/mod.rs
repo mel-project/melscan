@@ -1,19 +1,19 @@
-use futures_util::{Future, stream::FuturesOrdered};
+use crate::html::{MicroUnit, TransactionSummary};
+use futures_util::{stream::FuturesOrdered, Future};
 use themelio_nodeprot::ValClientSnapshot;
-use themelio_stf::{Block, CoinID, CoinValue, Denom};
-use crate::{html::{MicroUnit, TransactionSummary}};
+use themelio_stf::melvm::covenant_weight_from_bytes;
+use themelio_structs::{Block, CoinID, CoinValue, Denom};
 
-
-pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: usize) 
--> FuturesOrdered<impl Future<Output = anyhow::Result<(Block, CoinValue)>>> {
+pub fn get_old_blocks(
+    last_snap: &ValClientSnapshot,
+    depth: usize,
+) -> FuturesOrdered<impl Future<Output = anyhow::Result<(Block, CoinValue)>>> {
     let mut futs = FuturesOrdered::new();
     for height in (0..=last_snap.current_header().height.0).rev().take(depth) {
         let last_snap = last_snap.clone();
         futs.push(async move {
             log::debug!("rendering block {}", height);
-            let old_snap = last_snap
-                .get_older(height.into())
-                .await?;
+            let old_snap = last_snap.get_older(height.into()).await?;
             let reward_coin = old_snap
                 .get_coin(CoinID::proposer_reward(height.into()))
                 .await?;
@@ -25,7 +25,7 @@ pub fn get_old_blocks(last_snap: &ValClientSnapshot, depth: usize)
     futs
 }
 
-pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSummary>{
+pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSummary> {
     let mut transactions: Vec<TransactionSummary> = Vec::new();
     for transaction in &block.transactions {
         if transactions.len() < max_count {
@@ -33,7 +33,7 @@ pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSumma
                 hash: hex::encode(&transaction.hash_nosigs().0),
                 shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
                 height: block.header.height.0,
-                _weight: transaction.weight(),
+                _weight: transaction.weight(covenant_weight_from_bytes),
                 mel_moved: MicroUnit(
                     transaction
                         .outputs
@@ -48,8 +48,6 @@ pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSumma
     }
     transactions
 }
-
-
 
 // pub fn get_transactions_iterator(block: &Block, max_count: usize) -> impl Iterator<Item=TransactionSummary>{
 //     &block.transactions.iter().map(|transaction|{

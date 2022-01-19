@@ -1,10 +1,10 @@
-use std::{net::SocketAddr};
+use std::{net::SocketAddr, sync::Arc};
 
-use std::fmt::Debug;
 use dashmap::DashMap;
+use std::fmt::Debug;
 use structopt::StructOpt;
-use themelio_nodeprot::{ValClient};
-use themelio_stf::NetID;
+use themelio_nodeprot::ValClient;
+use themelio_structs::NetID;
 use tide::StatusCode;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
@@ -30,11 +30,13 @@ pub struct Args {
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
 }
+
 #[derive(Clone)]
 pub struct State {
-    raw_pooldata_cache: DashMap<raw::PoolInfoKey, html::PoolDataItem>,
+    raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, html::PoolDataItem>>,
     val_client: ValClient,
 }
+
 #[tracing::instrument]
 async fn main_inner() -> anyhow::Result<()> {
     let log_conf = std::env::var("RUST_LOG")
@@ -45,7 +47,6 @@ async fn main_inner() -> anyhow::Result<()> {
         .with_ansi(false)
         .finish()
         .init();
-
 
     let args = Args::from_args();
     let client = ValClient::new(
@@ -63,21 +64,23 @@ async fn main_inner() -> anyhow::Result<()> {
         client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
     }
 
-    let state = State{
-        raw_pooldata_cache: DashMap::new(),
-        val_client: client
+    let state = State {
+        raw_pooldata_cache: DashMap::new().into(),
+        val_client: client,
     };
 
     let mut app = tide::with_state(state);
     // Rendered paths
     app.at("/").get(html::get_homepage);
     app.at("/blocks/:height").get(html::get_blockpage);
-    app.at("/pools/:denom_left/:denom_right").get(html::get_poolpage);
+    app.at("/pools/:denom_left/:denom_right")
+        .get(html::get_poolpage);
     app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);
-    app.at("/raw/blocks/:height/summary").get(raw::get_block_summary);
+    app.at("/raw/blocks/:height/summary")
+        .get(raw::get_block_summary);
     app.at("/raw/blocks/:height/full").get(raw::get_full_block);
     app.at("/raw/blocks/:height/transactions/:txhash")
         .get(raw::get_transaction);
@@ -86,7 +89,8 @@ async fn main_inner() -> anyhow::Result<()> {
     app.at("/raw/blocks/:height/pools/:denom")
         .get(raw::get_pool);
     // app.at("/raw/pool-data-batch/:lowerblock").get(raw::get_pooldata);
-    app.at("/raw/pooldata/:denom_left/:denom_right/:lowerblock/:upperblock").get(raw::get_pooldata_range);
+    app.at("/raw/pooldata/:denom_left/:denom_right/:lowerblock/:upperblock")
+        .get(raw::get_pooldata_range);
     app.with(tide::utils::After(|mut res: tide::Response| async move {
         if let Some(err) = res.error() {
             // put the error string in the response

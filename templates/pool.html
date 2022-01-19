@@ -9,12 +9,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.0.2/luxon.min.js"
-  integrity="sha512-frUCURIeB0OKMPgmDEwT3rC4NH2a4gn06N3Iw6T1z0WfrQZd7gNfJFbHrNsZP38PVXOp6nUiFtBqVvmCj+ARhw=="
-  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"
-  integrity="sha512-NxlWEbNbTV6acWnTsWRLIiwzOw0IwHQOYUCKBiu/NqZ+5jSy7gjMbpYI+/4KvaNuZ1qolbw+Vnd76pbIUYEG8g=="
-  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.0.2/luxon.min.js" integrity="sha512-frUCURIeB0OKMPgmDEwT3rC4NH2a4gn06N3Iw6T1z0WfrQZd7gNfJFbHrNsZP38PVXOp6nUiFtBqVvmCj+ARhw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js" integrity="sha512-NxlWEbNbTV6acWnTsWRLIiwzOw0IwHQOYUCKBiu/NqZ+5jSy7gjMbpYI+/4KvaNuZ1qolbw+Vnd76pbIUYEG8g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1"></script>
 <script src="https://cdn.jsdelivr.net/npm/lodash.debounce@4.0.8/index.min.js"></script>
 <style>
@@ -51,9 +47,11 @@
     justify-content: center;
     flex-direction: column;
   }
+
   .tooltip .tooltiptext::after {
-      border-color: transparent transparent transparent transparent;
+    border-color: transparent transparent transparent transparent;
   }
+
 </style>
 {% endblock %}
 
@@ -84,13 +82,10 @@
 
     <div class="md:col-span-9 col-span-12 md:row-span-3 card">
       <div class="grid grid-cols-2" id="head">
-        <div class="text-left"><button onclick="handlers.loadLiquidity()">Liquidity</button><button
-            onclick="handlers.loadPrice()">Price</button> {{tooltips["graph"]}}</div>
-        <div class="text-right"><button onclick="handlers.loadLastDay()">1D</button><button
-            onclick="handlers.loadLastWeek()">1W</button><button onclick="handlers.loadLastMonth()">1M</button><button
-            onclick="handlers.loadAllTime()">All</button></div>
+        <div class="text-left"><button onclick="handlers.loadLiquidity()">Liquidity</button><button onclick="handlers.loadPrice()">Price</button> {{tooltips["graph"]}}</div>
+        <div class="text-right"><button onclick="handlers.loadLastDay()">1D</button><button onclick="handlers.loadLastWeek()">1W</button><button onclick="handlers.loadLastMonth()">1M</button><button onclick="handlers.loadAllTime()">All</button></div>
       </div>
-      <canvas id="chart" width="400" height="400"></canvas>
+      <canvas id="chart" width="400" height="200"></canvas>
 
     </div>
 
@@ -111,10 +106,10 @@
 </script>
 <script>
   async function getPoolData(denom, lower, upper) {
-    if(upper - upper % 300 + 300 > last_item.height){
+    if (upper - upper % 300 + 300 > last_item.height) {
       upper = last_item.height
     }
-    else{
+    else {
       upper = upper - upper % 300 + 300
     }
     let url = `/raw/pooldata/${pool_key.left}/${pool_key.right}/${lower - lower % 300}/${upper}`
@@ -285,14 +280,14 @@
           label,
           data: pooldata,
           fill: 'origin',
-          borderWidth: 3,
+          borderWidth: 1,
           radius: 0,
           parsing: {
             yAxisKey: y_axis,
             xAxisKey: 'date'
           },
-          backgroundColor: '#a4d2f366',
-          borderColor: '#a4d2f3ff',
+          backgroundColor: '#d8eae5',
+          borderColor: '#006e54',
 
         }],
       },
@@ -358,7 +353,7 @@
       return () => {
         let timescale = { min: DateTime.now().minus(time).toMillis(), max: DateTime.now().toMillis() }
         chart.zoomScale('x', timescale, 'easeInExpo')
-        fetchFunction({chart})
+        fetchFunction({ chart })
       }
     }
     handlers.loadLastDay = handlers.loadBeforeNow({ day: 1 })
@@ -377,6 +372,7 @@
     handlers = melscan.handlers
     chart = melscan.chart
     tooltip = chart.options.plugins.tooltip
+    handlers.loadPrice()
   })
 </script>
 

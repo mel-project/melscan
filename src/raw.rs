@@ -3,9 +3,10 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
-use themelio_stf::{BlockHeight, CoinID, Denom, PoolKey, TxHash};
+use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::prelude::*;
+use themelio_structs::{BlockHeight, CoinID, Denom, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
@@ -84,7 +85,7 @@ pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
     let index: u8 = coinid_exploded[1].parse().map_err(to_badreq)?;
     let last_snap = req.state().val_client.snapshot().await?;
     let older = last_snap.get_older(height.into()).await?;
-    let cdh = older.get_coin(dbg!(CoinID { txhash, index })).await?;
+    let cdh = older.get_coin(CoinID { txhash, index }).await?;
     Body::from_json(&cdh.ok_or_else(notfound)?)
 }
 
@@ -150,7 +151,11 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
 
     Body::from_json(&BlockSummary {
         header: block.header,
-        total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
+        total_weight: block
+            .transactions
+            .iter()
+            .map(|v| v.weight(covenant_weight_from_bytes))
+            .sum(),
         reward_amount: MicroUnit(reward_amount.into(), "MEL".into()),
         transactions,
     })
@@ -197,14 +202,26 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
         }
     };
 
+    // let mut missing: Vec<BlockHeight> = Vec::new();
+    // for height in &blockheight_interval {
+    //     let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
+    //     if !cache.contains_key(&cache_key) {
+    //         missing.push((*height).into())
+    //     } else {
+    //         log::debug!("cache hit {}", height);
+    //     }
+    // }
+
     let mut item_futs = FuturesUnordered::new();
     for height in &blockheight_interval {
         item_futs.push(async move {
             let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
             if cache.contains_key(&cache_key) {
+                log::debug!("cache hit {}", height);
                 let item = cache.get(&cache_key).unwrap().value().clone();
                 Ok(item)
             } else {
+                log::debug!("cache miss {} ({})", height, cache.len());
                 let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
                 cache.insert(cache_key, item.clone());
                 tide::Result::Ok(item)
