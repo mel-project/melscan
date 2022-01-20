@@ -32,6 +32,7 @@ pub struct PoolDataItem {
     height: u64,
     price: f64,
     liquidity: f64,
+    ergs_per_mel: f64,
 }
 
 #[async_trait]
@@ -51,12 +52,14 @@ impl AsPoolDataItem for ValClientSnapshot {
         let height = self.current_header().height.0;
         let pool_info = self.get_pool(pool_key).await?.ok_or_else(notfound)?;
         let price = pool_info.implied_price().to_f64().unwrap_or_default();
-        let liquidity = pool_info.lefts as f64 * 2.0 / MICRO_CONVERTER as f64;
+        let liquidity =
+            (pool_info.lefts as f64 * pool_info.rights as f64).sqrt() / MICRO_CONVERTER as f64;
         Ok(PoolDataItem {
             date: PoolDataItem::block_time(0),
-            height: height,
+            height,
             price,
             liquidity,
+            ergs_per_mel: themelio_stf::dosc_to_erg(height.into(), 10000) as f64 / 10000.0,
         })
     }
     async fn get_older_pool_data_item(
@@ -99,7 +102,9 @@ pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body>
         let denom = req.param("denom_right").map(|v| v.to_string())?;
         let right = Denom::from_str(&denom).map_err(to_badreq)?;
         PoolKey { left, right }
-    };
+    }
+    .to_canonical()
+    .unwrap();
 
     let friendly_denom = friendly_denom(pool_key.right);
     let snapshot = req

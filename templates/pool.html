@@ -63,7 +63,7 @@
 {% block body %}
 <div class="container mx-auto max-w-screen-lg">
   <div class="mb-3 mt-8" style="display: flex">
-    <h3 class="text-2xl font-bold">Token {{pool_key.right}}</h3>{{denom_tooltip}}
+    <h3 class="text-2xl font-bold">Pair {{pool_key.left}}/{{pool_key.right}}</h3>{{denom_tooltip}}
   </div>
 
   <div class="grid grid-cols-12 md:grid-flow-col grid-flow-row">
@@ -73,7 +73,8 @@
     </div>
     <div class="col-span-12 md:col-span-3 card ticker-card">
       <div><small>Liquidity</small>{{tooltips["liquidity"]}}</div>
-      <div class="text-lg font-medium">{{(last_item.liquidity * 1000.0).round() / 1000.0}} mel</div>
+      <div class="text-lg font-medium">{{(last_item.liquidity * 1000.0).round() / 1000.0}} <span class="text-sm">({{pool_key.left}} × {{pool_key.right}})<sup>1/2</sup></span>
+      </div>
     </div>
     <div class="col-span-12 md:col-span-3 card ticker-card">
       <div><small>Current height</small>{{tooltips["height"]}}</div>
@@ -104,8 +105,6 @@
   var Duration = luxon.Duration
   console.info(`Denom: ${denom} \nLast Item: ${JSON.stringify(last_item)}`)
 
-</script>
-<script>
   async function getPoolData(denom, lower, upper) {
     let url = `/raw/pooldata/${pool_key.left}/${pool_key.right}/${lower}/${upper}`
     console.log('Request:', url)
@@ -285,7 +284,17 @@
           },
           backgroundColor: '#d8eae5',
           borderColor: '#006e54',
-        }],
+        }].concat(pool_key.left == "ERG" ? [{
+          label: "1 DOSC",
+          data: pooldata,
+          borderWidth: 1,
+          radius: 0,
+          parsing: {
+            yAxisKey: 'ergs_per_mel',
+            xAxisKey: 'date'
+          },
+          borderColor: '#640125'
+        }] : []),
       },
     }
 

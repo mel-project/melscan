@@ -13,7 +13,7 @@
 	"kind": "Type of this transaction",
 	"liquidity": "",
 	"MEL": "Themelio's stable coin! Mels are traded with syms from the pool until 1 mel is worth 1 real dosc",
-	"nDOSC": "Stands for Nominal DOSC. 1 nDOSC represents a gradually decreasing fraction of an rDOSC.",
+	"ERG": "1 ERG represents a gradually decreasing fraction of a DOSC.",
 	"netRecievers": "addresses that gained balance",
 	"netSenders": "addresses that lost balance",
 	"outputs": "coins created by transaction",

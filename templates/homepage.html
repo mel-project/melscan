@@ -23,9 +23,9 @@
     <div>
       <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 MEL {{tooltips["MEL"]}} =</span>
         {{(10000.0 /
-        pool.mel_per_dosc).round() / 10000.0}} rDOSC {{tooltips["rDOSC"]}}</span>
+        pool.mel_per_dosc).round() / 10000.0}} DOSC {{tooltips["rDOSC"]}}</span>
       <br>
-      <small class="text-blue-600 font-bold"><a href="/pools/MEL/N-DOSC">See details →</a></small> · <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0
+      <small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small> · <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0
           * 100.0).round() / 100.0}}%</span> from peg</small>
     </div>
 
@@ -135,6 +135,6 @@
       document.documentElement.innerHTML = h
     })
   }
-  setTimeout(reload, 5000)
+  setInterval(reload, 5000)
 </script>
 {% endblock %}
