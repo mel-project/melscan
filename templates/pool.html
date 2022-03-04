@@ -197,7 +197,7 @@
     const tooltipOptions = {
       callbacks: {
         label: function (item) {
-          return `Block: ${item.raw.height}`
+          return item.dataset.label + ": " + item.formattedValue
         },
 
       }
@@ -276,18 +276,19 @@
             yAxisKey: y_axis,
             xAxisKey: 'date'
           },
-          backgroundColor: '#d8eae5',
+          backgroundColor: '#d8eae566',
           borderColor: '#006e54',
         }].concat(pool_key.left == "ERG" ? [{
           label: "1 DOSC",
           data: pooldata,
           borderWidth: 1,
+          borderDash: [10, 5],
           radius: 0,
           parsing: {
             yAxisKey: 'ergs_per_mel',
             xAxisKey: 'date'
           },
-          borderColor: '#640125'
+          borderColor: '#640125',
         }] : []),
       },
     }

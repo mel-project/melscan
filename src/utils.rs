@@ -52,5 +52,7 @@ pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSumma
 /// Interpolates between two numbers in a cache-friendly fashion
 pub fn interpolate_between(start: u64, end: u64, approx_count: u64) -> impl Iterator<Item = u64> {
     let interval = ((end - start).max(1) / approx_count).next_power_of_two();
-    (start..=end).filter(move |i| i % interval == 0)
+    (start..=end)
+        .filter(move |i| i % interval == 0)
+        .chain(std::iter::once(end))
 }
