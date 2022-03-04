@@ -1,4 +1,7 @@
-use std::{str::FromStr, time::Duration};
+use std::{
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use super::{friendly_denom, RenderTimeTracer};
 use super::{InfoBubble, TOOLTIPS};
@@ -76,13 +79,13 @@ impl AsPoolDataItem for ValClientSnapshot {
 
 impl PoolDataItem {
     pub fn block_time(distance_from_now: u64) -> NaiveDateTime {
-        chrono::Utc::now()
-            .checked_sub_signed(
-                chrono::Duration::from_std(Duration::from_secs(30) * (distance_from_now) as u32)
-                    .unwrap(),
-            )
+        let now_unix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
             .unwrap()
-            .naive_utc()
+            .as_secs()
+            / 30
+            * 30;
+        NaiveDateTime::from_timestamp((now_unix - distance_from_now * 30) as _, 0)
     }
     pub fn set_time(&mut self, distance_from_now: u64) -> &mut Self {
         self.date = PoolDataItem::block_time(distance_from_now);
