@@ -49,22 +49,8 @@ pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSumma
     transactions
 }
 
-// pub fn get_transactions_iterator(block: &Block, max_count: usize) -> impl Iterator<Item=TransactionSummary>{
-//     &block.transactions.iter().map(|transaction|{
-//             TransactionSummary {
-//                 hash: hex::encode(&transaction.hash_nosigs().0),
-//                 shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
-//                 height: block.header.height.0,
-//                 _weight: transaction.weight(),
-//                 mel_moved: MicroUnit(
-//                     transaction
-//                         .outputs
-//                         .iter()
-//                         .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-//                         .sum::<u128>()
-//                         + transaction.fee.0,
-//                     "MEL".into(),
-//                 ),
-//             }
-//     })
-// }
+/// Interpolates between two numbers in a cache-friendly fashion
+pub fn interpolate_between(start: u64, end: u64, approx_count: u64) -> impl Iterator<Item = u64> {
+    let interval = ((end - start).max(1) / approx_count).next_power_of_two();
+    (start..=end).filter(move |i| i % interval == 0)
+}

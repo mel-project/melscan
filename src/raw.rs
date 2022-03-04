@@ -161,18 +161,6 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
     })
 }
 
-fn create_height_interval(
-    lower_block: u64,
-    upper_block: u64,
-    num_blocks: u64,
-) -> impl Iterator<Item = u64> {
-    let blocks = upper_block - lower_block;
-    let divider: u64 = (blocks / num_blocks).max(1);
-    (lower_block..=upper_block)
-        .step_by((divider) as usize)
-        .chain(std::iter::once(upper_block))
-}
-
 pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body> {
     let state = req.state();
     let client = &state.val_client;
@@ -193,11 +181,8 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
         if lower_block == upper_block {
             vec![lower_block]
         } else {
-            let divider = 300;
-            let current_height = snapshot.current_header().height.0;
-            // create the interval and remove blocks higher than the current height
-            create_height_interval(lower_block.max(1), upper_block, divider)
-                .filter(|height| height < &current_height)
+            interpolate_between(lower_block, upper_block, 1000)
+                .filter(|x| *x > 0)
                 .collect()
         }
     };
@@ -212,7 +197,7 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
     //     }
     // }
 
-    let semaphore = Arc::new(Semaphore::new(16));
+    let semaphore = Arc::new(Semaphore::new(64));
     let mut item_futs = FuturesUnordered::new();
     for height in &blockheight_interval {
         let semaphore = semaphore.clone();
