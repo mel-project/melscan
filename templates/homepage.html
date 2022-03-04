@@ -94,7 +94,13 @@
           </tr>
         </thead>
         <tbody id="transaction-rows" class="leading-loose text-sm">
-
+          {% for tx in transactions %}
+          <tr>
+            <td class="font-medium" style="overflow: hidden; text-overflow: ellipsis"><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.hash}}</a></td>
+            <td>{{tx.height}}</td>
+            <td>{{ tx.mel_moved }}</td>
+          </tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>

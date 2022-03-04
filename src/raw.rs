@@ -147,7 +147,7 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
 
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
-    let transactions = get_transactions(&block, 30);
+    let transactions = get_transactions(&block);
 
     Body::from_json(&BlockSummary {
         header: block.header,

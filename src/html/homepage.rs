@@ -16,6 +16,7 @@ struct HomepageTemplate {
     blocks: Vec<BlockSummary>,
     pool: PoolSummary,
     tooltips: &'static TOOLTIPS,
+    transactions: Vec<TransactionSummary>,
 }
 
 #[derive(serde::Serialize)]
@@ -56,11 +57,11 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
         .await
         .map_err(to_badgateway)?;
     let mut blocks = Vec::new();
-    let mut futs = get_old_blocks(&last_snap, 30);
+    let mut futs = get_old_blocks(&last_snap, 50);
 
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner.map_err(to_badgateway)?;
-        let transactions: Vec<TransactionSummary> = get_transactions(&block, 30);
+        let transactions: Vec<TransactionSummary> = get_transactions(&block);
 
         blocks.push(BlockSummary {
             header: block.header,
@@ -97,11 +98,20 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
         mel_per_dosc,
     };
 
+    let transactions = blocks
+        .iter()
+        .map(|b| b.transactions.iter())
+        .flatten()
+        .cloned()
+        .take(50)
+        .collect();
+
     let mut body: Body = HomepageTemplate {
         testnet: req.state().val_client.netid() == NetID::Testnet,
         blocks,
         pool,
         tooltips: &TOOLTIPS,
+        transactions,
     }
     .render()
     .unwrap()

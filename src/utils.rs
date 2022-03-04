@@ -25,26 +25,24 @@ pub fn get_old_blocks(
     futs
 }
 
-pub fn get_transactions(block: &Block, max_count: usize) -> Vec<TransactionSummary> {
+pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
     let mut transactions: Vec<TransactionSummary> = Vec::new();
     for transaction in &block.transactions {
-        if transactions.len() < max_count {
-            transactions.push(TransactionSummary {
-                hash: hex::encode(&transaction.hash_nosigs().0),
-                shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
-                height: block.header.height.0,
-                _weight: transaction.weight(covenant_weight_from_bytes),
-                mel_moved: MicroUnit(
-                    transaction
-                        .outputs
-                        .iter()
-                        .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-                        .sum::<u128>()
-                        + transaction.fee.0,
-                    "MEL".into(),
-                ),
-            })
-        }
+        transactions.push(TransactionSummary {
+            hash: hex::encode(&transaction.hash_nosigs().0),
+            shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
+            height: block.header.height.0,
+            _weight: transaction.weight(covenant_weight_from_bytes),
+            mel_moved: MicroUnit(
+                transaction
+                    .outputs
+                    .iter()
+                    .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                    .sum::<u128>()
+                    + transaction.fee.0,
+                "MEL".into(),
+            ),
+        })
     }
     transactions
 }

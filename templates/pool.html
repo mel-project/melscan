@@ -189,8 +189,8 @@
         max: pooldata[pooldata.length - 1].date.toMillis(),
       },
       y: {
-        min: 0,
-        max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20,
+        //min: 0,
+        // max: Math.max(...pooldata.map(i => i[pooldata_key])) * 1.20,
         display: true,
       },
     };
@@ -375,6 +375,7 @@
     chart = melscan.chart
     tooltip = chart.options.plugins.tooltip
     handlers.loadPrice()
+    handlers.loadLastMonth()
   })
 </script>
 
