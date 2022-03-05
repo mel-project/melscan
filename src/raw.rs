@@ -181,7 +181,7 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
         if lower_block == upper_block {
             vec![lower_block]
         } else {
-            interpolate_between(lower_block, upper_block, 1000)
+            interpolate_between(lower_block, upper_block, 400)
                 .filter(|x| *x > 0)
                 .collect()
         }
@@ -197,7 +197,7 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
     //     }
     // }
 
-    let semaphore = Arc::new(Semaphore::new(64));
+    let semaphore = Arc::new(Semaphore::new(32));
     let mut item_futs = FuturesUnordered::new();
     for height in &blockheight_interval {
         let semaphore = semaphore.clone();

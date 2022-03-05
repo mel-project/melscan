@@ -111,7 +111,7 @@
     let poolData = await $.ajax(url)
     // replace the date string with a date object
     // create immutable objects with freeze
-    return poolData.map(i => (Object.assign({}, i, { date: DateTime.fromISO(i.date) }))).map(Object.freeze)
+    return poolData.map(i => (Object.assign({}, i, { date: i.date * 1000 }))).map(Object.freeze)
   }
 
   function getDataRange(handleTicks) {
@@ -157,8 +157,11 @@
     if (pooldata.length == 0)
       return [0, pooldata.length - 1]
     else {
-      let upper = pooldata.findIndex(data => data.date.toMillis() >= maxTime)
-      let lower = findIndexReverse(pooldata, data => data.date.toMillis() <= minTime)
+      let upper = pooldata.findIndex(data => data.date >= maxTime)
+      if (upper < 0) {
+        upper = pooldata.length - 1
+      }
+      let lower = findIndexReverse(pooldata, data => data.date <= minTime)
       return [lower, upper]
     }
   }
@@ -186,8 +189,8 @@
             second: 'hh:mm:ss'
           }
         },
-        min: pooldata[0].date.toMillis(),
-        max: pooldata[pooldata.length - 1].date.toMillis(),
+        min: pooldata[0].date,
+        max: pooldata[pooldata.length - 1].date,
       },
       y: {
         //min: 0,
@@ -206,7 +209,7 @@
     const zoomOptions = {
       limits: {
         y: { min: 0, minRange: 50 },
-        x: { min: pooldata[0].date.toMillis(), max: Date.now() },
+        x: { min: pooldata[0].date, max: Date.now() },
       },
       pan: {
         enabled: true,

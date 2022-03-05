@@ -31,7 +31,7 @@ struct PoolTemplate {
 // 1 item is 256 bits
 #[derive(Serialize, Clone)]
 pub struct PoolDataItem {
-    date: chrono::NaiveDateTime,
+    date: u64,
     height: u64,
     price: f64,
     liquidity: f64,
@@ -78,14 +78,14 @@ impl AsPoolDataItem for ValClientSnapshot {
 }
 
 impl PoolDataItem {
-    pub fn block_time(distance_from_now: u64) -> NaiveDateTime {
+    pub fn block_time(distance_from_now: u64) -> u64 {
         let now_unix = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
             / 30
             * 30;
-        NaiveDateTime::from_timestamp((now_unix - distance_from_now * 30) as _, 0)
+        now_unix - distance_from_now * 30
     }
     pub fn set_time(&mut self, distance_from_now: u64) -> &mut Self {
         self.date = PoolDataItem::block_time(distance_from_now);
