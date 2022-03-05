@@ -12,7 +12,7 @@ pub fn get_old_blocks(
     for height in (0..=last_snap.current_header().height.0).rev().take(depth) {
         let last_snap = last_snap.clone();
         futs.push(async move {
-            log::debug!("rendering block {}", height);
+            // log::debug!("rendering block {}", height);
             let old_snap = last_snap.get_older(height.into()).await?;
             let reward_coin = old_snap
                 .get_coin(CoinID::proposer_reward(height.into()))

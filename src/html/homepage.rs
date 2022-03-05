@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::{MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::to_badgateway;
 use crate::utils::*;
@@ -5,6 +7,8 @@ use crate::State;
 use askama::Template;
 use futures_util::StreamExt;
 use num_traits::{Inv, ToPrimitive};
+use once_cell::sync::Lazy;
+use smol::lock::Mutex;
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 use themelio_structs::{Denom, Header, NetID};
 use tide::Body;
@@ -49,6 +53,16 @@ struct PoolSummary {
 #[tracing::instrument(skip(req))]
 pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
     let _render = RenderTimeTracer::new("homepage");
+    static CACHE: Lazy<Mutex<Option<(Instant, String)>>> = Lazy::new(Default::default);
+
+    let mut cache = CACHE.lock().await;
+    if let Some((k, v)) = cache.as_ref() {
+        if k.elapsed().as_secs_f64() < 5.0 {
+            let mut resp: Body = v.clone().into();
+            resp.set_mime("text/html");
+            return Ok(resp);
+        }
+    }
 
     let last_snap = req
         .state()
@@ -106,7 +120,7 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
         .take(50)
         .collect();
 
-    let mut body: Body = HomepageTemplate {
+    let res = HomepageTemplate {
         testnet: req.state().val_client.netid() == NetID::Testnet,
         blocks,
         pool,
@@ -114,8 +128,9 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
         transactions,
     }
     .render()
-    .unwrap()
-    .into();
+    .unwrap();
+    *cache = Some((Instant::now(), res.clone()));
+    let mut body: Body = res.into();
     body.set_mime("text/html");
     Ok(body)
 }
