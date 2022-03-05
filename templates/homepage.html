@@ -138,9 +138,13 @@
   function reload() {
     axios.get(window.location.href).then(function (response) {
       const h = response.data;
-      document.documentElement.innerHTML = h
+      const h_inner = h.replace("<!doctype html>", "").replace("<html>", "").replace("</html>", "");
+      const doc = new DOMParser().parseFromString(h_inner, "text/html");
+      const new_container = doc.getElementsByClassName("container")[0];
+      const old_container = document.getElementsByClassName("container")[0];
+      old_container.parentNode.replaceChild(new_container, old_container);
     })
   }
-  //setInterval(reload, 5000)
+  setInterval(reload, 5000)
 </script>
 {% endblock %}
