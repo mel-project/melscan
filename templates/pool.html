@@ -141,11 +141,12 @@
       let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
       new_data.push(...pooldata.filter((d) => d.height < new_data[0].height ||
         d.height > new_data[new_data.length - 1].height))
-
+      new_data = new_data.sort((i, j) => i.height - j.height);
       let uniq_data = uniq(new_data, (i) => i.height)
       pooldata.length = 0
-      pooldata.push(...uniq_data)
-      pooldata.sort((i, j) => i.date.toMillis() > j.date.toMillis())
+      //console.log(pooldata);
+      pooldata.push(...new_data);
+      // console.log(new_data);
 
       chart.stop()
       chart.update('none')
@@ -375,7 +376,6 @@
     chart = melscan.chart
     tooltip = chart.options.plugins.tooltip
     handlers.loadPrice()
-    handlers.loadLastMonth()
   })
 </script>
 
