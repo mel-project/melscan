@@ -157,8 +157,8 @@
     if (pooldata.length == 0)
       return [0, pooldata.length - 1]
     else {
-      let lower = pooldata.findIndex(data => data.date.toMillis() > minTime)
-      let upper = findIndexReverse(pooldata, data => data.date.toMillis() < maxTime)
+      let upper = pooldata.findIndex(data => data.date.toMillis() >= maxTime)
+      let lower = findIndexReverse(pooldata, data => data.date.toMillis() <= minTime)
       return [lower, upper]
     }
   }
