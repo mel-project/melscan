@@ -25,7 +25,8 @@
         {{(10000.0 /
         pool.mel_per_dosc).round() / 10000.0}} DOSC {{tooltips["rDOSC"]}}</span>
       <br>
-      <small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small> · <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0
+      <small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small> · <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">
+          {{ (-(100.0 - ((1.0/pool.mel_per_dosc) * 100.0))
           * 100.0).round() / 100.0}}%</span> from peg</small>
     </div>
 

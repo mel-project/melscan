@@ -14,7 +14,7 @@ pub use homepage::*;
 pub use pool::*;
 pub use transaction::*;
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 // A wrapper for microunit-denominated values
 pub struct MicroUnit(pub u128, pub String);
 lazy_static! {

@@ -44,6 +44,7 @@ pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
             ),
         })
     }
+    transactions.sort_unstable();
     transactions
 }
 

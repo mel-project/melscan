@@ -32,7 +32,7 @@ pub struct Args {
 
 #[derive(Clone)]
 pub struct State {
-    raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, html::PoolDataItem>>,
+    raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, Option<html::PoolDataItem>>>,
     val_client: ValClient,
 }
 

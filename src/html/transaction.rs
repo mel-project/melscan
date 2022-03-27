@@ -7,6 +7,8 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq, State};
 use anyhow::Context;
 use askama::Template;
+use futures_util::{future::Shared, FutureExt};
+use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::{
     Address, CoinData, CoinDataHeight, CoinID, Denom, NetID, Transaction, TxHash,
@@ -31,9 +33,8 @@ struct TransactionTemplate {
     tooltips: &'static TOOLTIPS,
 }
 
-#[tracing::instrument(skip(req))]
 #[allow(clippy::comparison_chain)]
-pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
+pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Response> {
     let _render = RenderTimeTracer::new("txpage");
 
     let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
@@ -53,12 +54,32 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
         .map_err(to_badgateway)?
         .ok_or_else(notfound)?;
 
-    // now that we have the transaction, we can construct the info.
-    let denoms: BTreeSet<_> = transaction
-        .outputs
+    let tmapping: BTreeMap<CoinID, Task<anyhow::Result<CoinDataHeight>>> = transaction
+        .inputs
         .iter()
-        .map(|v| -> Denom { v.denom })
+        .map(|cid| {
+            let cid = *cid;
+            let snap = snap.clone();
+            (
+                cid,
+                smolscale::spawn(async move {
+                    let cdh = snap
+                        .get_coin_spent_here(cid)
+                        .await?
+                        .context("missing CDH")?;
+                    Ok(cdh)
+                }),
+            )
+        })
         .collect();
+    let mut coin_map: BTreeMap<CoinID, CoinDataHeight> = BTreeMap::new();
+    for (i, (cid, task)) in tmapping.into_iter().enumerate() {
+        log::debug!("resolving input {} for {}", i, txhash);
+        coin_map.insert(cid, task.await?);
+    }
+
+    // now that we have the transaction, we can construct the info.
+    let denoms: BTreeSet<_> = transaction.outputs.iter().map(|v| v.denom).collect();
     let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     for denom in denoms {
@@ -77,10 +98,8 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
         }
         // we subtract from the balance
         for input in transaction.inputs.iter().copied() {
-            let cdh = snap
-                .get_coin_spent_here(input)
-                .await?
-                .context("no CDH found for one of the inputs")?;
+            log::debug!("getting input {} of {}", input, transaction.hash_nosigs());
+            let cdh = coin_map[&input].clone();
             if cdh.coin_data.denom == denom {
                 let new_balance = balance
                     .get(&cdh.coin_data.covhash)
@@ -122,10 +141,8 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
     let mut inputs_with_cdh = vec![];
     // we subtract from the balance
     for (index, input) in transaction.inputs.iter().copied().enumerate() {
-        let cdh = snap
-            .get_coin_spent_here(input)
-            .await?
-            .context("no CDH found for one of the inputs")?;
+        log::debug!("rendering input {} of {}", index, transaction.hash_nosigs());
+        let cdh = coin_map[&input].clone();
         inputs_with_cdh.push((
             index,
             input,
@@ -137,7 +154,7 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
         ));
     }
 
-    let mut body: tide::Body = TransactionTemplate {
+    let mut body: tide::Response = TransactionTemplate {
         testnet: req.state().val_client.netid() == NetID::Testnet,
         txhash,
         txhash_abbr: hex::encode(&txhash.0[..5]),
@@ -171,6 +188,7 @@ pub async fn get_txpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
     .render()
     .unwrap()
     .into();
-    body.set_mime("text/html");
+    body.set_content_type("text/html");
+    body.insert_header("cache-control", "max-age=10000000");
     Ok(body)
 }

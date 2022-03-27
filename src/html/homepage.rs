@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use super::{MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::to_badgateway;
 use crate::utils::*;
@@ -7,11 +5,9 @@ use crate::State;
 use askama::Template;
 use futures_util::StreamExt;
 use num_traits::{Inv, ToPrimitive};
-use once_cell::sync::Lazy;
-use smol::lock::Mutex;
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 use themelio_structs::{Denom, Header, NetID};
-use tide::Body;
+use tide::Response;
 
 #[derive(Template)]
 #[template(path = "homepage.html", escape = "none")]
@@ -32,7 +28,7 @@ pub struct BlockSummary {
     pub transactions: Vec<TransactionSummary>,
 }
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
     pub hash: String,
@@ -50,20 +46,8 @@ struct PoolSummary {
 }
 
 /// Homepage
-#[tracing::instrument(skip(req))]
-pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
+pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Response> {
     let _render = RenderTimeTracer::new("homepage");
-    static CACHE: Lazy<Mutex<Option<(Instant, String)>>> = Lazy::new(Default::default);
-
-    let mut cache = CACHE.lock().await;
-    if let Some((k, v)) = cache.as_ref() {
-        if k.elapsed().as_secs_f64() < 5.0 {
-            let mut resp: Body = v.clone().into();
-            resp.set_mime("text/html");
-            return Ok(resp);
-        }
-    }
-
     let last_snap = req
         .state()
         .val_client
@@ -129,8 +113,8 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Body> {
     }
     .render()
     .unwrap();
-    *cache = Some((Instant::now(), res.clone()));
-    let mut body: Body = res.into();
-    body.set_mime("text/html");
+    let mut body: Response = res.into();
+    body.set_content_type("text/html");
+    body.insert_header("cache-control", "max-age=5");
     Ok(body)
 }

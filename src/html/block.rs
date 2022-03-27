@@ -21,7 +21,7 @@ struct BlockTemplate {
 }
 
 #[tracing::instrument(skip(req))]
-pub async fn get_blockpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
+pub async fn get_blockpage(req: tide::Request<State>) -> tide::Result<tide::Response> {
     // lazy_static! {
     //     static ref TOOLTIPS: ToolTips = serde_json::from_str(include_str!("../tooltips.json")).unwrap();
     // }
@@ -48,7 +48,7 @@ pub async fn get_blockpage(req: tide::Request<State>) -> tide::Result<tide::Body
         .map_err(to_badgateway)?;
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
-    let mut body: tide::Body = BlockTemplate {
+    let mut body: tide::Response = BlockTemplate {
         testnet: req.state().val_client.netid() == NetID::Testnet,
         header: block.header,
         txcount: block.transactions.len(),
@@ -74,6 +74,7 @@ pub async fn get_blockpage(req: tide::Request<State>) -> tide::Result<tide::Body
     .render()
     .unwrap()
     .into();
-    body.set_mime("text/html");
+    body.set_content_type("text/html");
+    body.insert_header("cache-control", "max-age=10000000");
     Ok(body)
 }

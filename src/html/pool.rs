@@ -1,13 +1,12 @@
 use std::{
     str::FromStr,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use super::{friendly_denom, RenderTimeTracer};
 use super::{InfoBubble, TOOLTIPS};
-use crate::{notfound, to_badgateway, to_badreq, State};
+use crate::{to_badgateway, to_badreq, State};
 use askama::Template;
-use chrono::NaiveDateTime;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use themelio_nodeprot::ValClientSnapshot;
@@ -40,40 +39,41 @@ pub struct PoolDataItem {
 
 #[async_trait]
 pub trait AsPoolDataItem {
-    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<PoolDataItem>;
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<Option<PoolDataItem>>;
     async fn get_older_pool_data_item(
         &self,
         pool_key: PoolKey,
         height: u64,
-    ) -> tide::Result<PoolDataItem>;
+    ) -> tide::Result<Option<PoolDataItem>>;
 }
 
 #[async_trait]
 impl AsPoolDataItem for ValClientSnapshot {
     // returns a PoolDataItem that assumes the snapshot represents the most recent block
-    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<PoolDataItem> {
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<Option<PoolDataItem>> {
         let height = self.current_header().height.0;
-        let pool_info = self.get_pool(pool_key).await?.ok_or_else(notfound)?;
-        let price = pool_info.implied_price().to_f64().unwrap_or_default();
-        let liquidity =
-            (pool_info.lefts as f64 * pool_info.rights as f64).sqrt() / MICRO_CONVERTER as f64;
-        Ok(PoolDataItem {
-            date: PoolDataItem::block_time(0),
-            height,
-            price,
-            liquidity,
-            ergs_per_mel: themelio_stf::dosc_to_erg(height.into(), 10000) as f64 / 10000.0,
-        })
+        Ok(self.get_pool(pool_key).await?.map(|pool_info| {
+            let price = pool_info.implied_price().to_f64().unwrap_or_default();
+            let liquidity =
+                (pool_info.lefts as f64 * pool_info.rights as f64).sqrt() / MICRO_CONVERTER as f64;
+            PoolDataItem {
+                date: PoolDataItem::block_time(0),
+                height,
+                price,
+                liquidity,
+                ergs_per_mel: themelio_stf::dosc_to_erg(height.into(), 10000) as f64 / 10000.0,
+            }
+        }))
     }
     async fn get_older_pool_data_item(
         &self,
         pool_key: PoolKey,
         height: u64,
-    ) -> tide::Result<PoolDataItem> {
+    ) -> tide::Result<Option<PoolDataItem>> {
         let last_height = self.current_header().height.0;
         let snapshot = self.get_older(height.into()).await.map_err(to_badgateway)?;
-        let mut item = snapshot.as_pool_data_item(pool_key).await?;
-        Ok(item.set_time(last_height - height).clone())
+        let item = snapshot.as_pool_data_item(pool_key).await?;
+        Ok(item.map(|mut item| item.set_time(last_height - height).clone()))
     }
 }
 
@@ -97,7 +97,7 @@ impl PoolDataItem {
 }
 
 #[tracing::instrument(skip(req))]
-pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body> {
+pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Response> {
     let _render = RenderTimeTracer::new("poolpage");
     let pool_key = {
         let denom = req.param("denom_left").map(|v| v.to_string())?;
@@ -123,10 +123,11 @@ pub async fn get_poolpage(req: tide::Request<State>) -> tide::Result<tide::Body>
         pool_key: pool_key,
         denom_tooltip: &TOOLTIPS[&friendly_denom],
         friendly_denom: friendly_denom,
-        last_item: last_day,
+        last_item: last_day.unwrap(),
         tooltips: &TOOLTIPS,
     };
-    let mut body: tide::Body = pool_template.render().unwrap().into();
-    body.set_mime("text/html");
+    let mut body: tide::Response = pool_template.render().unwrap().into();
+    body.set_content_type("text/html");
+    body.insert_header("cache-control", "max-age=31536000");
     Ok(body)
 }
