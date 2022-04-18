@@ -98,8 +98,7 @@ pub async fn get_homepage(req: tide::Request<State>) -> tide::Result<Response> {
 
     let transactions = blocks
         .iter()
-        .map(|b| b.transactions.iter())
-        .flatten()
+        .flat_map(|b| b.transactions.iter())
         .cloned()
         .take(50)
         .collect();

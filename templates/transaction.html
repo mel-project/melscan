@@ -76,7 +76,7 @@
         <tbody>
           {% for loss_entry in net_loss %}
           <tr>
-            <td>{{ loss_entry.0 }}</td>
+            <td class="text-ellipsis overflow-hidden">{{ loss_entry.0 }}</td>
             <td class="font-medium" style="color: #a22041">
               {% for loss_denom in loss_entry.1 %}
               {{ loss_denom }}<br>
@@ -95,7 +95,7 @@
         <tbody>
           {% for gain_entry in net_gain %}
           <tr>
-            <td>{{ gain_entry.0 }}</td>
+            <td class="text-ellipsis overflow-hidden">{{ gain_entry.0 }}</td>
             <td class="font-medium" style="color: #007b43">
               {% for gain_denom in gain_entry.1 %}
               {{ gain_denom }}<br>

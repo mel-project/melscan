@@ -1,13 +1,16 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use dashmap::DashMap;
 use std::fmt::Debug;
 use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
-use tide::StatusCode;
+use tide::{Body, StatusCode};
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
+
+use crate::indexer::Indexer;
 mod html;
+mod indexer;
 mod raw;
 mod utils;
 
@@ -28,6 +31,10 @@ pub struct Args {
     #[structopt(long)]
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
+
+    #[structopt(long)]
+    /// Path to a "full" index file. If this is present, will act as a "full node" to pull huge amounts of info from the blockchain.
+    index_path: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -55,12 +62,18 @@ async fn main_inner() -> anyhow::Result<()> {
         },
         args.connect,
     );
+
     // TODO read this from an argument or a special crate
     if args.testnet {
         client.trust(themelio_bootstrap::checkpoint_height(NetID::Testnet).unwrap());
     } else {
         client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
     }
+
+    let _indexer = args
+        .index_path
+        .clone()
+        .map(|path| Indexer::new(&path, client.clone()));
 
     let state = State {
         raw_pooldata_cache: DashMap::new().into(),
@@ -70,6 +83,10 @@ async fn main_inner() -> anyhow::Result<()> {
     let mut app = tide::with_state(state);
     // Rendered paths
     app.at("/").get(html::get_homepage);
+    app.at("/robots.txt").get(|req| async {
+        let t = include_str!("robots.txt");
+        Ok(Body::from_string(t.to_string()))
+    });
     app.at("/blocks/:height").get(html::get_blockpage);
     app.at("/pools/:denom_left/:denom_right")
         .get(html::get_poolpage);

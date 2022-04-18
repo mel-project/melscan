@@ -42,6 +42,7 @@
             text-overflow: ellipsis;
             /* white-space: nowrap; */
         }
+
     </style>
     <style>
         .info-circle {
@@ -122,6 +123,7 @@
             -o-animation: fadeInFromNone 0.5s ease-out forwards;
             animation: fadeInFromNone 0.5s ease-out forwards;
         }
+
         /* from https://stackoverflow.com/questions/8449933/animation-css3-display-opacity */
         @-webkit-keyframes fadeInFromNone {
             0% {
@@ -190,6 +192,7 @@
                 opacity: 1;
             }
         }
+
     </style>
     <style>
         .lds-ellipsis {
@@ -276,35 +279,35 @@
                 transform: translate(calc(3em / var(--spacing-scale)), 0);
             }
         }
+
     </style>
 </head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
-    integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
-    crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"
-    integrity="sha512-RJJ1NNC88QhN7dwpCY8rm/6OxI+YdQP48DrLGe/eSAd+n+s1PXwQkkpzzAgoJe4cZFW2GALQoxox61gSY2yQfg=="
-    crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.js"
-    integrity="sha512-ZK0WjtDcWIgPGnc0ijTg6vGJIsTcMh46KgFKpnZiZWp8mhTXwqOAbJOKVE3tT4ru701KRakCCrFUre7tRn+oiw=="
-    crossorigin="anonymous"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.min.css"
-    integrity="sha512-e5dJblUsk+67Y38sR7+4reR7UyT7BuT/8y0r4ZcXh59IGjAMY4UA81lHouD+a82FU9sGvAsLZlDLgAiUFeKXPg=="
-    crossorigin="anonymous" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js" integrity="sha512-RJJ1NNC88QhN7dwpCY8rm/6OxI+YdQP48DrLGe/eSAd+n+s1PXwQkkpzzAgoJe4cZFW2GALQoxox61gSY2yQfg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.js" integrity="sha512-ZK0WjtDcWIgPGnc0ijTg6vGJIsTcMh46KgFKpnZiZWp8mhTXwqOAbJOKVE3tT4ru701KRakCCrFUre7tRn+oiw==" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metrics-graphics/2.15.6/metricsgraphics.min.css" integrity="sha512-e5dJblUsk+67Y38sR7+4reR7UyT7BuT/8y0r4ZcXh59IGjAMY4UA81lHouD+a82FU9sGvAsLZlDLgAiUFeKXPg==" crossorigin="anonymous" />
 {% block head %}{% endblock %}
 </head>
 
 <body style="padding-left: 20px; padding-right: 20px">
     <!-- Header -->
-    <nav class="mx-auto max-w-screen-lg mt-8 text-xl leading-tight" }>{% if testnet %}<span
-            class="font-bold text-black italic text-opacity-50">Testnet </span>{% else %}{% endif %}{% block nav %}{%
+    <nav class="mx-auto max-w-screen-lg mt-8 text-xl leading-tight" }>{% if testnet %}<span class="font-bold text-black italic text-opacity-50">Testnet </span>{% else %}{% endif %}{% block nav %}{%
         endblock %}<br>
-        <span class="text-sm text-blue-600 hover:underline"><b>{% if testnet %}<a
-                    href="https://scan.themelio.org">Switch to mainnet</a>{% else %}<a
-                    href="https://scan-testnet.themelio.org">Switch to testnet</a>{% endif %}</b></span>
+        <span class="text-sm text-blue-600 hover:underline"><b>{% if testnet %}<a href="https://scan.themelio.org">Switch to mainnet</a>{% else %}<a href="https://scan-testnet.themelio.org">Switch to testnet</a>{% endif %}</b></span>
     </nav>
 
     {% block body %}{% endblock %}
 
+    <script type="text/javascript">
+        var sc_project = 12677128;
+        var sc_invisible = 1;
+        var sc_security = "f229cb7b";
+    </script>
+    <script type="text/javascript" src="https://www.statcounter.com/counter/counter.js" async></script>
+    <noscript>
+        <div class="statcounter"><a title="Web Analytics
+      Made Easy - Statcounter" href="https://statcounter.com/" target="_blank"><img class="statcounter" src="https://c.statcounter.com/12677128/0/f229cb7b/1/" alt="Web Analytics Made Easy - Statcounter" referrerPolicy="no-referrer-when-downgrade"></a></div>
+    </noscript>
 </body>
 {% block bottom_scripts %}{% endblock %}
 
