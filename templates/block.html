@@ -3,8 +3,7 @@
 {% block title %} Melscan {% endblock %}
 
 {% block nav %}
-<a href="/" class="text-black text-opacity-60 hover:text-opacity-40 hover:underline">Melscan</a> 🢒 <a
-  href="/blocks/{{header.height}}" class="text-black hover:text-opacity-60 hover:underline">Block {{header.height}}</a>
+<a href="/" class="text-black text-opacity-60 hover:text-opacity-40 hover:underline">Melscan</a> 🢒 <a href="/blocks/{{header.height}}" class="text-black hover:text-opacity-60 hover:underline">Block {{header.height}}</a>
 {% endblock %}
 
 {% block body %}
@@ -17,14 +16,14 @@
     <tbody>
       <tr>
         <td class="w-1/3 text-black text-opacity-50 font-bold">
-          <span class="name">Hash</span>
+          <span class="name" class="text-ellipsis overflow-hidden">Hash</span>
           {{ tooltips["blockHash"] }}
         </td>
         <td class="font-medium">{{ header.hash() }}</td>
       </tr>
       <tr>
         <td class="w-1/3 text-black text-opacity-50 font-bold">
-          <span class="name">Height</span> 
+          <span class="name">Height</span>
           {{ tooltips["height"] }}
         </td>
         <td>{{ header.height }}</td>
@@ -100,7 +99,7 @@
     <tbody>
       {% for (txhash, weight) in txhashes %}
       <tr>
-        <td><a href="/blocks/{{header.height}}/{{txhash}}" class="text-blue-600">{{txhash}}</a></td>
+        <td class="text-ellipsis overflow-hidden"><a href="/blocks/{{header.height}}/{{txhash}}" class="text-blue-600">{{txhash}}</a></td>
         <td>{{weight}} wu</td>
       </tr>
       {% endfor %}
