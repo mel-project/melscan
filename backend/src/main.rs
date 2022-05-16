@@ -5,7 +5,11 @@ use std::fmt::Debug;
 use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
-use tide::{Body, StatusCode};
+use tide::{
+    http::headers::HeaderValue,
+    security::{CorsMiddleware, Origin},
+    Body, StatusCode,
+};
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::indexer::Indexer;
@@ -35,6 +39,10 @@ pub struct Args {
     #[structopt(long)]
     /// Path to a "full" index file. If this is present, will act as a "full node" to pull huge amounts of info from the blockchain.
     index_path: Option<PathBuf>,
+
+    #[structopt(long)]
+    /// Whether to disable CORS checking.
+    disable_cors: bool,
 }
 
 #[derive(Clone)]
@@ -81,15 +89,15 @@ async fn main_inner() -> anyhow::Result<()> {
     };
 
     let mut app = tide::with_state(state);
+    let cors = CorsMiddleware::new()
+        .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
+        .allow_origin(Origin::from("*"))
+        .allow_credentials(false);
     // Rendered paths
-    app.at("/").get(html::get_homepage);
     app.at("/robots.txt").get(|req| async {
         let t = include_str!("robots.txt");
         Ok(Body::from_string(t.to_string()))
     });
-    app.at("/blocks/:height").get(html::get_blockpage);
-    app.at("/pools/:denom_left/:denom_right")
-        .get(html::get_poolpage);
     app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
     app.at("/raw/latest").get(raw::get_latest);
@@ -114,7 +122,8 @@ async fn main_inner() -> anyhow::Result<()> {
             res.set_body(err_str);
         }
         Ok(res)
-    }));
+    }))
+    .with(cors);
     tracing::info!("Starting REST endpoint at {}", args.listen);
     app.listen(args.listen).await?;
     Ok(())
