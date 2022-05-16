@@ -39,10 +39,6 @@ pub struct Args {
     #[structopt(long)]
     /// Path to a "full" index file. If this is present, will act as a "full node" to pull huge amounts of info from the blockchain.
     index_path: Option<PathBuf>,
-
-    #[structopt(long)]
-    /// Whether to disable CORS checking.
-    disable_cors: bool,
 }
 
 #[derive(Clone)]
@@ -100,6 +96,7 @@ async fn main_inner() -> anyhow::Result<()> {
     });
     app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
+    app.at("/raw/overview").get(raw::get_overview);
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);
     app.at("/raw/blocks/:height/summary")

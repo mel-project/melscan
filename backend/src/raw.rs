@@ -3,20 +3,122 @@ use std::{convert::TryInto, sync::Arc};
 
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
+use num_traits::{Inv, ToPrimitive};
+use serde::Serialize;
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{BlockHeight, CoinID, Denom, TxHash};
+use themelio_structs::{Block, BlockHeight, CoinID, Denom, Header, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 
 use crate::html::AsPoolDataItem;
-use crate::html::{homepage::BlockSummary, MicroUnit};
+use crate::html::MicroUnit;
 use crate::utils::*;
 use crate::{notfound, to_badgateway, to_badreq, State};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
+
+#[derive(serde::Serialize)]
+// A block summary for the homepage.
+struct BlockSummary {
+    pub header: Header,
+    pub total_weight: u128,
+    pub reward_amount: u128,
+    pub transactions: Vec<TransactionSummary>,
+}
+
+#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+// A transaction summary for the homepage.
+struct TransactionSummary {
+    pub hash: String,
+    pub shorthash: String,
+    pub height: u64,
+    pub weight: u128,
+    pub mel_moved: u128,
+}
+
+/// Get the overview, which includes basically all the information that the homepage needs
+#[tracing::instrument(skip(req))]
+pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
+    #[derive(Serialize)]
+    struct Overview {
+        erg_per_mel: f64,
+        sym_per_mel: f64,
+        recent_blocks: Vec<BlockSummary>,
+    }
+
+    let last_snap = req
+        .state()
+        .val_client
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?;
+    let mut blocks = Vec::new();
+    let mut futs = get_old_blocks(&last_snap, 50);
+
+    while let Some(inner) = futs.next().await {
+        let (block, reward) = inner.map_err(to_badgateway)?;
+        let transactions: Vec<TransactionSummary> = get_transactions(&block);
+
+        blocks.push(BlockSummary {
+            header: block.header,
+            total_weight: block
+                .transactions
+                .iter()
+                .map(|v| v.weight(covenant_weight_from_bytes))
+                .sum(),
+            reward_amount: reward.into(),
+            transactions: transactions.clone(),
+        });
+    }
+
+    let erg_per_mel = last_snap
+        .get_pool(PoolKey::new(Denom::Mel, Denom::Erg))
+        .await
+        .map_err(to_badgateway)?
+        .unwrap()
+        .implied_price()
+        .to_f64()
+        .unwrap_or_default();
+    let sym_per_mel = last_snap
+        .get_pool(PoolKey::new(Denom::Mel, Denom::Sym))
+        .await
+        .map_err(to_badgateway)?
+        .unwrap()
+        .implied_price()
+        .inv()
+        .to_f64()
+        .unwrap_or_default();
+
+    Body::from_json(&Overview {
+        erg_per_mel,
+        sym_per_mel,
+        recent_blocks: blocks,
+    })
+}
+
+fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
+    let mut transactions: Vec<TransactionSummary> = Vec::new();
+    for transaction in &block.transactions {
+        transactions.push(TransactionSummary {
+            hash: hex::encode(&transaction.hash_nosigs().0),
+            shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
+            height: block.header.height.0,
+            weight: transaction.weight(covenant_weight_from_bytes),
+            mel_moved: transaction
+                .outputs
+                .iter()
+                .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                .sum::<u128>()
+                + transaction.fee.0,
+        })
+    }
+    transactions.sort_unstable();
+    transactions
+}
+
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
@@ -156,7 +258,7 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
             .iter()
             .map(|v| v.weight(covenant_weight_from_bytes))
             .sum(),
-        reward_amount: MicroUnit(reward_amount.into(), "MEL".into()),
+        reward_amount: reward_amount.into(),
         transactions,
     })
 }

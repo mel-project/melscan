@@ -7,12 +7,9 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer, TOOLTIPS};
 use crate::{notfound, to_badgateway, to_badreq, State};
 use anyhow::Context;
 use askama::Template;
-use futures_util::{future::Shared, FutureExt};
 use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
-use themelio_structs::{
-    Address, CoinData, CoinDataHeight, CoinID, Denom, NetID, Transaction, TxHash,
-};
+use themelio_structs::{Address, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
 
 #[derive(Template)]
 #[template(path = "transaction.html", escape = "none")]
