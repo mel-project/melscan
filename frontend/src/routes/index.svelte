@@ -11,9 +11,9 @@
 	};
 
 	export async function load({ params, fetch, session, stuff }) {
-		return {
+			return {
 			status: 200,
-			props: {
+				props: {
 				overviewData: await getOverviewData(fetch)
 			}
 		};
