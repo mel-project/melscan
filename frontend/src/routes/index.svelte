@@ -1,29 +1,16 @@
 <script context="module">
-	import { backendUrl } from '../common';
-
-	const getOverviewData = async (fetch) => {
-		const url = `${backendUrl()}/raw/overview`;
-		const response = await fetch(url);
-		if (!response.ok) {
-			throw 'failed to fetch overview data';
-		}
-		return await response.json();
-	};
-
-	export async function load({ params, fetch, session, stuff }) {
-		return {
-			status: 200,
-			props: {
-				overviewData: await getOverviewData(fetch)
-			}
-		};
-	}
+	import { loader } from '../common';
+	export const {query, load} = loader('/raw/overview')
+	const getOverviewData = query;
 </script>
 
 <script>
 	import TopNav from '../components/TopNav.svelte';
 
-	export let overviewData;
+	export let data; 
+
+	
+	let overviewData = data;
 
 	setInterval(async () => {
 		let v = await getOverviewData(fetch);
