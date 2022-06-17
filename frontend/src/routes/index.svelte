@@ -8,8 +8,6 @@
 	import TopNav from '../components/TopNav.svelte';
 
 	export let data; 
-
-	
 	let overviewData = data;
 
 	setInterval(async () => {
