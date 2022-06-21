@@ -6,5 +6,12 @@
         "markdown",
         "latex",
         "plaintext"
-    ]
+    ],
+    
+    "path-intellisense.mappings": {
+        "/": "${workspaceRoot}",
+        "lib": "${workspaceRoot}/lib",
+        "global": "/Users/dummy/globalLibs"
+    },
+    
 }

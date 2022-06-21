@@ -1,5 +1,6 @@
 <script context="module">
-	import { loader } from '../common';
+	import { loader } from '@utils/common';
+
 	export const {query, load} = loader('/raw/overview')
 	const getOverviewData = query;
 </script>

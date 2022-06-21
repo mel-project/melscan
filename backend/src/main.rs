@@ -40,7 +40,7 @@ pub struct Args {
     /// Path to a "full" index file. If this is present, will act as a "full node" to pull huge amounts of info from the blockchain.
     index_path: Option<PathBuf>,
 }
-g
+
 #[derive(Clone)]
 pub struct State {
     raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, Option<html::PoolDataItem>>>,
