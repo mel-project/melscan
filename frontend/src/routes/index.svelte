@@ -1,20 +1,28 @@
-<script context="module">
-	import { loader } from '@utils/common';
+<script context="module" lang='ts'>
 
-	export const {query, load} = loader('/raw/overview')
-	const getOverviewData = query;
+	import { loader,melscan } from '@utils/common';
+
+	export const {refresh, load} = loader('/raw/overview')
 </script>
 
-<script>
+<script lang="ts">
 	import TopNav from '../components/TopNav.svelte';
+	import { getStores } from '$app/stores';
+	let url: URL;
+	getStores().page.subscribe((p)=>url=p.url)()
 
-	export let data; 
+	const getOverviewData = () => {
+			console.log(url)
+			return melscan(url || '/raw/overview');
+		}
+	getOverviewData();
+	export let data; 	
 	let overviewData = data;
 
-	setInterval(async () => {
-		let v = await getOverviewData(fetch);
-		overviewData = v;
-	}, 5000);
+	// setInterval(async () => {
+	// 	let v = getOverviewData();
+	// 	overviewData = v;
+	// }, 1000);
 
 	$: recentTxx = () => {
 		let x = overviewData.recent_blocks.map((b) => b.transactions).flat();
@@ -26,7 +34,7 @@
 </script>
 
 <TopNav>Melscan</TopNav>
-
+<a href="/blocks">blocks</a>
 <div class="container mx-auto max-w-screen-lg">
 	<div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
 		<div class="col-span-2 mb-3">

@@ -1,26 +1,30 @@
 
+import { page } from "$app/stores";
 import type {Load, LoadEvent} from "@sveltejs/kit/types"
 
 export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
 
-export const melscan = async (fetch, endpoint): Promise<Response> => {
+export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
+export type Loader = {load: Load, refresh: ()=>Promise<JSON>}
+export const melscan = async (endpoint: string | URL): Promise<JSON> => {
 	const url = backendUrl(endpoint);
 	const response = await fetch(url);
+	console.log(`requesting ${endpoint}`)
 	if (!response.ok) {
 		throw `failed to fetch '${endpoint}' data`;
 	}
-	return await response.json();
+	let res = response.json()
+	return res;
 };
 
-export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
-export type Loader = {load: Load, query: (Fetch)=>Promise<Response>}
 
-export const load =  endpoint => async (event: LoadEvent) => {
-	let {fetch, url} = event;
+export const load =  (endpoint?: string) => async (event: LoadEvent) => {
+	let {url} = event;
+	console.log('loading')
 	return {
 		status: 200,
 		props: {
-			data: await melscan(fetch, endpoint)
+			data: await melscan(endpoint || url)
 		}
 	};
 }
@@ -28,6 +32,10 @@ export const load =  endpoint => async (event: LoadEvent) => {
 export const loader: (e: string) => Loader = (endpoint) => {
 	return {
 		load: load(endpoint),
-        query: fetch => melscan(fetch, endpoint)
+        refresh: () => {
+			let url: URL;
+			page.subscribe(p=>url = p.url)()
+			return melscan(url);
+		}
 	}
 };
