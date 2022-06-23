@@ -1,31 +1,21 @@
 <script context="module" lang='ts'>
-
-	import { loader,melscan } from '@utils/common';
-
-	export const {refresh, load} = loader('/raw/overview')
+	export { load } from '@utils/common';
 </script>
 
 <script lang="ts">
 	import TopNav from '../components/TopNav.svelte';
-	import { getStores } from '$app/stores';
-	let url: URL;
-	getStores().page.subscribe((p)=>url=p.url)()
+	export let refresh: (s?: string)=>Promise<JSON>;
+	export let autorefresh: () => Promise<number>
 
-	const getOverviewData = () => {
-			console.log(url)
-			return melscan(url || '/raw/overview');
-		}
-	getOverviewData();
-	export let data; 	
-	let overviewData = data;
+	autorefresh();
 
-	// setInterval(async () => {
-	// 	let v = getOverviewData();
-	// 	overviewData = v;
-	// }, 1000);
+	export let erg_per_mel: number;
+	export let sym_per_mel: number;
+	export let recent_blocks: [any];
+
 
 	$: recentTxx = () => {
-		let x = overviewData.recent_blocks.map((b) => b.transactions).flat();
+		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
 			x.length = 50;
 		}
@@ -43,7 +33,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{(1 / overviewData.erg_per_mel).toFixed(5)} MEL
+				{(1 /erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
@@ -51,7 +41,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 SYM =</span>
-				{(1 / overviewData.sym_per_mel).toFixed(5)} MEL
+				{(1 /sym_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
@@ -82,7 +72,7 @@
 					</tr>
 				</thead>
 				<tbody id="block-rows" class="leading-loose text-sm">
-					{#each overviewData.recent_blocks as block}
+					{#each recent_blocks as block}
 						<tr>
 							<td class="font-medium"
 								><a href="/blocks/{block.header.height}" class="text-blue-600"

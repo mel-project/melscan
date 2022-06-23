@@ -11,7 +11,7 @@
 		return {
 			status: 200,
 			props: {
-				data: await melscan(endpoint || url)
+				data: await melscan(endpoint)
 			}
 		};
 	};
