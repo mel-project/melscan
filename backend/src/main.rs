@@ -96,6 +96,7 @@ async fn main_inner() -> anyhow::Result<()> {
     });
     app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
+    app.at("/raw/overview/:block").get(raw::get_overview);
     app.at("/raw/overview").get(raw::get_overview);
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);

@@ -5,6 +5,7 @@ use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
 use num_traits::{Inv, ToPrimitive};
 use serde::Serialize;
+use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::{lock::Semaphore, prelude::*};
@@ -15,6 +16,7 @@ use tmelcrypt::HashVal;
 use crate::html::AsPoolDataItem;
 use crate::html::MicroUnit;
 use crate::utils::*;
+use async_trait::async_trait;
 use crate::{notfound, to_badgateway, to_badreq, State};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -39,6 +41,53 @@ struct TransactionSummary {
     pub mel_moved: u128,
 }
 
+
+#[async_trait]
+trait ExtendedClient {
+    async fn get_snapshot(&self) -> anyhow::Result<ValClientSnapshot>;
+    async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>;
+}   
+
+#[async_trait]
+trait ExtendedRequest {
+    async fn get_snapshot(&self) -> tide::Result<ValClientSnapshot>;
+    async fn older_snapshot(&self) -> tide::Result<ValClientSnapshot>;
+}
+#[async_trait]
+impl ExtendedClient for ValClient {
+    async fn get_snapshot(&self) -> anyhow::Result<ValClientSnapshot>{
+        let last_snap = self
+            .snapshot()
+            .await
+            .expect("Failed to get most recent snapshot");
+
+        Ok(last_snap)
+    }
+    async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>{
+        let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
+        let older = self.get_snapshot()
+        .await?
+        .get_older(height.into())
+        .await
+        .expect(&format!("Unable to get block at height: {height}"));
+
+        Ok(older)
+    }
+
+}
+
+#[async_trait]
+impl ExtendedClient for tide::Request<State> {
+    async fn get_snapshot(&self) ->  anyhow::Result<ValClientSnapshot> {
+        self.state().val_client.get_snapshot().await
+    }
+
+    async fn older_snapshot(&self,height:u64) -> anyhow::Result<ValClientSnapshot>{
+        self.state().val_client.older_snapshot(height).await
+
+    }
+}
+
 /// Get the overview, which includes basically all the information that the homepage needs
 #[tracing::instrument(skip(req))]
 pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
@@ -49,12 +98,7 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
         recent_blocks: Vec<BlockSummary>,
     }
 
-    let last_snap = req
-        .state()
-        .val_client
-        .snapshot()
-        .await
-        .map_err(to_badgateway)?;
+    let last_snap = req.get_snapshot().await?;
     let mut blocks = Vec::new();
     let mut futs = get_old_blocks(&last_snap, 50);
 
@@ -122,29 +166,14 @@ fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
-    let last_snap = req
-        .state()
-        .val_client
-        .snapshot()
-        .await
-        .map_err(to_badgateway)?;
+    let last_snap = req.get_snapshot().await?;
     Body::from_json(&last_snap.current_header())
 }
 
 /// Get a particular block header
 #[tracing::instrument(skip(req))]
 pub async fn get_header(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
-    let last_snap = req
-        .state()
-        .val_client
-        .snapshot()
-        .await
-        .map_err(to_badgateway)?;
-    let older = last_snap
-        .get_history(height.into())
-        .await
-        .map_err(to_badgateway)?;
+    let last_snap = req.get_older
     Body::from_json(&older.ok_or_else(notfound)?)
 }
 
