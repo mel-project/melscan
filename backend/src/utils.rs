@@ -1,4 +1,4 @@
-use crate::html::{MicroUnit, TransactionSummary};
+use crate::{html::{MicroUnit}, raw::{BlockSummary, TransactionSummary}};
 use futures_util::{stream::FuturesOrdered, Future};
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;
@@ -23,6 +23,22 @@ pub fn get_old_blocks(
         });
     }
     futs
+}
+
+pub fn idk(inner: (Block, CoinValue)) -> anyhow::Result<BlockSummary> {
+        let (block, reward) = inner;
+        let transactions: Vec<TransactionSummary> = get_transactions(&block);
+
+        Ok(BlockSummary {
+            header: block.header,
+            total_weight: block
+                .transactions
+                .iter()
+                .map(|v| v.weight(covenant_weight_from_bytes))
+                .sum(),
+            reward_amount: reward.0,
+            transactions: transactions.clone(),
+        })
 }
 
 pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {

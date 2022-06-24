@@ -14,7 +14,6 @@ use tide::Body;
 use tmelcrypt::HashVal;
 
 use crate::html::AsPoolDataItem;
-use crate::html::MicroUnit;
 use crate::utils::*;
 use async_trait::async_trait;
 use crate::{notfound, to_badgateway, to_badreq, State};
@@ -24,7 +23,7 @@ pub struct PoolInfoKey(PoolKey, BlockHeight);
 
 #[derive(serde::Serialize)]
 // A block summary for the homepage.
-struct BlockSummary {
+pub struct BlockSummary {
     pub header: Header,
     pub total_weight: u128,
     pub reward_amount: u128,
@@ -33,7 +32,7 @@ struct BlockSummary {
 
 #[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 // A transaction summary for the homepage.
-struct TransactionSummary {
+pub struct TransactionSummary {
     pub hash: String,
     pub shorthash: String,
     pub height: u64,
@@ -46,12 +45,16 @@ struct TransactionSummary {
 trait ExtendedClient {
     async fn get_snapshot(&self) -> anyhow::Result<ValClientSnapshot>;
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>;
+    async fn get_history(&self, height: u64) -> anyhow::Result<Header>;
 }   
 
 #[async_trait]
 trait ExtendedRequest {
-    async fn get_snapshot(&self) -> tide::Result<ValClientSnapshot>;
-    async fn older_snapshot(&self) -> tide::Result<ValClientSnapshot>;
+    fn client(&self) -> ValClient;
+    async fn requested_snapshot(&self) -> tide::Result<ValClientSnapshot>;
+    fn height(&self) -> tide::Result<u64>;
+    fn parse<T>(&self, param: &str) -> Result<T, T::Err>
+        where T: FromStr;
 }
 #[async_trait]
 impl ExtendedClient for ValClient {
@@ -64,7 +67,6 @@ impl ExtendedClient for ValClient {
         Ok(last_snap)
     }
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>{
-        let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
         let older = self.get_snapshot()
         .await?
         .get_older(height.into())
@@ -73,18 +75,37 @@ impl ExtendedClient for ValClient {
 
         Ok(older)
     }
+    async fn get_history(&self, height: u64) -> anyhow::Result<Header>{
+        let snapshot = self.get_snapshot().await?;
+        let hist = snapshot.get_history(height.into())
+        .await?
+        .context(format!("Unable to get history at height {height}"));
+        hist
+    }
 
 }
 
+
+
 #[async_trait]
-impl ExtendedClient for tide::Request<State> {
-    async fn get_snapshot(&self) ->  anyhow::Result<ValClientSnapshot> {
-        self.state().val_client.get_snapshot().await
+impl ExtendedRequest for tide::Request<State> {
+    async fn requested_snapshot(&self) -> tide::Result<ValClientSnapshot>{
+        let height = self.height()?;
+        self.client().older_snapshot(height).await.map_err(to_badreq)
+
     }
+    fn height(&self) -> tide::Result<u64> {
+        let p = self.param("height")?;
+        p.parse().map_err(to_badreq)
+    } 
+    fn parse<T>(&self, param: &str) -> Result<T, T::Err>
+        where T: FromStr {
+        let p = self.param(param).expect(&format!("Unable to parse param: `{param}`"));
+        p.parse::<T>()
 
-    async fn older_snapshot(&self,height:u64) -> anyhow::Result<ValClientSnapshot>{
-        self.state().val_client.older_snapshot(height).await
-
+    }
+    fn client(&self) -> ValClient {
+        self.state().val_client
     }
 }
 
@@ -98,14 +119,13 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
         recent_blocks: Vec<BlockSummary>,
     }
 
-    let last_snap = req.get_snapshot().await?;
+    let last_snap = req.client().get_snapshot().await?;
     let mut blocks = Vec::new();
     let mut futs = get_old_blocks(&last_snap, 50);
 
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner.map_err(to_badgateway)?;
         let transactions: Vec<TransactionSummary> = get_transactions(&block);
-
         blocks.push(BlockSummary {
             header: block.header,
             total_weight: block
@@ -166,22 +186,23 @@ fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
-    let last_snap = req.get_snapshot().await?;
+    let last_snap = req.client().get_snapshot().await?;
     Body::from_json(&last_snap.current_header())
 }
 
 /// Get a particular block header
 #[tracing::instrument(skip(req))]
 pub async fn get_header(req: tide::Request<State>) -> tide::Result<Body> {
-    let last_snap = req.get_older
-    Body::from_json(&older.ok_or_else(notfound)?)
+    let height = req.height()?;
+    let older = req.client().get_history(height).await?;
+    Body::from_json(&older)
 }
 
 /// Get a particular transaction
 #[tracing::instrument(skip(req))]
 pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.param("height")?.parse()?;
-    let txhash: String = req.param("txhash")?.into();
+    let height: u64 = req.parse("height")?;
+    let txhash: String = req.parse("txhash")?;
     let txhash: Vec<u8> = hex::decode(&txhash)?;
     let txhash: TxHash = HashVal(
         txhash
