@@ -40,7 +40,7 @@ export const loader =  (endpoints?: string | [string]) => async (event: LoadEven
 		status: 200,
 		props: {
 			refresh,
-			autorefresh: (props: SvelteAllProps)=>{	
+			autorefresh: ()=>{	
 				setInterval(async () => {
 					let v = await refresh()
 					.catch((e)=>console.error(e))

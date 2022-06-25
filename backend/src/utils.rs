@@ -1,3 +1,4 @@
+
 use crate::{html::{MicroUnit}, raw::{BlockSummary, TransactionSummary}};
 use futures_util::{stream::FuturesOrdered, Future};
 use themelio_nodeprot::ValClientSnapshot;
@@ -25,11 +26,9 @@ pub fn get_old_blocks(
     futs
 }
 
-pub fn idk(inner: (Block, CoinValue)) -> anyhow::Result<BlockSummary> {
-        let (block, reward) = inner;
+pub fn create_block_summary(block: Block, reward: CoinValue) -> BlockSummary {
         let transactions: Vec<TransactionSummary> = get_transactions(&block);
-
-        Ok(BlockSummary {
+        BlockSummary {
             header: block.header,
             total_weight: block
                 .transactions
@@ -38,7 +37,7 @@ pub fn idk(inner: (Block, CoinValue)) -> anyhow::Result<BlockSummary> {
                 .sum(),
             reward_amount: reward.0,
             transactions: transactions.clone(),
-        })
+        }
 }
 
 pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
@@ -48,16 +47,13 @@ pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
             hash: hex::encode(&transaction.hash_nosigs().0),
             shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
             height: block.header.height.0,
-            _weight: transaction.weight(covenant_weight_from_bytes),
-            mel_moved: MicroUnit(
-                transaction
+            weight: transaction.weight(covenant_weight_from_bytes),
+            mel_moved: transaction
                     .outputs
                     .iter()
                     .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
                     .sum::<u128>()
                     + transaction.fee.0,
-                "MEL".into(),
-            ),
         })
     }
     transactions.sort_unstable();

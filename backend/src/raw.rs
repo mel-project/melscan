@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::{convert::TryInto, sync::Arc};
 
-use anyhow::Context;
+use anyhow::{Context, format_err};
 use futures_util::stream::FuturesUnordered;
 use num_traits::{Inv, ToPrimitive};
 use serde::Serialize;
@@ -9,8 +9,8 @@ use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, Denom, Header, TxHash};
-use tide::Body;
+use themelio_structs::{Block, BlockHeight, CoinID, Denom, Header, TxHash, CoinValue};
+use tide::{Body, StatusCode};
 use tmelcrypt::HashVal;
 
 use crate::html::AsPoolDataItem;
@@ -41,11 +41,12 @@ pub struct TransactionSummary {
 }
 
 
+
 #[async_trait]
 trait ExtendedClient {
-    async fn get_snapshot(&self) -> anyhow::Result<ValClientSnapshot>;
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>;
     async fn get_history(&self, height: u64) -> anyhow::Result<Header>;
+    async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue>;
 }   
 
 #[async_trait]
@@ -53,38 +54,50 @@ trait ExtendedRequest {
     fn client(&self) -> ValClient;
     async fn requested_snapshot(&self) -> tide::Result<ValClientSnapshot>;
     fn height(&self) -> tide::Result<u64>;
-    fn parse<T>(&self, param: &str) -> Result<T, T::Err>
+    fn parse<T>(&self, param: &str) -> tide::Result<T>
         where T: FromStr;
 }
 #[async_trait]
 impl ExtendedClient for ValClient {
-    async fn get_snapshot(&self) -> anyhow::Result<ValClientSnapshot>{
-        let last_snap = self
-            .snapshot()
-            .await
-            .expect("Failed to get most recent snapshot");
 
-        Ok(last_snap)
-    }
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>{
-        let older = self.get_snapshot()
+        let older = self.snapshot()
         .await?
         .get_older(height.into())
         .await
-        .expect(&format!("Unable to get block at height: {height}"));
+        .context(format!("Unable to get block at height: {height}"))?;
 
         Ok(older)
     }
     async fn get_history(&self, height: u64) -> anyhow::Result<Header>{
-        let snapshot = self.get_snapshot().await?;
+        let snapshot = self.snapshot().await?;
         let hist = snapshot.get_history(height.into())
         .await?
         .context(format!("Unable to get history at height {height}"));
         hist
     }
+    async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue>{
+        let reward_coin = self.older_snapshot(height).await?
+        .get_coin(CoinID::proposer_reward(height.into()))
+        .await?;
+
+        let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
+        Ok(reward_amount)
+    }
+
 
 }
 
+async fn get_exchange(last_snap: &ValClientSnapshot, denom1: Denom, denom2: Denom) -> anyhow::Result<f64>{
+    Ok(last_snap
+    .get_pool(PoolKey::new(denom1, denom2))
+    .await
+    .context(format!("Unable to get exchange for {denom1}/{denom2}"))?
+    .unwrap()
+    .implied_price()
+    .to_f64()
+    .unwrap_or_default())
+}
 
 
 #[async_trait]
@@ -95,17 +108,21 @@ impl ExtendedRequest for tide::Request<State> {
 
     }
     fn height(&self) -> tide::Result<u64> {
-        let p = self.param("height")?;
-        p.parse().map_err(to_badreq)
+        self.parse("height").map_err(to_badreq)
     } 
-    fn parse<T>(&self, param: &str) -> Result<T, T::Err>
-        where T: FromStr {
-        let p = self.param(param).expect(&format!("Unable to parse param: `{param}`"));
-        p.parse::<T>()
 
+    fn parse<T>(&self, param: &str) -> tide::Result<T>
+        where T: FromStr {
+        let param = self.param(param);
+        let parsed = param?.parse::<T>();
+        let err = "Unable to parse";
+        match parsed{
+            Ok(res) => Ok(res),
+            Err(err) => Err(http_types::format_err!(err.into()))
+        }
     }
     fn client(&self) -> ValClient {
-        self.state().val_client
+        self.state().val_client.clone()
     }
 }
 
@@ -119,42 +136,17 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
         recent_blocks: Vec<BlockSummary>,
     }
 
-    let last_snap = req.client().get_snapshot().await?;
+    let last_snap = req.client().snapshot().await?;
     let mut blocks = Vec::new();
     let mut futs = get_old_blocks(&last_snap, 50);
 
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner.map_err(to_badgateway)?;
-        let transactions: Vec<TransactionSummary> = get_transactions(&block);
-        blocks.push(BlockSummary {
-            header: block.header,
-            total_weight: block
-                .transactions
-                .iter()
-                .map(|v| v.weight(covenant_weight_from_bytes))
-                .sum(),
-            reward_amount: reward.into(),
-            transactions: transactions.clone(),
-        });
+        blocks.push(create_block_summary(block, reward))
     }
 
-    let erg_per_mel = last_snap
-        .get_pool(PoolKey::new(Denom::Mel, Denom::Erg))
-        .await
-        .map_err(to_badgateway)?
-        .unwrap()
-        .implied_price()
-        .to_f64()
-        .unwrap_or_default();
-    let sym_per_mel = last_snap
-        .get_pool(PoolKey::new(Denom::Mel, Denom::Sym))
-        .await
-        .map_err(to_badgateway)?
-        .unwrap()
-        .implied_price()
-        .inv()
-        .to_f64()
-        .unwrap_or_default();
+    let erg_per_mel = get_exchange(&last_snap, Denom::Mel, Denom::Erg).await?;
+    let sym_per_mel = get_exchange(&last_snap,Denom::Mel, Denom::Sym).await?;
 
     Body::from_json(&Overview {
         erg_per_mel,
@@ -163,30 +155,10 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
     })
 }
 
-fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
-    let mut transactions: Vec<TransactionSummary> = Vec::new();
-    for transaction in &block.transactions {
-        transactions.push(TransactionSummary {
-            hash: hex::encode(&transaction.hash_nosigs().0),
-            shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
-            height: block.header.height.0,
-            weight: transaction.weight(covenant_weight_from_bytes),
-            mel_moved: transaction
-                .outputs
-                .iter()
-                .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-                .sum::<u128>()
-                + transaction.fee.0,
-        })
-    }
-    transactions.sort_unstable();
-    transactions
-}
-
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
-    let last_snap = req.client().get_snapshot().await?;
+    let last_snap = req.client().snapshot().await?;
     Body::from_json(&last_snap.current_header())
 }
 
@@ -220,7 +192,7 @@ pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
 /// Get a particular coin
 #[tracing::instrument(skip(req))]
 pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.param("height")?.parse()?;
+    let height: u64 = req.height()?;
     let coinid_string: String = req.param("coinid")?.into();
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
@@ -235,8 +207,7 @@ pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
     )
     .into();
     let index: u8 = coinid_exploded[1].parse().map_err(to_badreq)?;
-    let last_snap = req.state().val_client.snapshot().await?;
-    let older = last_snap.get_older(height.into()).await?;
+    let older = req.state().val_client.older_snapshot(height.into()).await?;
     let cdh = older.get_coin(CoinID { txhash, index }).await?;
     Body::from_json(&cdh.ok_or_else(notfound)?)
 }
@@ -279,17 +250,8 @@ pub async fn get_full_block(req: tide::Request<State>) -> tide::Result<Body> {
 /// Get block summary
 #[tracing::instrument(skip(req))]
 pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
-    let last_snap = req
-        .state()
-        .val_client
-        .snapshot()
-        .await
-        .map_err(to_badgateway)?;
-    let older = last_snap
-        .get_older(height.into())
-        .await
-        .map_err(to_badgateway)?;
+    let older = req.requested_snapshot().await?;
+    let height = req.height()?;
     let block = older.current_block().await.map_err(to_badgateway)?;
 
     let reward_coin = older
@@ -299,18 +261,7 @@ pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> 
 
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
-    let transactions = get_transactions(&block);
-
-    Body::from_json(&BlockSummary {
-        header: block.header,
-        total_weight: block
-            .transactions
-            .iter()
-            .map(|v| v.weight(covenant_weight_from_bytes))
-            .sum(),
-        reward_amount: reward_amount.into(),
-        transactions,
-    })
+    Body::from_json(&create_block_summary(block, reward_amount))
 }
 
 pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body> {
