@@ -108,19 +108,23 @@ impl ExtendedRequest for tide::Request<State> {
 
     }
     fn height(&self) -> tide::Result<u64> {
-        self.parse("height").map_err(to_badreq)
+        self.parse("height")
     } 
 
     fn parse<T>(&self, param: &str) -> tide::Result<T>
         where T: FromStr {
-        let param = self.param(param);
-        let parsed = param?.parse::<T>();
-        let err = "Unable to parse";
+        let param = self.param(param)?;
+        let parsed = param.parse::<T>();
         match parsed{
             Ok(res) => Ok(res),
-            Err(err) => Err(http_types::format_err!(err.into()))
+            Err(_) => {
+                let anyerr = anyhow::format_err!("Failed to parse: {param}");
+                let tideerr = tide::Error::new(tide::StatusCode::BadRequest, anyerr);
+                Err(tideerr)
+            }
         }
     }
+
     fn client(&self) -> ValClient {
         self.state().val_client.clone()
     }
@@ -193,7 +197,7 @@ pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
 #[tracing::instrument(skip(req))]
 pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.height()?;
-    let coinid_string: String = req.param("coinid")?.into();
+    let coinid_string: String = req.parse("coinid")?;
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
         return Err(to_badreq(anyhow::anyhow!("bad coinid")));
