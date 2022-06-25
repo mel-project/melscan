@@ -52,8 +52,6 @@ trait ExtendedClient {
 #[async_trait]
 trait ExtendedRequest {
     fn client(&self) -> ValClient;
-    async fn requested_snapshot(&self) -> tide::Result<ValClientSnapshot>;
-    fn height(&self) -> tide::Result<u64>;
     fn parse<T>(&self, param: &str) -> tide::Result<T>
         where T: FromStr;
 }
@@ -102,29 +100,21 @@ async fn get_exchange(last_snap: &ValClientSnapshot, denom1: Denom, denom2: Deno
 
 #[async_trait]
 impl ExtendedRequest for tide::Request<State> {
-    async fn requested_snapshot(&self) -> tide::Result<ValClientSnapshot>{
-        let height = self.height()?;
-        self.client().older_snapshot(height).await.map_err(to_badreq)
 
-    }
-    fn height(&self) -> tide::Result<u64> {
-        self.parse("height")
-    } 
-
-    fn parse<T>(&self, param: &str) -> tide::Result<T>
+    fn parse<T>(&self, key: &str) -> tide::Result<T>
         where T: FromStr {
-        let param = self.param(param)?;
+        let param = self.param(key)?;
         let parsed = param.parse::<T>();
         match parsed{
             Ok(res) => Ok(res),
             Err(_) => {
-                let anyerr = anyhow::format_err!("Failed to parse: {param}");
+                let anyerr = anyhow::format_err!("Failed to parse `{key}`: {param}");
                 let tideerr = tide::Error::new(tide::StatusCode::BadRequest, anyerr);
                 Err(tideerr)
             }
         }
     }
-
+    
     fn client(&self) -> ValClient {
         self.state().val_client.clone()
     }
@@ -169,7 +159,7 @@ pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
 /// Get a particular block header
 #[tracing::instrument(skip(req))]
 pub async fn get_header(req: tide::Request<State>) -> tide::Result<Body> {
-    let height = req.height()?;
+    let height = req.parse("height")?;
     let older = req.client().get_history(height).await?;
     Body::from_json(&older)
 }
@@ -196,8 +186,8 @@ pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
 /// Get a particular coin
 #[tracing::instrument(skip(req))]
 pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.height()?;
-    let coinid_string: String = req.parse("coinid")?;
+    let height: u64 = req.parse("height")?;
+    let coinid_string: String = req.param("coinid")?.parse()?;
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
         return Err(to_badreq(anyhow::anyhow!("bad coinid")));
@@ -220,7 +210,7 @@ pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
 #[tracing::instrument(skip(req))]
 pub async fn get_pool(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse()?;
-    let denom_string: String = req.param("denom")?.into();
+    let denom_string: String = req.param("denom")?.parse()?;
     let denom =
         Denom::from_bytes(&hex::decode(&denom_string).map_err(to_badreq)?).context("oh no")?;
 
@@ -236,17 +226,8 @@ pub async fn get_pool(req: tide::Request<State>) -> tide::Result<Body> {
 /// Get a particular block
 #[tracing::instrument(skip(req))]
 pub async fn get_full_block(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
-    let last_snap = req
-        .state()
-        .val_client
-        .snapshot()
-        .await
-        .map_err(to_badgateway)?;
-    let older = last_snap
-        .get_older(height.into())
-        .await
-        .map_err(to_badgateway)?;
+    let height: u64 = req.parse("height")?;
+    let older = req.client().older_snapshot(height).await?;
     let block = older.current_block().await.map_err(to_badgateway)?;
     Body::from_json(&block)
 }
@@ -254,16 +235,12 @@ pub async fn get_full_block(req: tide::Request<State>) -> tide::Result<Body> {
 /// Get block summary
 #[tracing::instrument(skip(req))]
 pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> {
-    let older = req.requested_snapshot().await?;
-    let height = req.height()?;
+    
+    let height = req.parse("height")?;
+    let client = req.client();
+    let older = client.older_snapshot(height).await?;
     let block = older.current_block().await.map_err(to_badgateway)?;
-
-    let reward_coin = older
-        .get_coin(CoinID::proposer_reward(height.into()))
-        .await
-        .map_err(to_badgateway)?;
-
-    let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
+    let reward_amount = client.get_reward_amount(height).await?;
 
     Body::from_json(&create_block_summary(block, reward_amount))
 }
@@ -336,7 +313,7 @@ pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body>
             output.push(res);
         }
     }
-    output.sort_unstable_by_key(|v| v.block_height());
+    output.sort_unstable_by_key(|v| v.block_parse("height"));
 
     Body::from_json(&output)
 }
