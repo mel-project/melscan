@@ -188,7 +188,7 @@ pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
     let older = last_snap.get_older(height.into()).await?;
     let tx = older.get_transaction(txhash).await?;
     Body::from_json(&tx.ok_or_else(notfound)?)
-}
+} 
 
 /// Get a particular coin
 #[tracing::instrument(skip(req))]
