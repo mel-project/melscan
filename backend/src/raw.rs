@@ -137,10 +137,7 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
     let last_snap = req.client().snapshot().await?;
     let mut futs = get_old_blocks(&last_snap, 50);
 
-    let blocks = futs.map(move |fut|{
-        let (block, reward) = fut?;
-        Ok(create_block_summary(block, reward))
-    });
+    let mut blocks: Vec<BlockSummary> = vec![];
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner.map_err(to_badgateway)?;
         blocks.push(create_block_summary(block, reward))

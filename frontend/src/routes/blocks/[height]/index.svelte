@@ -1,20 +1,5 @@
 <script context="module" lang="ts">
-	import type { LoadEvent } from '@sveltejs/kit';
-	import { melscan } from '@utils/common';
-
-	// import {loader} from '@utils/common'
-	// export const {refresh, load} = loader()
-	export let data;
-	export const load = (endpoint?: string) => async (event: LoadEvent) => {
-		let { url } = event;
-		console.log('loading');
-		return {
-			status: 200,
-			props: {
-				data: await melscan(endpoint)
-			}
-		};
-	};
+	export { load } from '@utils/common';
 </script>
 <script lang="ts">
     // export let network;
@@ -30,5 +15,4 @@
     // export let stakes_hash;
 </script>
 <template>
-	<div>{data}</div>
 </template>

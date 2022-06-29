@@ -4,12 +4,12 @@ import { invalidate } from "$app/navigation";
 import { getStores } from "$app/stores";
 import type {Load, LoadEvent} from "@sveltejs/kit/types"
 
-export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
+export const backendUrl = (endpoint) => 'http://127.0.0.1:13000/raw' + endpoint;
 
 export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
 
 export const url_mapping = {
-	'/': ['/raw/overview']
+	'/': ['/overview']
 }
 
 export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => {
@@ -17,7 +17,7 @@ export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => 
 	const response = await fetch(url);
 	// console.log(`requesting ${endpoint}`)
 	if (!response.ok) {
-		throw `failed to fetch '${endpoint}' data`;
+		throw `failed to fetch '${url}' data`;
 	}
 	let res = response.json()
 	return res;
