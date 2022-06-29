@@ -36,7 +36,7 @@ pub fn create_block_summary(block: Block, reward: CoinValue) -> BlockSummary {
                 .map(|v| v.weight(covenant_weight_from_bytes))
                 .sum(),
             reward_amount: reward.0,
-            transactions: transactions.clone(),
+            transactions: transactions.clone(), 
         }
 }
 
