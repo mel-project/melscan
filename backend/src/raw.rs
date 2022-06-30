@@ -9,7 +9,7 @@ use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, Header, TxHash};
+use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, Header, TxHash, Transaction, CoinDataHeight, PoolState};
 use tide::{Body, StatusCode};
 use tmelcrypt::HashVal;
 
@@ -128,41 +128,59 @@ impl ExtendedRequest for tide::Request<State> {
 /// Get the overview, which includes basically all the information that the homepage needs
 #[tracing::instrument(skip(req))]
 pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
-    #[derive(Serialize)]
-    struct Overview {
-        erg_per_mel: f64,
-        sym_per_mel: f64,
-        recent_blocks: Vec<BlockSummary>,
-    }
+    let height = match req.parse::<u64>("height"){
+    Ok(i) => Some(i),
+    Err(_) => None,
+};
+    let res = get_overview_raw(req.client(), height).await?;
+    Body::from_json(&res)
+}
 
-    let last_snap = match req.parse::<u64>("height"){
-        Ok(height) => req.client().older_snapshot(height).await?,   
-        Err(_) => req.client().snapshot().await?
+#[derive(Serialize)]
+pub struct Overview {
+    erg_per_mel: f64,
+    sym_per_mel: f64,
+    recent_blocks: Vec<BlockSummary>,
+}
+
+
+
+
+pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
+
+    let last_snap = match height{
+        Some(height) => client.older_snapshot(height).await?,   
+        None => client.snapshot().await?
     };
 
     let mut futs = get_old_blocks(&last_snap, 50);
 
     let mut blocks: Vec<BlockSummary> = vec![];
     while let Some(inner) = futs.next().await {
-        let (block, reward) = inner.map_err(to_badgateway)?;
+        let (block, reward) = inner?;
         blocks.push(create_block_summary(block, reward))
     }
 
     let erg_per_mel = get_exchange(&last_snap, Denom::Mel, Denom::Erg).await?;
     let sym_per_mel = get_exchange(&last_snap, Denom::Mel, Denom::Sym).await?;
 
-    Body::from_json(&Overview {
+    Ok(Overview {
         erg_per_mel,
         sym_per_mel,
         recent_blocks: blocks,
     })
 }
 
+
 /// Get the latest status
 #[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
-    let last_snap = req.client().snapshot().await?;
-    Body::from_json(&last_snap.current_header())
+    Body::from_json(&get_latest_raw(req.client()).await?)
+}
+
+pub async fn get_latest_raw(client: ValClient) -> anyhow::Result<Header> {
+    let last_snap = client.snapshot().await?;
+    anyhow::Ok(last_snap.current_header())
 }
 
 
@@ -179,56 +197,63 @@ pub async fn get_header(req: tide::Request<State>) -> tide::Result<Body> {
 pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.parse("height")?;
     let txhash: String = req.parse("txhash")?;
+    Body::from_json(&get_transaction_raw(req.client(), height, txhash).await?)
+} 
+
+pub async fn get_transaction_raw(client: ValClient, height: u64, txhash: String) -> anyhow::Result<Transaction>{
     let txhash: Vec<u8> = hex::decode(&txhash)?;
     let txhash: TxHash = HashVal(
         txhash
             .try_into()
-            .map_err(|_| anyhow::anyhow!("not the right length"))
-            .map_err(to_badreq)?,
+            .map_err(|_| anyhow::anyhow!("not the right length"))?,
     )
     .into();
-    let last_snap = req.state().val_client.snapshot().await?;
+    let last_snap = client.snapshot().await?;
     let older = last_snap.get_older(height.into()).await?;
     let tx = older.get_transaction(txhash).await?;
-    Body::from_json(&tx.ok_or_else(notfound)?)
-} 
-
+    tx.ok_or(anyhow::format_err!("TODO"))
+}
 /// Get a particular coin
 #[tracing::instrument(skip(req))]
 pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.parse("height")?;
     let coinid_string: String = req.parse("coinid")?;
+    Body::from_json(&get_coin_raw(req.client(), height, coinid_string).await?)
+}
+
+pub async fn get_coin_raw(client: ValClient, height: u64, coinid_string: String) -> anyhow::Result<CoinDataHeight> {
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
-        return Err(to_badreq(anyhow::anyhow!("bad coinid")));
+        return Err(anyhow::format_err!("bad coinid"));
     }
     let txhash: Vec<u8> = hex::decode(&coinid_exploded[0])?;
     let txhash: TxHash = HashVal(
         txhash
             .try_into()
-            .map_err(|_| anyhow::anyhow!("not the right length"))
-            .map_err(to_badreq)?,
+            .map_err(|_| anyhow::anyhow!("not the right length"))?,
     )
     .into();
-    let index: u8 = coinid_exploded[1].parse().map_err(to_badreq)?;
-    let older = req.state().val_client.older_snapshot(height.into()).await?;
+    let index: u8 = coinid_exploded[1].parse()?;
+    let older = client.older_snapshot(height.into()).await?;
     let cdh = older.get_coin(CoinID { txhash, index }).await?;
-    Body::from_json(&cdh.ok_or_else(notfound)?)
+    cdh.ok_or(anyhow::format_err!("TODO"))
 }
-
 /// Get a particular pool
 #[tracing::instrument(skip(req))]
 pub async fn get_pool(req: tide::Request<State>) -> tide::Result<Body> {
     let height: u64 = req.parse("height")?;
     let denom: Denom = req.parse("denom")?;
+    Body::from_json(&get_pool_raw(req.client(), height, denom).await?)
+}
 
-    let older = req.client().older_snapshot(height).await?;
+pub async fn get_pool_raw(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
+    let older = client.older_snapshot(height).await?;
     let cdh = older
         .get_pool(PoolKey::mel_and(denom))
-        .await
-        .map_err(to_badgateway)?;
-    Body::from_json(&cdh.ok_or_else(notfound)?)
+        .await?;
+    cdh.ok_or(anyhow::format_err!("TODO"))
 }
+
 
 /// Get a particular block
 #[tracing::instrument(skip(req))]
