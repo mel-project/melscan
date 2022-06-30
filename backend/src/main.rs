@@ -48,6 +48,7 @@ pub struct State {
 }
 
 #[tracing::instrument]
+#[tokio::main]
 async fn main_inner() -> anyhow::Result<()> {
     let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "melscan=debug,warn".into());
     std::env::set_var("RUST_LOG", log_conf);
@@ -84,46 +85,50 @@ async fn main_inner() -> anyhow::Result<()> {
         val_client: client,
     };
 
-    let mut app = tide::with_state(state);
-    let cors = CorsMiddleware::new()
-        .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
-        .allow_origin(Origin::from("*"))
-        .allow_credentials(false);
-    // Rendered paths
-    app.at("/robots.txt").get(|req| async {
-        let t = include_str!("robots.txt");
-        Ok(Body::from_string(t.to_string()))
-    });
-    app.at("/blocks/:height/:txhash").get(html::get_txpage);
-    // Raw paths
-    app.at("/raw/overview/:height").get(raw::get_overview);
-    app.at("/raw/overview").get(raw::get_overview);
-    app.at("/raw/latest").get(raw::get_latest);
-    app.at("/raw/blocks/:height").get(raw::get_block_summary);
-    app.at("/raw/blocks/:height/summary")
-        .get(raw::get_block_summary);
-    app.at("/raw/blocks/:height/full").get(raw::get_full_block);
-    app.at("/raw/blocks/:height/transactions/:txhash")
-        .get(raw::get_transaction);
-    app.at("/raw/blocks/:height/coins/:coinid")
-        .get(raw::get_coin);
-    app.at("/raw/blocks/:height/pools/:denom")
-        .get(raw::get_pool);
-    // app.at("/raw/pool-data-batch/:lowerblock").get(raw::get_pooldata);
-    app.at("/raw/pooldata/:denom_left/:denom_right/:lowerblock/:upperblock")
-        .get(raw::get_pooldata_range);
-    app.with(tide::utils::After(|mut res: tide::Response| async move {
-        if let Some(err) = res.error() {
-            // put the error string in the response
-            let err_str = format!("ERROR: {:?}", err);
-            log::warn!("{}", err_str);
-            res.set_body(err_str);
-        }
-        Ok(res)
-    }))
-    .with(cors);
-    tracing::info!("Starting REST endpoint at {}", args.listen);
-    app.listen(args.listen).await?;
+    // let mut app = tide::with_state(state.clone());
+    // let cors = CorsMiddleware::new()
+    //     .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
+    //     .allow_origin(Origin::from("*"))
+    //     .allow_credentials(false);
+    // // Rendered paths
+    // app.at("/robots.txt").get(|req| async {
+    //     let t = include_str!("robots.txt");
+    //     Ok(Body::from_string(t.to_string()))
+    // });
+    // app.at("/blocks/:height/:txhash").get(html::get_txpage);
+    // // Raw paths
+    // app.at("/raw/overview/:height").get(raw::get_overview);
+    // app.at("/raw/overview").get(raw::get_overview);
+    // app.at("/raw/latest").get(raw::get_latest);
+    // app.at("/raw/blocks/:height").get(raw::get_block_summary);
+    // app.at("/raw/blocks/:height/summary")
+    //     .get(raw::get_block_summary);
+    // app.at("/raw/blocks/:height/full").get(raw::get_full_block);
+    // app.at("/raw/blocks/:height/transactions/:txhash")
+    //     .get(raw::get_transaction);
+    // app.at("/raw/blocks/:height/coins/:coinid")
+    //     .get(raw::get_coin);
+    // app.at("/raw/blocks/:height/pools/:denom")
+    //     .get(raw::get_pool);
+    // // app.at("/raw/pool-data-batch/:lowerblock").get(raw::get_pooldata);
+    // app.at("/raw/pooldata/:denom_left/:denom_right/:lowerblock/:upperblock")
+    //     .get(raw::get_pooldata_range);
+    // app.with(tide::utils::After(|mut res: tide::Response| async move {
+    //     if let Some(err) = res.error() {
+    //         // put the error string in the response
+    //         let err_str = format!("ERROR: {:?}", err);
+    //         log::warn!("{}", err_str);
+    //         res.set_body(err_str);
+    //     }
+    //     Ok(res)
+    // }))
+    // .with(cors);
+    // tracing::info!("Starting REST endpoint at {}", args.listen);
+    // app.listen(args.listen).await?;
+
+    rweb::serve(raw::get_overview_rweb(state.val_client)).run(([127, 0, 0, 1], 13000)).await;
+
+
     Ok(())
 }
 

@@ -9,7 +9,7 @@ use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, Header, TxHash, Transaction, CoinDataHeight, PoolState};
+use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Transaction, CoinDataHeight, PoolState};
 use tide::{Body, StatusCode};
 use tmelcrypt::HashVal;
 
@@ -17,12 +17,16 @@ use crate::html::AsPoolDataItem;
 use crate::utils::*;
 use crate::{notfound, to_badgateway, to_badreq, State};
 use async_trait::async_trait;
-use rweb;
+use rweb::{self, get};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
 
-#[derive(serde::Serialize)]
+
+#[derive(serde::Serialize, rweb::Schema)]
+pub struct Header(pub themelio_structs::Header);
+
+#[derive(serde::Serialize, rweb::Schema)]
 // A block summary for the homepage.
 pub struct BlockSummary {
     pub header: Header,
@@ -31,7 +35,7 @@ pub struct BlockSummary {
     pub transactions: Vec<TransactionSummary>,
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord,  rweb::Schema)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
     pub hash: String,
@@ -40,6 +44,14 @@ pub struct TransactionSummary {
     pub weight: u128,
     pub mel_moved: u128,
 }
+
+#[derive(Serialize, rweb::Schema)]
+pub struct Overview {
+    erg_per_mel: f64,
+    sym_per_mel: f64,
+    recent_blocks: Vec<BlockSummary>,
+}
+
 
 #[async_trait]
 trait ExtendedClient {
@@ -73,7 +85,7 @@ impl ExtendedClient for ValClient {
             .get_history(height.into())
             .await?
             .context(format!("Unable to get history at height {height}"));
-        hist
+        anyhow::Ok(Header(hist?))
     }
     async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue> {
         let reward_coin = self
@@ -136,15 +148,16 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
     Body::from_json(&res)
 }
 
-#[derive(Serialize)]
-pub struct Overview {
-    erg_per_mel: f64,
-    sym_per_mel: f64,
-    recent_blocks: Vec<BlockSummary>,
+
+
+#[get("/raw/overview/{height}")]
+pub async fn get_overview_rweb(#[data] client: ValClient, height: u64) -> Result<rweb::Json<Overview>, warp::Rejection> {
+    let overview = match get_overview_raw(client, Some(height)).await{
+        Ok(overview) => overview,
+        Err(err) => return Err(warp::reject()),
+    };
+    Ok(overview.into())
 }
-
-
-
 
 pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
 
@@ -180,7 +193,7 @@ pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
 
 pub async fn get_latest_raw(client: ValClient) -> anyhow::Result<Header> {
     let last_snap = client.snapshot().await?;
-    anyhow::Ok(last_snap.current_header())
+    anyhow::Ok(Header(last_snap.current_header()))
 }
 
 

@@ -1,5 +1,5 @@
 
-use crate::{html::{MicroUnit}, raw::{BlockSummary, TransactionSummary}};
+use crate::{html::{MicroUnit}, raw::{BlockSummary, TransactionSummary, Header}};
 use futures_util::{stream::FuturesOrdered, Future};
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;
@@ -29,7 +29,7 @@ pub fn get_old_blocks(
 pub fn create_block_summary(block: Block, reward: CoinValue) -> BlockSummary {
         let transactions: Vec<TransactionSummary> = get_transactions(&block);
         BlockSummary {
-            header: block.header,
+            header: Header(block.header),
             total_weight: block
                 .transactions
                 .iter()
