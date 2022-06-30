@@ -33,7 +33,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{(1 /erg_per_mel).toFixed(5)} MEL
+				{(erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>

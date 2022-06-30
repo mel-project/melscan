@@ -134,7 +134,11 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
         recent_blocks: Vec<BlockSummary>,
     }
 
-    let last_snap = req.client().snapshot().await?;
+    let last_snap = match req.parse::<u64>("height"){
+        Ok(height) => req.client().older_snapshot(height).await?,   
+        Err(_) => req.client().snapshot().await?
+    };
+
     let mut futs = get_old_blocks(&last_snap, 50);
 
     let mut blocks: Vec<BlockSummary> = vec![];
@@ -159,6 +163,7 @@ pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
     let last_snap = req.client().snapshot().await?;
     Body::from_json(&last_snap.current_header())
 }
+
 
 /// Get a particular block header
 #[tracing::instrument(skip(req))]
