@@ -17,6 +17,7 @@ use crate::html::AsPoolDataItem;
 use crate::utils::*;
 use crate::{notfound, to_badgateway, to_badreq, State};
 use async_trait::async_trait;
+use rweb;
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
