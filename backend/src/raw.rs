@@ -151,12 +151,12 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
 
 
 #[get("/raw/overview/{height}")]
-pub async fn get_overview_rweb(#[data] client: ValClient, height: u64) -> Result<rweb::Json<Overview>, warp::Rejection> {
-    let overview = match get_overview_raw(client, Some(height)).await{
-        Ok(overview) => overview,
-        Err(err) => return Err(warp::reject()),
-    };
-    Ok(overview.into())
+pub async fn get_overview_rweb(#[data] client: ValClient, height: u64) -> Result<String, warp::Rejection> {
+    // let overview = match get_overview_raw(client, Some(height)).await{
+    //     Ok(overview) => overview,
+    //     Err(err) => return Err(warp::reject()),
+    // };
+    Ok("Hello".into())
 }
 
 pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {

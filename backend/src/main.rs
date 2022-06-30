@@ -18,9 +18,9 @@ mod indexer;
 mod raw;
 mod utils;
 
-fn main() -> anyhow::Result<()> {
-    smol::block_on(main_inner())
-}
+// fn main() -> anyhow::Result<()> {
+//     smol::block_on(main_inner())
+// }
 
 #[derive(StructOpt)]
 pub struct Args {
@@ -48,7 +48,8 @@ pub struct State {
 }
 
 #[tracing::instrument]
-async fn main_inner() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "melscan=debug,warn".into());
     std::env::set_var("RUST_LOG", log_conf);
     tracing_subscriber::fmt()
