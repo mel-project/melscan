@@ -48,7 +48,6 @@ pub struct State {
 }
 
 #[tracing::instrument]
-#[tokio::main]
 async fn main_inner() -> anyhow::Result<()> {
     let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "melscan=debug,warn".into());
     std::env::set_var("RUST_LOG", log_conf);
