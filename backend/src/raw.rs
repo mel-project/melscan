@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::convert::Infallible;
 use std::str::FromStr;
 use std::{convert::TryInto, sync::Arc};
 
@@ -19,10 +21,42 @@ use crate::{notfound, to_badgateway, to_badreq, State};
 use async_trait::async_trait;
 use rweb::{self, get};
 
+
+
+type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
+
+
+// the reusable helper function
+async fn generic_fallible<R: warp::Reply + 'static>(
+    f: impl Future<Output = anyhow::Result<R>>,
+) -> DynReply {
+    match f.await {
+        Ok(res) => Ok(Box::new(res)),
+        Err(err) => {
+            let mut map = HashMap::new();
+            map.insert("error", err.to_string());
+            Ok(Box::new(rweb::reply::with_status(
+                rweb::reply::json(&map),
+                rweb::hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            )))
+        }
+    }
+}
+
+
+async fn generic_fallible_json<R: Serialize>(
+    data: impl Future<Output= anyhow::Result<R>>
+) -> DynReply{
+    generic_fallible(async {
+        let json = rweb::reply::json(&data.await?);
+        Ok(json)
+    }).await
+}
+
+
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
-
-
 #[derive(serde::Serialize, rweb::Schema)]
 pub struct Header(pub themelio_structs::Header);
 
@@ -150,13 +184,9 @@ pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
 
 
 
-#[get("/raw/overview/{height}")]
-pub async fn get_overview_rweb(#[data] client: ValClient, height: u64) -> Result<String, warp::Rejection> {
-    // let overview = match get_overview_raw(client, Some(height)).await{
-    //     Ok(overview) => overview,
-    //     Err(err) => return Err(warp::reject()),
-    // };
-    Ok("Hello".into())
+#[get("/raw/overview")]
+pub async fn get_overview_rweb(#[data] client: ValClient) -> DynReply {
+    generic_fallible_json(get_overview_raw(client, None)).await
 }
 
 pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {

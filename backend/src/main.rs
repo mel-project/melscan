@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use dashmap::DashMap;
+use raw::get_overview_rweb;
 use std::fmt::Debug;
 use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
@@ -46,6 +47,33 @@ pub struct State {
     raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, Option<html::PoolDataItem>>>,
     val_client: ValClient,
 }
+
+macro_rules! routes {
+    ( $s:expr ) => {
+        // This is used when you use routes! with a single route without any data; I.e routes!(ping)
+        $s()
+    };
+    ( $inject:expr; $s:expr ) => {
+        // This is used when you use routes! with a single route and want to pass some data to it; I.e routes!(db_connection; get_user)
+        $s($inject)
+    };
+    ( $s:expr, $( $x:expr ),* ) => {
+        // This is used when you use routes! with multiple routes without any data: I.e routes!(ping, get_users, get_users)
+            $s()
+            $(
+                .or($x())
+            )*
+    };
+    ( $inject:expr; $s:expr, $( $x:expr ),* ) => {
+        // This is used when you use routes! with multiple routes and want to pass some data to it: I.e routes!(db_connection; ping, get_users, get_users)
+            $s(inject)
+            $(
+                .or($x($inject))
+            )*
+    };
+}
+
+
 
 #[tracing::instrument]
 #[tokio::main]
@@ -122,15 +150,19 @@ async fn main() -> anyhow::Result<()> {
     //     }
     //     Ok(res)
     // }))
-    // .with(cors);
+    // .with(cors);let routes = 
     // tracing::info!("Starting REST endpoint at {}", args.listen);
     // app.listen(args.listen).await?;
-
-    rweb::serve(raw::get_overview_rweb(state.val_client)).run(([127, 0, 0, 1], 13000)).await;
+    
+    let client = state.val_client.clone();
+    let routes = routes![client.clone(); get_overview_rweb];
+    rweb::serve(routes).run(([127, 0, 0, 1], 13000)).await;
 
 
     Ok(())
 }
+
+
 
 fn to_badreq<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
     tide::Error::new(StatusCode::BadRequest, e)
