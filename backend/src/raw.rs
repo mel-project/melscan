@@ -146,7 +146,7 @@ async fn get_exchange(
 
 
 
-pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
+pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
 
     let last_snap = match height{
         Some(height) => client.older_snapshot(height).await?,   
@@ -173,12 +173,12 @@ pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow:
 
 
 
-pub async fn get_latest_raw(client: ValClient) -> anyhow::Result<Header> {
+pub async fn get_latest(client: ValClient) -> anyhow::Result<Header> {
     let last_snap = client.snapshot().await?;
     anyhow::Ok(Header(last_snap.current_header()))
 }
 
-pub async fn get_transaction_raw(client: ValClient, height: u64, txhash: String) -> anyhow::Result<Transaction>{
+pub async fn get_transaction(client: ValClient, height: u64, txhash: String) -> anyhow::Result<Transaction>{
     let txhash: Vec<u8> = hex::decode(&txhash)?;
     let txhash: TxHash = HashVal(
         txhash
@@ -191,7 +191,7 @@ pub async fn get_transaction_raw(client: ValClient, height: u64, txhash: String)
     let tx = older.get_transaction(txhash).await?;
     tx.ok_or(anyhow::format_err!("TODO"))
 }
-pub async fn get_coin_raw(client: ValClient, height: u64, coinid_string: String) -> anyhow::Result<CoinDataHeight> {
+pub async fn get_coin(client: ValClient, height: u64, coinid_string: String) -> anyhow::Result<CoinDataHeight> {
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
         return Err(anyhow::format_err!("bad coinid"));
@@ -209,7 +209,7 @@ pub async fn get_coin_raw(client: ValClient, height: u64, coinid_string: String)
     cdh.ok_or(anyhow::format_err!("TODO"))
 }
 
-pub async fn get_pool_raw(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
+pub async fn get_pool(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
     let older = client.older_snapshot(height).await?;
     let cdh = older
         .get_pool(PoolKey::mel_and(denom))
@@ -220,7 +220,7 @@ pub async fn get_pool_raw(client: ValClient, height: u64, denom: Denom) -> anyho
 
 /// Get a particular block
 // #[tracing::instrument(skip(req))]
-pub async fn get_full_block_raw(client: ValClient, height: u64) -> anyhow::Result<Block> {
+pub async fn get_full_block(client: ValClient, height: u64) -> anyhow::Result<Block> {
     let older = client.older_snapshot(height).await?;
     let block = older.current_block().await?;
     Ok(block)
@@ -228,7 +228,7 @@ pub async fn get_full_block_raw(client: ValClient, height: u64) -> anyhow::Resul
 
 /// Get block summary
 // #[tracing::instrument(skip(req))]
-pub async fn get_block_summary_raw(client: ValClient, height: u64) -> anyhow::Result<BlockSummary> {
+pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result<BlockSummary> {
     let older = client.older_snapshot(height).await?;
     let block = older.current_block().await?;
     let reward_amount = client.get_reward_amount(height).await?;
@@ -253,15 +253,6 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot:
         }
     };
 
-    // let mut missing: Vec<BlockHeight> = Vec::new();
-    // for height in &blockheight_interval {
-    //     let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
-    //     if !cache.contains_key(&cache_key) {
-    //         missing.push((*height).into())
-    //     } else {
-    //         log::debug!("cache hit {}", height);
-    //     }
-    // }
 
     let semaphore = Arc::new(Semaphore::new(128));
     let mut item_futs = FuturesUnordered::new();
@@ -284,11 +275,11 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot:
 
             //     }
             // };
-            let func = async {
-                let item:anyhow::Result<Option<PoolDataItem>> = snapshot.get_older_pool_data_item(pool_key, *height).await.map_err(|err| anyhow::format_err!("Failed to get snapshot"));
-                item
-            };
-            cache.get_or_try_fill(&cache_key, func).await
+            cache.get_or_try_fill(&cache_key, async {
+                snapshot.get_older_pool_data_item(pool_key, *height)
+                    .await
+                    .map_err(|err| anyhow::format_err!("Failed to get snapshot"))
+            }).await
         });
     }
     // Gather the stuff

@@ -107,6 +107,12 @@ async fn main() -> anyhow::Result<()> {
         val_client: client,
     };
 
+    // regex to turn these into rweb endpoints: app.at\(("[^"]+")\)[\s]?.get\(raw::([^)]+)\);
+    // replace :
+        // #[get($1)]
+        // pub async fn $2(#[data] client: ValClient) -> DynReply {
+        //      generic_fallible_json($2(client)).await
+        //  } 
     // let mut app = tide::with_state(state.clone());
     // let cors = CorsMiddleware::new()
     //     .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
