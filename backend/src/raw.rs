@@ -1,29 +1,26 @@
-
-use std::time::{UNIX_EPOCH, SystemTime};
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{convert::TryInto, sync::Arc};
 
-use anyhow::{Context};
+use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
-use num_traits::{ToPrimitive};
-use serde::{Serialize, Deserialize};
+use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use themelio_nodeprot::{ValClient, ValClientSnapshot};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, Denom, TxHash, Transaction, CoinDataHeight, PoolState, MICRO_CONVERTER, PoolKey};
+use themelio_structs::{
+    Block, BlockHeight, CoinDataHeight, CoinID, Denom, PoolKey, PoolState, Transaction, TxHash,
+    MICRO_CONVERTER,
+};
 use tmelcrypt::HashVal;
 
-use crate::utils::*;
+use crate::{globals::CLIENT, utils::*};
 
 use async_trait::async_trait;
 
-
-
-
-
-#[derive(PartialEq, Eq, Hash, Clone)]
-
-#[derive(Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
+
 #[derive(serde::Serialize, rweb::Schema)]
 pub struct Header(pub themelio_structs::Header);
 
@@ -36,7 +33,7 @@ pub struct BlockSummary {
     pub transactions: Vec<TransactionSummary>,
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord,  rweb::Schema)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, rweb::Schema)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
     pub hash: String,
@@ -52,7 +49,6 @@ pub struct Overview {
     sym_per_mel: f64,
     recent_blocks: Vec<BlockSummary>,
 }
-
 
 // 2 million cached pooldataitems is 64 mb
 // 1 item is 256 bits
@@ -89,7 +85,8 @@ impl AsPoolDataItem for ValClientSnapshot {
                 height,
                 price,
                 liquidity,
-                ergs_per_mel: themelio_stf::dosc_to_erg(BlockHeight(height), 10000) as f64 / 10000.0,
+                ergs_per_mel: themelio_stf::dosc_to_erg(BlockHeight(height), 10000) as f64
+                    / 10000.0,
             }
         }))
     }
@@ -124,7 +121,6 @@ impl PoolDataItem {
     }
 }
 
-
 async fn get_exchange(
     last_snap: &ValClientSnapshot,
     denom1: Denom,
@@ -133,23 +129,16 @@ async fn get_exchange(
     let pool = last_snap
         .get_pool(PoolKey::new(denom1, denom2))
         .await
-        .context(format!("Unable to get exchange for {denom1}/{denom2}"))?.unwrap();
-    let micro = pool
-    .implied_price()
-    .to_f64()
-    .unwrap_or_default();
+        .context(format!("Unable to get exchange for {denom1}/{denom2}"))?
+        .unwrap();
+    let micro = pool.implied_price().to_f64().unwrap_or_default();
     Ok(micro)
 }
 
-
-
-
-
-pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
-
-    let last_snap = match height{
-        Some(height) => client.older_snapshot(height).await?,   
-        None => client.snapshot().await?
+pub async fn get_overview(height: Option<u64>) -> anyhow::Result<Overview> {
+    let last_snap = match height {
+        Some(height) => CLIENT.older_snapshot(height).await?,
+        None => CLIENT.snapshot().await?,
     };
 
     let mut futs = get_old_blocks(&last_snap, 50);
@@ -170,14 +159,16 @@ pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Res
     })
 }
 
-
-
-pub async fn get_latest(client: ValClient) -> anyhow::Result<Header> {
-    let last_snap = client.snapshot().await?;
+pub async fn get_latest() -> anyhow::Result<Header> {
+    let last_snap = CLIENT.snapshot().await?;
     anyhow::Ok(Header(last_snap.current_header()))
 }
 
-pub async fn get_transaction(client: ValClient, height: u64, txhash: String) -> anyhow::Result<Transaction>{
+pub async fn get_transaction(
+    client: ValClient,
+    height: u64,
+    txhash: String,
+) -> anyhow::Result<Transaction> {
     let txhash: Vec<u8> = hex::decode(&txhash)?;
     let txhash: TxHash = HashVal(
         txhash
@@ -190,7 +181,11 @@ pub async fn get_transaction(client: ValClient, height: u64, txhash: String) -> 
     let tx = older.get_transaction(txhash).await?;
     tx.ok_or(anyhow::format_err!("TODO"))
 }
-pub async fn get_coin(client: ValClient, height: u64, coinid_string: String) -> anyhow::Result<CoinDataHeight> {
+pub async fn get_coin(
+    client: ValClient,
+    height: u64,
+    coinid_string: String,
+) -> anyhow::Result<CoinDataHeight> {
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
         return Err(anyhow::format_err!("bad coinid"));
@@ -210,12 +205,9 @@ pub async fn get_coin(client: ValClient, height: u64, coinid_string: String) -> 
 
 pub async fn get_pool(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
     let older = client.older_snapshot(height).await?;
-    let cdh = older
-        .get_pool(PoolKey::mel_and(denom))
-        .await?;
+    let cdh = older.get_pool(PoolKey::mel_and(denom)).await?;
     cdh.ok_or(anyhow::format_err!("TODO"))
 }
-
 
 /// Get a particular block
 // #[tracing::instrument(skip(req))]
@@ -234,12 +226,15 @@ pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result
     Ok(create_block_summary(block, reward_amount))
 }
 
-
-pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot::cache::AsyncCache>, left: Denom, right: Denom, upper_block: u64, lower_block: u64) -> anyhow::Result<Vec<PoolDataItem>> {
-
-
-    let pool_key = 
-        PoolKey { left, right };
+pub async fn get_pooldata_range(
+    client: ValClient,
+    cache: &Arc<themelio_nodeprot::cache::AsyncCache>,
+    left: Denom,
+    right: Denom,
+    upper_block: u64,
+    lower_block: u64,
+) -> anyhow::Result<Vec<PoolDataItem>> {
+    let pool_key = PoolKey { left, right };
     let snapshot = &client.snapshot().await?;
 
     let blockheight_interval = {
@@ -251,7 +246,6 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot:
                 .collect()
         }
     };
-
 
     let semaphore = Arc::new(Semaphore::new(128));
     let mut item_futs = FuturesUnordered::new();
@@ -274,11 +268,14 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot:
 
             //     }
             // };
-            cache.get_or_try_fill(&cache_key, async {
-                snapshot.get_older_pool_data_item(pool_key, *height)
-                    .await
-                    .map_err(|err| anyhow::format_err!("Failed to get snapshot"))
-            }).await
+            cache
+                .get_or_try_fill(&cache_key, async {
+                    snapshot
+                        .get_older_pool_data_item(pool_key, *height)
+                        .await
+                        .map_err(|err| anyhow::format_err!("Failed to get snapshot"))
+                })
+                .await
         });
     }
     // Gather the stuff
@@ -295,7 +292,7 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot:
     }
     output.sort_unstable_by_key(|v| v.block_height());
 
-   Ok(output)
+    Ok(output)
 }
 
 // pub async fn get_pooldata(req: tide::Request<State>) -> tide::Result<Body> {
