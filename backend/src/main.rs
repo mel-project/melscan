@@ -1,20 +1,14 @@
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use dashmap::DashMap;
-use raw::get_overview_rweb;
 use std::fmt::Debug;
 use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
-use tide::{
-    http::headers::HeaderValue,
-    security::{CorsMiddleware, Origin},
-    Body, StatusCode,
-};
+
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::indexer::Indexer;
-mod html;
 mod indexer;
 mod raw;
 mod utils;
@@ -44,7 +38,7 @@ pub struct Args {
 
 #[derive(Clone)]
 pub struct State {
-    raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, Option<html::PoolDataItem>>>,
+    // raw_pooldata_cache: Arc<DashMap<raw::PoolInfoKey, Option<html::PoolDataItem>>>,
     val_client: ValClient,
 }
 
@@ -109,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
         .map(|path| Indexer::new(&path, client.clone()));
 
     let state = State {
-        raw_pooldata_cache: DashMap::new().into(),
+        // raw_pooldata_cache: DashMap::new().into(),
         val_client: client,
     };
 
@@ -164,14 +158,3 @@ async fn main() -> anyhow::Result<()> {
 
 
 
-fn to_badreq<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
-    tide::Error::new(StatusCode::BadRequest, e)
-}
-
-fn to_badgateway<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
-    tide::Error::new(StatusCode::BadGateway, e)
-}
-
-fn notfound() -> tide::Error {
-    tide::Error::new(StatusCode::NotFound, anyhow::anyhow!("not found"))
-}

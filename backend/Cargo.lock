@@ -1745,7 +1745,7 @@ dependencies = [
  "stdcode",
  "structopt",
  "themelio-bootstrap",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.11.3",
  "themelio-stf",
  "themelio-structs",
  "tide",
@@ -2058,6 +2058,32 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-sys 0.34.0",
+]
+
+[[package]]
+name = "parse-display"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "813e91c6232dbeb2e9deba0eb0dc5c967bd6f380676fd34419f9ddd71411faa7"
+dependencies = [
+ "once_cell",
+ "parse-display-derive",
+ "regex",
+]
+
+[[package]]
+name = "parse-display-derive"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "007ed61a69cf7d9b95cc5dc18489dbb4f70d4adb0a0c100e2dd46f0be241711a"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "regex-syntax",
+ "structmeta",
+ "syn",
 ]
 
 [[package]]
@@ -2874,6 +2900,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
+name = "structmeta"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bd9c2155aa89fb2c2cb87d99a610c689e7c47099b3e9f1c8a8f53faf4e3d2e3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "structmeta-derive",
+ "syn",
+]
+
+[[package]]
+name = "structmeta-derive"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bafede0d0a2f21910f36d47b1558caae3076ed80f6f3ad0fc85a91e6ba7e5938"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "structopt"
 version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2988,7 +3037,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6569a535530b640cfc67c26f94d913278e3b2bfb483b5ab95418a169f8e824ce"
 dependencies = [
  "once_cell",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.10.14",
  "themelio-structs",
 ]
 
@@ -3014,6 +3063,33 @@ dependencies = [
  "smolscale",
  "stdcode",
  "themelio-stf",
+ "themelio-structs",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "themelio-nodeprot"
+version = "0.11.3"
+dependencies = [
+ "anyhow",
+ "arrayref",
+ "async-recursion",
+ "async-trait",
+ "bytes",
+ "derivative",
+ "hex",
+ "log",
+ "lru",
+ "melnet",
+ "novasmt",
+ "once_cell",
+ "parking_lot 0.12.0",
+ "rustc-hash",
+ "serde",
+ "smol",
+ "smolscale",
+ "stdcode",
  "themelio-structs",
  "thiserror",
  "tmelcrypt",
@@ -3060,9 +3136,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-structs"
-version = "0.2.2"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d7297c15be4b14cea47b35f1e2fe675411d23fe431ab9f6da93ddf9c9e69e7e"
+checksum = "86cd48c00eadc69095ad7b9b1b36572e293b12376cacbee9f884a60fdbf2cf41"
 dependencies = [
  "arbitrary",
  "derivative",
@@ -3070,6 +3146,7 @@ dependencies = [
  "hex",
  "num",
  "num_enum",
+ "parse-display",
  "serde",
  "serde_repr",
  "stdcode",

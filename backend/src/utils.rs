@@ -1,5 +1,5 @@
 
-use crate::{html::{MicroUnit}, raw::{BlockSummary, TransactionSummary, Header}};
+use crate::raw::{BlockSummary, TransactionSummary, Header};
 use futures_util::{stream::FuturesOrdered, Future};
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;

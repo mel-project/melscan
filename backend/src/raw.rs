@@ -15,9 +15,8 @@ use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Tra
 use tide::{Body, StatusCode};
 use tmelcrypt::HashVal;
 
-use crate::html::AsPoolDataItem;
 use crate::utils::*;
-use crate::{notfound, to_badgateway, to_badreq, State};
+use crate::{State};
 use async_trait::async_trait;
 use rweb::{self, get};
 
@@ -86,14 +85,20 @@ pub struct Overview {
     recent_blocks: Vec<BlockSummary>,
 }
 
-
 #[async_trait]
-trait ExtendedClient {
+trait TestTrait {
+    async fn snapshot(&self) -> ValClientSnapshot;
+}
+#[async_trait]
+trait ExtendedClient: TestTrait {
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>;
     async fn get_history(&self, height: u64) -> anyhow::Result<Header>;
     async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue>;
 }
 
+struct ExtendedValClient {
+    val_client: ValClient
+}
 #[async_trait]
 trait ExtendedRequest {
     fn client(&self) -> ValClient;
@@ -101,10 +106,20 @@ trait ExtendedRequest {
     where
         T: FromStr;
 }
+
+
 #[async_trait]
-impl ExtendedClient for ValClient {
+impl TestTrait for ExtendedValClient{
+    async fn snapshot(&self) -> ValClientSnapshot{ 
+        todo!()
+    }
+}
+
+
+#[async_trait]
+impl ExtendedClient for ExtendedValClient {
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot> {
-        let older = self
+        let older = self.val_client
             .snapshot()
             .await?
             .get_older(height.into())
@@ -114,7 +129,7 @@ impl ExtendedClient for ValClient {
         Ok(older)
     }
     async fn get_history(&self, height: u64) -> anyhow::Result<Header> {
-        let snapshot = self.snapshot().await?;
+        let snapshot = self.val_client.snapshot().await?;
         let hist = snapshot
             .get_history(height.into())
             .await?
@@ -138,14 +153,15 @@ async fn get_exchange(
     denom1: Denom,
     denom2: Denom,
 ) -> anyhow::Result<f64> {
-    Ok(last_snap
+    let pool = last_snap
         .get_pool(PoolKey::new(denom1, denom2))
         .await
-        .context(format!("Unable to get exchange for {denom1}/{denom2}"))?
-        .unwrap()
-        .implied_price()
-        .to_f64()
-        .unwrap_or_default())
+        .context(format!("Unable to get exchange for {denom1}/{denom2}"))?.unwrap();
+    let micro = pool
+    .implied_price()
+    .to_f64()
+    .unwrap_or_default();
+    Ok(micro)
 }
 
 #[async_trait]
@@ -189,11 +205,11 @@ pub async fn get_overview_rweb(#[data] client: ValClient) -> DynReply {
     generic_fallible_json(get_overview_raw(client, None)).await
 }
 
-pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
+pub async fn get_overview_raw(client: ExtendedClient, height: Option<u64>) -> anyhow::Result<Overview> {
 
     let last_snap = match height{
         Some(height) => client.older_snapshot(height).await?,   
-        None => client.snapshot().await?
+        None => client.val_client.snapshot().await?
     };
 
     let mut futs = get_old_blocks(&last_snap, 50);
@@ -299,27 +315,23 @@ pub async fn get_pool_raw(client: ValClient, height: u64, denom: Denom) -> anyho
 
 
 /// Get a particular block
-#[tracing::instrument(skip(req))]
-pub async fn get_full_block(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.parse("height")?;
-    let older = req.client().older_snapshot(height).await?;
-    let block = older.current_block().await.map_err(to_badgateway)?;
-    Body::from_json(&block)
+// #[tracing::instrument(skip(req))]
+pub async fn get_full_block_raw(client: ValClient, height: u64) -> anyhow::Result<Block> {
+    let older = client.older_snapshot(height).await?;
+    let block = older.current_block().await?;
+    Ok(block)
 }
 
 /// Get block summary
-#[tracing::instrument(skip(req))]
-pub async fn get_block_summary(req: tide::Request<State>) -> tide::Result<Body> {
-    let height = req.parse("height")?;
-    let client = req.client();
+// #[tracing::instrument(skip(req))]
+pub async fn get_block_summary_raw(client: ValClient, height: u64) -> anyhow::Result<BlockSummary> {
     let older = client.older_snapshot(height).await?;
-    let block = older.current_block().await.map_err(to_badgateway)?;
+    let block = older.current_block().await?;
     let reward_amount = client.get_reward_amount(height).await?;
-
-    Body::from_json(&create_block_summary(block, reward_amount))
+    Ok(create_block_summary(block, reward_amount))
 }
 
-pub async fn get_pooldata_range(req: tide::Request<State>) -> tide::Result<Body> {
+pub async fn get_pooldata_range(client: ExtendedClient) -> tide::Result<Body> {
     let state = req.state();
     let cache = &state.raw_pooldata_cache;
 
