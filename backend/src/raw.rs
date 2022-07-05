@@ -1,62 +1,29 @@
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::str::FromStr;
+
 use std::time::{UNIX_EPOCH, SystemTime};
 use std::{convert::TryInto, sync::Arc};
 
-use anyhow::{format_err, Context};
+use anyhow::{Context};
 use dashmap::DashMap;
 use futures_util::stream::FuturesUnordered;
-use num_traits::{Inv, ToPrimitive};
-use serde::Serialize;
+use num_traits::{ToPrimitive};
+use serde::{Serialize, Deserialize};
 use themelio_nodeprot::{ValClient, ValClientSnapshot};
-use themelio_stf::{melvm::covenant_weight_from_bytes};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Transaction, CoinDataHeight, PoolState, MICRO_CONVERTER, PoolKey};
-use tide::{Body, StatusCode};
+use themelio_structs::{Block, BlockHeight, CoinID, Denom, TxHash, Transaction, CoinDataHeight, PoolState, MICRO_CONVERTER, PoolKey};
 use tmelcrypt::HashVal;
 
 use crate::utils::*;
-use crate::{State};
+
 use async_trait::async_trait;
-use rweb::{self, get};
 
 
-
-type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
-
-
-// the reusable helper function
-async fn generic_fallible<R: warp::Reply + 'static>(
-    f: impl Future<Output = anyhow::Result<R>>,
-) -> DynReply {
-    match f.await {
-        Ok(res) => Ok(Box::new(res)),
-        Err(err) => {
-            let mut map = HashMap::new();
-            map.insert("error", err.to_string());
-            Ok(Box::new(rweb::reply::with_status(
-                rweb::reply::json(&map),
-                rweb::hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            )))
-        }
-    }
-}
-
-
-async fn generic_fallible_json<R: Serialize>(
-    data: impl Future<Output= anyhow::Result<R>>
-) -> DynReply{
-    generic_fallible(async {
-        let json = rweb::reply::json(&data.await?);
-        Ok(json)
-    }).await
-}
 
 
 
 #[derive(PartialEq, Eq, Hash, Clone)]
+
+#[derive(Serialize, Deserialize)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
 #[derive(serde::Serialize, rweb::Schema)]
 pub struct Header(pub themelio_structs::Header);
@@ -90,7 +57,7 @@ pub struct Overview {
 
 // 2 million cached pooldataitems is 64 mb
 // 1 item is 256 bits
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PoolDataItem {
     date: u64,
     height: u64,
@@ -178,10 +145,6 @@ async fn get_exchange(
 
 
 
-#[get("/raw/overview")]
-pub async fn get_overview_rweb(#[data] client: ValClient) -> DynReply {
-    generic_fallible_json(get_overview_raw(client, None)).await
-}
 
 pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
 
@@ -273,7 +236,7 @@ pub async fn get_block_summary_raw(client: ValClient, height: u64) -> anyhow::Re
 }
 
 
-pub async fn get_pooldata_range(client: ValClient,cache: &Arc<DashMap<PoolInfoKey, Option<PoolDataItem>>>, left: Denom, right: Denom, upper_block: u64, lower_block: u64) -> tide::Result<Body> {
+pub async fn get_pooldata_range(client: ValClient,cache: &Arc<themelio_nodeprot::cache::AsyncCache>, left: Denom, right: Denom, upper_block: u64, lower_block: u64) -> anyhow::Result<Vec<PoolDataItem>> {
 
 
     let pool_key = 
@@ -307,17 +270,25 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<DashMap<PoolInfoKe
         item_futs.push(async move {
             let _guard = semaphore.acquire().await;
             let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
-            if cache.contains_key(&cache_key) {
-                log::debug!("cache hit {}", height);
-                let item = cache.get(&cache_key).unwrap().value().clone();
-                Ok(item)
-            } else {
-                log::debug!("cache miss {} ({})", height, cache.len());
-                let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
-                cache.insert(cache_key, item.clone());
-                drop(_guard);
-                tide::Result::Ok(item)
-            }
+            // let item = {
+            //     if cache.contains_key(&cache_key) {
+            //         log::debug!("cache hit {}", height);
+            //         let item = cache.get(&cache_key).unwrap().value().clone();
+            //         item
+            //     } else {
+            //         log::debug!("cache miss {} ({})", height, cache.len());
+            //         let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
+            //         cache.insert(cache_key, item.clone());
+            //         drop(_guard);
+            //         item
+
+            //     }
+            // };
+            let func = async {
+                let item:anyhow::Result<Option<PoolDataItem>> = snapshot.get_older_pool_data_item(pool_key, *height).await.map_err(|err| anyhow::format_err!("Failed to get snapshot"));
+                item
+            };
+            cache.get_or_try_fill(&cache_key, func).await
         });
     }
     // Gather the stuff
@@ -334,7 +305,7 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<DashMap<PoolInfoKe
     }
     output.sort_unstable_by_key(|v| v.block_height());
 
-    Body::from_json(&output)
+   Ok(output)
 }
 
 // pub async fn get_pooldata(req: tide::Request<State>) -> tide::Result<Body> {
