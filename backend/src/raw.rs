@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::str::FromStr;
+use std::time::{UNIX_EPOCH, SystemTime};
 use std::{convert::TryInto, sync::Arc};
 
 use anyhow::{format_err, Context};
+use dashmap::DashMap;
 use futures_util::stream::FuturesUnordered;
 use num_traits::{Inv, ToPrimitive};
 use serde::Serialize;
@@ -11,7 +13,7 @@ use themelio_nodeprot::{ValClient, ValClientSnapshot};
 use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Transaction, CoinDataHeight, PoolState};
+use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Transaction, CoinDataHeight, PoolState, MICRO_CONVERTER};
 use tide::{Body, StatusCode};
 use tmelcrypt::HashVal;
 
@@ -86,11 +88,7 @@ pub struct Overview {
 }
 
 #[async_trait]
-trait TestTrait {
-    async fn snapshot(&self) -> ValClientSnapshot;
-}
-#[async_trait]
-trait ExtendedClient: TestTrait {
+trait ExtendedClient {
     async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>;
     async fn get_history(&self, height: u64) -> anyhow::Result<Header>;
     async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue>;
@@ -106,12 +104,73 @@ trait ExtendedRequest {
     where
         T: FromStr;
 }
-
+// 2 million cached pooldataitems is 64 mb
+// 1 item is 256 bits
+#[derive(Serialize, Clone)]
+pub struct PoolDataItem {
+    date: u64,
+    height: u64,
+    price: f64,
+    liquidity: f64,
+    ergs_per_mel: f64,
+}
 
 #[async_trait]
-impl TestTrait for ExtendedValClient{
-    async fn snapshot(&self) -> ValClientSnapshot{ 
-        todo!()
+pub trait AsPoolDataItem {
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<Option<PoolDataItem>>;
+    async fn get_older_pool_data_item(
+        &self,
+        pool_key: PoolKey,
+        height: u64,
+    ) -> tide::Result<Option<PoolDataItem>>;
+}
+
+#[async_trait]
+impl AsPoolDataItem for ValClientSnapshot {
+    // returns a PoolDataItem that assumes the snapshot represents the most recent block
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<Option<PoolDataItem>> {
+        let height = self.current_header().height.0;
+        Ok(self.get_pool(pool_key).await?.map(|pool_info| {
+            let price = pool_info.implied_price().to_f64().unwrap_or_default();
+            let liquidity =
+                (pool_info.lefts as f64 * pool_info.rights as f64).sqrt() / MICRO_CONVERTER as f64;
+            PoolDataItem {
+                date: PoolDataItem::block_time(0),
+                height,
+                price,
+                liquidity,
+                ergs_per_mel: themelio_stf::dosc_to_erg(BlockHeight(height), 10000) as f64 / 10000.0,
+            }
+        }))
+    }
+    async fn get_older_pool_data_item(
+        &self,
+        pool_key: PoolKey,
+        height: u64,
+    ) -> anyhow::Result<Option<PoolDataItem>> {
+        let last_height = self.current_header().height.0;
+        let snapshot = self.get_older(height).await?;
+        let item = snapshot.as_pool_data_item(pool_key).await?;
+        Ok(item.map(|mut item| item.set_time(last_height - height).clone()))
+    }
+}
+
+impl PoolDataItem {
+    pub fn block_time(distance_from_now: u64) -> u64 {
+        let now_unix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            / 30
+            * 30;
+        now_unix - distance_from_now * 30
+    }
+    pub fn set_time(&mut self, distance_from_now: u64) -> &mut Self {
+        self.date = PoolDataItem::block_time(distance_from_now);
+        self
+    }
+    pub fn block_height(&self) -> u64 {
+        self.height
     }
 }
 
@@ -205,7 +264,7 @@ pub async fn get_overview_rweb(#[data] client: ValClient) -> DynReply {
     generic_fallible_json(get_overview_raw(client, None)).await
 }
 
-pub async fn get_overview_raw(client: ExtendedClient, height: Option<u64>) -> anyhow::Result<Overview> {
+pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
 
     let last_snap = match height{
         Some(height) => client.older_snapshot(height).await?,   
@@ -331,19 +390,13 @@ pub async fn get_block_summary_raw(client: ValClient, height: u64) -> anyhow::Re
     Ok(create_block_summary(block, reward_amount))
 }
 
-pub async fn get_pooldata_range(client: ExtendedClient) -> tide::Result<Body> {
-    let state = req.state();
-    let cache = &state.raw_pooldata_cache;
 
-    let lower_block: u64 = req.parse("lowerblock")?;
-    let upper_block: u64 = req.parse("upperblock")?;
+pub async fn get_pooldata_range(client: ValClient,cache: &Arc<DashMap<PoolInfoKey, Option<PoolDataItem>>>, left: Denom, right: Denom, upper_block: u64, lower_block: u64) -> tide::Result<Body> {
 
-    let pool_key = {
-        let left: Denom = req.parse("denom_left")?;
-        let right = req.parse("denom_right")?;
-        PoolKey { left, right }
-    };
-    let snapshot = &req.client().snapshot().await.map_err(to_badgateway)?;
+
+    let pool_key = 
+        PoolKey { left, right };
+    let snapshot = &client.get_snapshot().await?;
 
     let blockheight_interval = {
         if lower_block == upper_block {

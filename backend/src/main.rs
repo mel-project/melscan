@@ -149,7 +149,7 @@ async fn main() -> anyhow::Result<()> {
     // app.listen(args.listen).await?;
     
     let client = state.val_client.clone();
-    let routes = routes![client.clone(); get_overview_rweb];
+    let routes = routes![client.clone(); raw::get_overview_rweb];
     rweb::serve(routes).run(([127, 0, 0, 1], 13000)).await;
 
 
