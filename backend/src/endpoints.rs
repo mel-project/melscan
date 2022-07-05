@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 
-use crate::utils::*;
-use crate::{State};
-use async_trait::async_trait;
 use futures_util::Future;
 use rweb::*;
 use themelio_nodeprot::ValClient;
@@ -12,30 +9,30 @@ use crate::raw::*;
 
 
 
-macro_rules! routes {
-    ( $s:expr ) => {
-        // This is used when you use routes! with a single route without any data; I.e routes!(ping)
-        $s()
-    };
-    ( $inject:expr; $s:expr ) => {
-        // This is used when you use routes! with a single route and want to pass some data to it; I.e routes!(db_connection; get_user)
-        $s($inject)
-    };
-    ( $s:expr, $( $x:expr ),* ) => {
-        // This is used when you use routes! with multiple routes without any data: I.e routes!(ping, get_users, get_users)
-            $s()
-            $(
-                .or($x())
-            )*
-    };
-    ( $inject:expr; $s:expr, $( $x:expr ),* ) => {
-        // This is used when you use routes! with multiple routes and want to pass some data to it: I.e routes!(db_connection; ping, get_users, get_users)
-            $s(inject)
-            $(
-                .or($x($inject))
-            )*
-    };
-}
+// macro_rules! routes {
+//     ( $s:expr ) => {
+//         // This is used when you use routes! with a single route without any data; I.e routes!(ping)
+//         $s()
+//     };
+//     ( $inject:expr; $s:expr ) => {
+//         // This is used when you use routes! with a single route and want to pass some data to it; I.e routes!(db_connection; get_user)
+//         $s($inject)
+//     };
+//     ( $s:expr, $( $x:expr ),* ) => {
+//         // This is used when you use routes! with multiple routes without any data: I.e routes!(ping, get_users, get_users)
+//             $s()
+//             $(
+//                 .or($x())
+//             )*
+//     };
+//     ( $inject:expr; $s:expr, $( $x:expr ),* ) => {
+//         // This is used when you use routes! with multiple routes and want to pass some data to it: I.e routes!(db_connection; ping, get_users, get_users)
+//             $s(inject)
+//             $(
+//                 .or($x($inject))
+//             )*
+//     };
+// }
 
 
 
