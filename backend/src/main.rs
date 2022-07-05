@@ -1,7 +1,4 @@
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
-
-use dashmap::DashMap;
-use std::fmt::Debug;
+use std::{net::SocketAddr, path::PathBuf};
 use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
@@ -155,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
     // app.listen(args.listen).await?;
     
     let client = state.val_client.clone();
-    let routes = routes![client.clone(); endpoints::get_overview_rweb];
+    let routes = routes![client.clone(); endpoints::overview];
     rweb::serve(routes).run(([127, 0, 0, 1], 13000)).await;
 
 
