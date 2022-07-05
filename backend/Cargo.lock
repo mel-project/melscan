@@ -1745,7 +1745,7 @@ dependencies = [
  "stdcode",
  "structopt",
  "themelio-bootstrap",
- "themelio-nodeprot 0.11.3",
+ "themelio-nodeprot",
  "themelio-stf",
  "themelio-structs",
  "tide",
@@ -3032,45 +3032,20 @@ dependencies = [
 
 [[package]]
 name = "themelio-bootstrap"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6569a535530b640cfc67c26f94d913278e3b2bfb483b5ab95418a169f8e824ce"
+checksum = "d008e1cf451ef2e41dea8528fd6bbd4c3247edc3049f897198c89db2013fb1dc"
 dependencies = [
  "once_cell",
- "themelio-nodeprot 0.10.14",
+ "themelio-nodeprot",
  "themelio-structs",
-]
-
-[[package]]
-name = "themelio-nodeprot"
-version = "0.10.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88a2b6adf9989297047a3d892495a1355cdaf2b98b34ae68a84fb494debb459e"
-dependencies = [
- "anyhow",
- "async-recursion",
- "async-trait",
- "bytes",
- "derivative",
- "hex",
- "log",
- "lru",
- "melnet",
- "novasmt",
- "once_cell",
- "serde",
- "smol",
- "smolscale",
- "stdcode",
- "themelio-stf",
- "themelio-structs",
- "thiserror",
- "tmelcrypt",
 ]
 
 [[package]]
 name = "themelio-nodeprot"
 version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05c4d487658b3838d52ef51a5765b225bed48c5f7913457eda8d64fb1ba30f5d"
 dependencies = [
  "anyhow",
  "arrayref",
