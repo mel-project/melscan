@@ -10,10 +10,10 @@ use futures_util::stream::FuturesUnordered;
 use num_traits::{Inv, ToPrimitive};
 use serde::Serialize;
 use themelio_nodeprot::{ValClient, ValClientSnapshot};
-use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
+use themelio_stf::{melvm::covenant_weight_from_bytes};
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Transaction, CoinDataHeight, PoolState, MICRO_CONVERTER};
+use themelio_structs::{Block, BlockHeight, CoinID, CoinValue, Denom, TxHash, Transaction, CoinDataHeight, PoolState, MICRO_CONVERTER, PoolKey};
 use tide::{Body, StatusCode};
 use tmelcrypt::HashVal;
 
@@ -87,23 +87,7 @@ pub struct Overview {
     recent_blocks: Vec<BlockSummary>,
 }
 
-#[async_trait]
-trait ExtendedClient {
-    async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot>;
-    async fn get_history(&self, height: u64) -> anyhow::Result<Header>;
-    async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue>;
-}
 
-struct ExtendedValClient {
-    val_client: ValClient
-}
-#[async_trait]
-trait ExtendedRequest {
-    fn client(&self) -> ValClient;
-    fn parse<T>(&self, param: &str) -> tide::Result<T>
-    where
-        T: FromStr;
-}
 // 2 million cached pooldataitems is 64 mb
 // 1 item is 256 bits
 #[derive(Serialize, Clone)]
@@ -117,18 +101,18 @@ pub struct PoolDataItem {
 
 #[async_trait]
 pub trait AsPoolDataItem {
-    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<Option<PoolDataItem>>;
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> anyhow::Result<Option<PoolDataItem>>;
     async fn get_older_pool_data_item(
         &self,
         pool_key: PoolKey,
         height: u64,
-    ) -> tide::Result<Option<PoolDataItem>>;
+    ) -> anyhow::Result<Option<PoolDataItem>>;
 }
 
 #[async_trait]
 impl AsPoolDataItem for ValClientSnapshot {
     // returns a PoolDataItem that assumes the snapshot represents the most recent block
-    async fn as_pool_data_item(&self, pool_key: PoolKey) -> tide::Result<Option<PoolDataItem>> {
+    async fn as_pool_data_item(&self, pool_key: PoolKey) -> anyhow::Result<Option<PoolDataItem>> {
         let height = self.current_header().height.0;
         Ok(self.get_pool(pool_key).await?.map(|pool_info| {
             let price = pool_info.implied_price().to_f64().unwrap_or_default();
@@ -149,7 +133,7 @@ impl AsPoolDataItem for ValClientSnapshot {
         height: u64,
     ) -> anyhow::Result<Option<PoolDataItem>> {
         let last_height = self.current_header().height.0;
-        let snapshot = self.get_older(height).await?;
+        let snapshot = self.get_older(height.into()).await?;
         let item = snapshot.as_pool_data_item(pool_key).await?;
         Ok(item.map(|mut item| item.set_time(last_height - height).clone()))
     }
@@ -175,38 +159,6 @@ impl PoolDataItem {
 }
 
 
-#[async_trait]
-impl ExtendedClient for ExtendedValClient {
-    async fn older_snapshot(&self, height: u64) -> anyhow::Result<ValClientSnapshot> {
-        let older = self.val_client
-            .snapshot()
-            .await?
-            .get_older(height.into())
-            .await
-            .context(format!("Unable to get block at height: {height}"))?;
-
-        Ok(older)
-    }
-    async fn get_history(&self, height: u64) -> anyhow::Result<Header> {
-        let snapshot = self.val_client.snapshot().await?;
-        let hist = snapshot
-            .get_history(height.into())
-            .await?
-            .context(format!("Unable to get history at height {height}"));
-        anyhow::Ok(Header(hist?))
-    }
-    async fn get_reward_amount(&self, height: u64) -> anyhow::Result<CoinValue> {
-        let reward_coin = self
-            .older_snapshot(height)
-            .await?
-            .get_coin(CoinID::proposer_reward(height.into()))
-            .await?;
-
-        let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
-        Ok(reward_amount)
-    }
-}
-
 async fn get_exchange(
     last_snap: &ValClientSnapshot,
     denom1: Denom,
@@ -223,39 +175,6 @@ async fn get_exchange(
     Ok(micro)
 }
 
-#[async_trait]
-impl ExtendedRequest for tide::Request<State> {
-    fn parse<T>(&self, key: &str) -> tide::Result<T>
-    where
-        T: FromStr,
-    {
-        let param = self.param(key)?;
-        let parsed = param.parse::<T>();
-        match parsed {
-            Ok(res) => Ok(res),
-            Err(_) => {
-                let anyerr = anyhow::format_err!("Failed to parse `{key}`: {param}");
-                let tideerr = tide::Error::new(tide::StatusCode::BadRequest, anyerr);
-                Err(tideerr)
-            }
-        }
-    }
-
-    fn client(&self) -> ValClient {
-        self.state().val_client.clone()
-    }
-}
-
-/// Get the overview, which includes basically all the information that the homepage needs
-#[tracing::instrument(skip(req))]
-pub async fn get_overview(req: tide::Request<State>) -> tide::Result<Body> {
-    let height = match req.parse::<u64>("height"){
-    Ok(i) => Some(i),
-    Err(_) => None,
-};
-    let res = get_overview_raw(req.client(), height).await?;
-    Body::from_json(&res)
-}
 
 
 
@@ -268,7 +187,7 @@ pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow:
 
     let last_snap = match height{
         Some(height) => client.older_snapshot(height).await?,   
-        None => client.val_client.snapshot().await?
+        None => client.snapshot().await?
     };
 
     let mut futs = get_old_blocks(&last_snap, 50);
@@ -290,33 +209,11 @@ pub async fn get_overview_raw(client: ValClient, height: Option<u64>) -> anyhow:
 }
 
 
-/// Get the latest status
-#[tracing::instrument(skip(req))]
-pub async fn get_latest(req: tide::Request<State>) -> tide::Result<Body> {
-    Body::from_json(&get_latest_raw(req.client()).await?)
-}
 
 pub async fn get_latest_raw(client: ValClient) -> anyhow::Result<Header> {
     let last_snap = client.snapshot().await?;
     anyhow::Ok(Header(last_snap.current_header()))
 }
-
-
-/// Get a particular block header
-#[tracing::instrument(skip(req))]
-pub async fn get_header(req: tide::Request<State>) -> tide::Result<Body> {
-    let height = req.parse("height")?;
-    let older = req.client().get_history(height).await?;
-    Body::from_json(&older)
-}
-
-/// Get a particular transaction
-#[tracing::instrument(skip(req))]
-pub async fn get_transaction(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.parse("height")?;
-    let txhash: String = req.parse("txhash")?;
-    Body::from_json(&get_transaction_raw(req.client(), height, txhash).await?)
-} 
 
 pub async fn get_transaction_raw(client: ValClient, height: u64, txhash: String) -> anyhow::Result<Transaction>{
     let txhash: Vec<u8> = hex::decode(&txhash)?;
@@ -331,14 +228,6 @@ pub async fn get_transaction_raw(client: ValClient, height: u64, txhash: String)
     let tx = older.get_transaction(txhash).await?;
     tx.ok_or(anyhow::format_err!("TODO"))
 }
-/// Get a particular coin
-#[tracing::instrument(skip(req))]
-pub async fn get_coin(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.parse("height")?;
-    let coinid_string: String = req.parse("coinid")?;
-    Body::from_json(&get_coin_raw(req.client(), height, coinid_string).await?)
-}
-
 pub async fn get_coin_raw(client: ValClient, height: u64, coinid_string: String) -> anyhow::Result<CoinDataHeight> {
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
@@ -355,13 +244,6 @@ pub async fn get_coin_raw(client: ValClient, height: u64, coinid_string: String)
     let older = client.older_snapshot(height.into()).await?;
     let cdh = older.get_coin(CoinID { txhash, index }).await?;
     cdh.ok_or(anyhow::format_err!("TODO"))
-}
-/// Get a particular pool
-#[tracing::instrument(skip(req))]
-pub async fn get_pool(req: tide::Request<State>) -> tide::Result<Body> {
-    let height: u64 = req.parse("height")?;
-    let denom: Denom = req.parse("denom")?;
-    Body::from_json(&get_pool_raw(req.client(), height, denom).await?)
 }
 
 pub async fn get_pool_raw(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
@@ -396,7 +278,7 @@ pub async fn get_pooldata_range(client: ValClient,cache: &Arc<DashMap<PoolInfoKe
 
     let pool_key = 
         PoolKey { left, right };
-    let snapshot = &client.get_snapshot().await?;
+    let snapshot = &client.snapshot().await?;
 
     let blockheight_interval = {
         if lower_block == upper_block {
