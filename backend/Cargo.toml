@@ -12,7 +12,7 @@ smol= "1.2.5"
 anyhow= "1.0.56"
 themelio-stf= "0.9.15"
 tmelcrypt= "0.2.4"
- themelio-nodeprot= "0.11"
+#  themelio-nodeprot= "0.11"
 #themelio-nodeprot= {path="../../themelio-nodeprot"}
 
 structopt= "0.3.26"
@@ -51,3 +51,8 @@ defmac = "0.2.1"
 [dependencies.rusqlite]
 version = "0.27.0"
 features = ["bundled"]
+
+[patch.crates-io]
+# this patches the themelio-nodeprot that themelio-bootstrap depends on too
+themelio-nodeprot={path="../../themelio-nodeprot"} 
+

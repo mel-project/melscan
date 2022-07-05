@@ -1745,7 +1745,6 @@ dependencies = [
  "stdcode",
  "structopt",
  "themelio-bootstrap",
- "themelio-nodeprot",
  "themelio-stf",
  "themelio-structs",
  "tide",
@@ -3044,8 +3043,6 @@ dependencies = [
 [[package]]
 name = "themelio-nodeprot"
 version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05c4d487658b3838d52ef51a5765b225bed48c5f7913457eda8d64fb1ba30f5d"
 dependencies = [
  "anyhow",
  "arrayref",
