@@ -1,8 +1,8 @@
-use std::{net::SocketAddr, path::PathBuf};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
-use themelio_nodeprot::ValClient;
+use themelio_nodeprot::{ValClient, cache::AsyncCache};
 use themelio_structs::NetID;
 
 #[derive(StructOpt)]
@@ -43,4 +43,8 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
         client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
     }
     client
+});
+
+pub static CACHE: Lazy<Arc<AsyncCache>> = Lazy::new(|| {
+    Arc::new(AsyncCache::new(1000000)) 
 });

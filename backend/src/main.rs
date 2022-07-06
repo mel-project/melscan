@@ -1,10 +1,38 @@
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
-
+use endpoints::*;
+use rweb::Filter;
 mod endpoints;
 mod globals;
 mod indexer;
 mod raw;
 mod utils;
+
+#[macro_export]
+macro_rules! routes {
+    ( $s:expr ) => {
+        // This is used when you use routes! with a single route without any data; I.e routes!(ping)
+        $s()
+    };
+    ( $inject:expr; $s:expr ) => {
+        /// This is used when you use routes! with a single route and want to pass some data to it; I.e routes!(db_connection; get_user)
+        $s($inject)
+    };
+    ( $s:expr, $( $x:expr ),* ) => {
+        // This is used when you use routes! with multiple routes without any data: I.e routes!(ping, get_users, get_users)
+            $s()
+            $(
+                .or($x())
+            )*
+    };
+    ( $inect:expr; $s:expr, $( $x:expr ),* ) => {
+        // This is used when you use routes! with multiple routes and want to pass some data to it: I.e routes!(db_connection; ping, get_users, get_users)
+            $s(inject)
+            $(
+                .or($x($inject))
+            )*
+    };
+}
+
 
 #[tracing::instrument]
 #[tokio::main]
@@ -17,9 +45,14 @@ async fn main() -> anyhow::Result<()> {
         .finish()
         .init();
 
-    rweb::serve(endpoints::overview())
-        .run(([127, 0, 0, 1], 13000))
-        .await;
+    let port = 13000;
+    println!("Serving on port: {port}");
 
+    let routes = 
+        routes![overview, latest, transaction, coins, block_full, block_summary, pool, pooldata];
+    rweb::serve(routes)
+        .run(([127, 0, 0, 1], port))
+        .await;
+    
     Ok(())
 }

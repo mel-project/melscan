@@ -14,7 +14,7 @@ use themelio_structs::{
 };
 use tmelcrypt::HashVal;
 
-use crate::{globals::CLIENT, utils::*};
+use crate::{utils::*};
 
 use async_trait::async_trait;
 
@@ -135,10 +135,10 @@ async fn get_exchange(
     Ok(micro)
 }
 
-pub async fn get_overview(height: Option<u64>) -> anyhow::Result<Overview> {
+pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
     let last_snap = match height {
-        Some(height) => CLIENT.older_snapshot(height).await?,
-        None => CLIENT.snapshot().await?,
+        Some(height) => client.older_snapshot(height).await?,
+        None => client.snapshot().await?,
     };
 
     let mut futs = get_old_blocks(&last_snap, 50);
@@ -160,7 +160,7 @@ pub async fn get_overview(height: Option<u64>) -> anyhow::Result<Overview> {
 }
 
 pub async fn get_latest(client: ValClient) -> anyhow::Result<Header> {
-    let last_snap = CLIENT.snapshot().await?;
+    let last_snap = client.snapshot().await?;
     anyhow::Ok(Header(last_snap.current_header()))
 }
 
@@ -203,11 +203,6 @@ pub async fn get_coin(
     cdh.ok_or(anyhow::format_err!("TODO"))
 }
 
-pub async fn get_pool(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
-    let older = client.older_snapshot(height).await?;
-    let cdh = older.get_pool(PoolKey::mel_and(denom)).await?;
-    cdh.ok_or(anyhow::format_err!("TODO"))
-}
 
 /// Get a particular block
 // #[tracing::instrument(skip(req))]
@@ -226,13 +221,25 @@ pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result
     Ok(create_block_summary(block, reward_amount))
 }
 
+pub async fn get_pool(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
+    let older = client.older_snapshot(height).await?;
+    let cdh = older.get_pool(PoolKey::mel_and(denom)).await?;
+    cdh.ok_or(anyhow::format_err!("TODO"))
+}
+
+// pub async fn get_pooldata(client: ValClient, lower_block: u64) -> anyhow::Result<Vec<PoolDataItem>> {
+//     let denom = Denom::from_bytes(&hex::decode("73")?)
+//     .ok_or(anyhow::format_err!("couldn't decode 73 into denom"))cac
+//     snapshot.poo
+// }
+
 pub async fn get_pooldata_range(
     client: ValClient,
     cache: &Arc<themelio_nodeprot::cache::AsyncCache>,
     left: Denom,
     right: Denom,
-    upper_block: u64,
     lower_block: u64,
+    upper_block: u64,
 ) -> anyhow::Result<Vec<PoolDataItem>> {
     let pool_key = PoolKey { left, right };
     let snapshot = &client.snapshot().await?;
@@ -273,7 +280,7 @@ pub async fn get_pooldata_range(
                     snapshot
                         .get_older_pool_data_item(pool_key, *height)
                         .await
-                        .map_err(|err| anyhow::format_err!("Failed to get snapshot"))
+                        .map_err(|err| anyhow::format_err!("failed to get pool data item at {height}"))
                 })
                 .await
         });
@@ -295,13 +302,3 @@ pub async fn get_pooldata_range(
     Ok(output)
 }
 
-// pub async fn get_pooldata(req: tide::Request<State>) -> tide::Result<Body> {
-//     let client = req.state();
-//     let lower_block: u64 = req.param("lowerblock")?.parse().map_err(to_badgateway)?;
-//     let denom = Denom::from_bytes(&hex::decode("73").map_err(to_badreq)?)
-//         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-
-//     let snapshot = client.snapshot().await?
-//     .get_older(lower_block.into()).await.map_err(to_badgateway)?;
-//     Body::from_json(&pool_item(&snapshot, denom).await?)
-// }
