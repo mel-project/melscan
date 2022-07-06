@@ -24,9 +24,8 @@ export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => 
 };
 
 
-
 export const loader =  (endpoints?: string | [string]) => async (event: LoadEvent) => {
-	let {url, fetch} = event;
+	let {url, fetch, params} = event;
 	if(typeof endpoints == "string"){
 		endpoints = [endpoints]
 	}

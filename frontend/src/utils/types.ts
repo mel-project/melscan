@@ -1,3 +1,5 @@
+export type bool = Boolean;
+
 export type u128 = number;
 export type u64 = number;
 export type u32 = number;
@@ -26,6 +28,13 @@ export enum NetID {
     Custom08 = 0x08,
     Mainnet = 0xff,
 }
+
+interface Denom {
+     Mel,
+     Sym,
+     Erg,
+ }
+ 
 export interface Header{
      network: NetID,
      previous: HashVal,
@@ -52,3 +61,19 @@ export interface BlockSummary{
      reward_amount: u128,
      transactions: Vec<TransactionSummary>,
 }
+export interface PoolKey {
+     left: Denom,
+     right: Denom,
+ }
+ 
+ 
+ // 2 million cached pooldataitems is 64 mb
+ // 1 item is 256 bits
+export interface PoolDataItem {
+     date: u64,
+     height: u64,
+     price: f64,
+     liquidity: f64,
+     ergs_per_mel: f64,
+ }
+ 
