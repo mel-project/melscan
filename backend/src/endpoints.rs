@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 
-use crate::raw::*;
+use crate::{raw::*, globals::CLIENT};
 use futures_util::Future;
 use rweb::*;
 use serde::{Deserialize, Serialize};
@@ -34,11 +34,6 @@ async fn generic_fallible_json<R: Serialize>(
     })
     .await
 }
-#[derive(Deserialize)]
-struct LoginForm {
-    id: String,
-    password: String,
-}
 
 #[get("/raw/overview")]
 pub async fn overview() -> DynReply {
@@ -47,40 +42,40 @@ pub async fn overview() -> DynReply {
 
 #[get("/raw/latest")]
 pub async fn latest() -> DynReply {
-    generic_fallible_json(get_latest()).await
+    generic_fallible_json(get_latest(CLIENT)).await
 }
 
-// #[get("/raw/blocks/{height}/transactions/{txhash}")]
-// pub async fn get_transaction(#[data] client: ValClient, height: String, txhash: String) -> DynReply {
-//     generic_fallible_json(get_latest(client)).await
-// }
+#[get("/raw/blocks/{height}/transactions/{txhash}")]
+pub async fn get_transaction(height: String, txhash: String) -> DynReply {
+    generic_fallible_json(get_transaction(CLIENT, height, txhash)).await
+}
 
-// // #[get("/raw/blocks/{height}")]
-// // pub async fn get_block_summary(#[data] client: ValClient) -> DynReply {
-// //     generic_fallible_json(get_block_summary(client)).await
-// // }
-
-// #[get("/raw/blocks/{height}/summary")]
-// pub async fn get_block_summary(#[data] client: ValClient) -> DynReply {
+// #[get("/raw/blocks/{height}")]
+// pub async fn get_block_summary() -> DynReply {
 //     generic_fallible_json(get_block_summary(client)).await
 // }
-// #[get("/raw/blocks/{height}/full")]
-// pub async fn get_full_block(#[data] client: ValClient) -> DynReply {
-//     generic_fallible_json(get_full_block(client)).await
-// }
-// #[get("/raw/blocks/{height}/coins/{coinid}")]
-// pub async fn get_coin(#[data] client: ValClient) -> DynReply {
-//     generic_fallible_json(get_coin(client)).await
-// }
-// #[get("/raw/blocks/{height}/pools/{denom}")]
-// pub async fn get_pool(#[data] client: ValClient) -> DynReply {
-//     generic_fallible_json(get_pool(client)).await
-// }
-// #[get("/raw/pool-data-batch/{lowerblock}")]
-// pub async fn get_pooldata(#[data] client: ValClient) -> DynReply {
-//     generic_fallible_json(get_pooldata(client)).await
-// }
-// #[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
-// pub async fn get_pooldata_range(#[data] client: ValClient) -> DynReply {
-//     generic_fallible_json(get_pooldata_range(client)).await
-// }
+
+#[get("/raw/blocks/{height}/summary")]
+pub async fn get_block_summary() -> DynReply {
+    generic_fallible_json(get_block_summary(client)).await
+}
+#[get("/raw/blocks/{height}/full")]
+pub async fn get_full_block() -> DynReply {
+    generic_fallible_json(get_full_block(client)).await
+}
+#[get("/raw/blocks/{height}/coins/{coinid}")]
+pub async fn get_coin() -> DynReply {
+    generic_fallible_json(get_coin(client)).await
+}
+#[get("/raw/blocks/{height}/pools/{denom}")]
+pub async fn get_pool() -> DynReply {
+    generic_fallible_json(get_pool(client)).await
+}
+#[get("/raw/pool-data-batch/{lowerblock}")]
+pub async fn get_pooldata() -> DynReply {
+    generic_fallible_json(get_pooldata(client)).await
+}
+#[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
+pub async fn get_pooldata_range() -> DynReply {
+    generic_fallible_json(get_pooldata_range(client)).await
+}

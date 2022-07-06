@@ -159,7 +159,7 @@ pub async fn get_overview(height: Option<u64>) -> anyhow::Result<Overview> {
     })
 }
 
-pub async fn get_latest() -> anyhow::Result<Header> {
+pub async fn get_latest(client: ValClient) -> anyhow::Result<Header> {
     let last_snap = CLIENT.snapshot().await?;
     anyhow::Ok(Header(last_snap.current_header()))
 }
