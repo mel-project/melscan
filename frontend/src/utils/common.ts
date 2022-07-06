@@ -4,18 +4,18 @@ import { invalidate } from "$app/navigation";
 import { getStores } from "$app/stores";
 import type {Load, LoadEvent} from "@sveltejs/kit/types"
 
-export const backendUrl = (endpoint) => 'http://127.0.0.1:13000/raw' + endpoint;
+export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
 
 export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
 
 export const url_mapping = {
-	'/': ['/overview']
+	'/': ['/raw/overview']
 }
 
 export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => {
 	const url = backendUrl(endpoint);
 	const response = await fetch(url);
-	// console.log(`requesting ${endpoint}`)
+	console.log(`requesting ${endpoint}`)
 	if (!response.ok) {
 		throw `failed to fetch '${url}' data`;
 	}
@@ -24,16 +24,22 @@ export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => 
 };
 
 
-export const loader =  (endpoints?: string | [string]) => async (event: LoadEvent) => {
+export type EndpointLoader =  (loadEvent: LoadEvent) => string | [string];
+export const loader =  (endpoints?: string | [string] | EndpointLoader) => async (event: LoadEvent) => {
 	let {url, fetch, params} = event;
+
+	if(typeof endpoints == "function"){
+		endpoints = endpoints(event)
+	}
+
 	if(typeof endpoints == "string"){
 		endpoints = [endpoints]
 	}
 	let sources: string[] = endpoints || url_mapping[url.pathname] || [url.pathname]
 	let data: JSON[] = (await Promise.all(sources.map(e => melscan(fetch,e)))).flat();
 	let props = Object.assign(...data);
-
-
+	params = Object.assign({}, params)
+	console.log("params: ",params);
 	const refresh = ()=>Promise.all(sources.map(e => melscan(fetch, e)))
 	return {
 		status: 200,
@@ -49,7 +55,8 @@ export const loader =  (endpoints?: string | [string]) => async (event: LoadEven
 					})
 				}, 1000)
 			},
-			...props
+			...props,
+			params,
 		}
 	};
 }

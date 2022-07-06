@@ -7,7 +7,7 @@
 	export let refresh: (s?: string)=>Promise<JSON>;
 	export let autorefresh: () => Promise<number>
 
-	autorefresh();
+	// autorefresh();
 
 	export let erg_per_mel: number;
 	export let sym_per_mel: number;

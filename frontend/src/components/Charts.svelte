@@ -1,16 +1,93 @@
 <script lang="ts">
+    import {debounce} from 'lodash/debounce';
+    import type { BubbleDataPoint,  ChartConfiguration,  ChartTypeRegistry, ScatterDataPoint} from 'chart.js';
+    import {Chart, UpdateModeEnum} from 'chart.js';
+    import {Denom} from "@utils/types";
     import type { PoolKey } from "@utils/types";
-
+    import * as luxon from "luxon"
+    import { onMount } from 'svelte';
+    import zoomPlugin from 'chartjs-plugin-zoom';
+    import 'chartjs-adapter-luxon';
+    
+    Chart.register(zoomPlugin);
 
     export let pool_key: PoolKey;
-    console.log(`{left: "{pool_key.left}", right: "{pool_key.right}"}`)
-    var pool_key = JSON.parse(`{"left": "{pool_key.left}", "right": "{pool_key.right}"}`)
+    export let last_item;
+    let chart_canvas: HTMLCanvasElement;
     var denom = pool_key.right
     var denom_left = pool_key.left
-    var last_item = JSON.parse(`{last_item|json}`)
     var DateTime = luxon.DateTime
     var Duration = luxon.Duration
-    console.info(`Denom: ${denom} \nLast Item: ${JSON.stringify(last_item)}`)
+    let pooldata; 
+    let chart_loading;
+
+
+    onMount(async ()=>{
+        //pooldata is a writable array of immutable pooldata objects
+        pooldata = await getPoolData(denom, 0, last_item.height)
+    })
+  
+    let fetchFunction = debounce(updateData(pooldata), 200);
+
+    let y_axis = 'price'
+    let options = chartOptions(pooldata, y_axis, fetchFunction);
+    console.info('pooldata: ', pooldata)
+
+
+    let legend_label = createLegendLabel(pool_key, 'Liquidity')
+    var spec = chartSpec(pooldata, y_axis, legend_label, options)
+
+    let ctx = chart_canvas.getContext('2d')
+    let chart = new Chart(ctx, spec)
+    console.info("Chart Specification: ", spec)
+
+    chart.update()
+    // setInterval(()=>{
+    //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
+    //   chart.update()
+    // },1000)
+    var handlers = {}
+    // handlers.toggleDataVisibility = (index, update = true) => {
+    //   if(chart.getDataVisibility(index)){
+    //     chart.setDatasetVisibility(index, false)
+    //     chart.hide(index)
+    //   }
+    //   else {
+    //     chart.setDatasetVisibility(index, true)
+    //     chart.show(index)
+    //   }
+    // }
+  let loadLiquidity = () => {
+    Object.assign(chart.options, chartOptions(pooldata, 'liquidity', fetchFunction))
+    let dataset = chart.data.datasets[0]
+
+    dataset.parsing['yAxisKey'] = 'liquidity'
+    dataset.label = createLegendLabel(pool_key, 'Liquidity')
+    chart.update()
+  }
+  let loadPrice = () => {
+    Object.assign(chart.options, chartOptions(pooldata, 'price', fetchFunction))
+    let dataset = chart.data.datasets[0]
+
+    dataset.parsing['yAxisKey'] = 'price'
+    dataset.label = createLegendLabel(pool_key, 'Price')
+    chart.update()
+  }
+  let loadBeforeNow = (time) => {
+    return () => {
+      let timescale = { min: DateTime.now().minus(time).toMillis(), max: DateTime.now().toMillis() }
+      chart.zoomScale('x', timescale, UpdateModeEnum.resize)
+      setTimeout(() => fetchFunction({ chart }), 500)
+    }
+  }
+  let loadLastDay = loadBeforeNow({ day: 1 })
+  let loadLastWeek = loadBeforeNow({ week: 1 })
+  let loadLastMonth = loadBeforeNow({ month: 1 })
+
+  let loadAllTime = () => {
+    chart.resetZoom(UpdateModeEnum.show);
+    setTimeout(() => fetchFunction({ chart }), 500)
+  }
   
     async function getPoolData(denom, lower, upper) {
       let url = `/raw/pooldata/${pool_key.left}/${pool_key.right}/${lower}/${upper}`
@@ -43,7 +120,7 @@
         let { min, max } = chart.scales.x
         let [lower, upper] = findBlockRange(pooldata, min, max)
   
-        $(chart.ctx.canvas).css('cursor', 'wait')
+        chart_loading = true;
   
         let new_data = await getPoolData(denom, pooldata[lower].height, pooldata[upper].height)
         new_data.push(...pooldata.filter((d) => d.height < new_data[0].height ||
@@ -57,7 +134,7 @@
   
         chart.stop()
         chart.update('none')
-        $(chart.ctx.canvas).css('cursor', 'pointer')
+        chart_loading = false;
       }
     }
     function findBlockRange(pooldata, minTime, maxTime) {
@@ -86,8 +163,7 @@
           type: 'time',
           // ticks: {
           //   autoSkip: true,
-          //   autoSkipPadding: 50,
-          //   maxRotation: 0
+          //   autoSkipPadding: 50,Mel
           // },
           time: {
             displayFormats: {
@@ -119,7 +195,7 @@
           x: { min: pooldata[0].date, max: Date.now() },
         },
         pan: {
-          enabled: true,Charts
+          enabled: true,
           mode: 'x',
           overScaleMode: 'xy',
           onPan: fetchFunction
@@ -166,13 +242,12 @@
           pointStyle: 'rect',
           hoverRadius: 10,
         },
-        responsive: true,
         maintainAspectRatio: false,
       };
   
       return options
     }
-    function chartSpec(pooldata, y_axis, label, options) {
+    function chartSpec(pooldata, y_axis, label, options):  ChartConfiguration<keyof ChartTypeRegistry, (number | ScatterDataPoint | BubbleDataPoint)[], unknown>{
       return {
         type: 'line',
         options,
@@ -189,7 +264,7 @@
             },
             backgroundColor: '#d8eae566',
             borderColor: '#006e54',
-          }].concat(pool_key.left == "ERG" && pool_key.right == "MEL" ? [{
+          }].concat(pool_key.left == Denom.ERG && pool_key.right == Denom.MEL ? [{
             label: "1 DOSC",
             data: pooldata,
             borderWidth: 1,
@@ -206,85 +281,21 @@
   
     }
   
-    async function initChart() {
+     
   
-    }
-    async function main() {
-      //pooldata is a writable array of immutable pooldata objects
-      let pooldata = await getPoolData(denom, 0, last_item.height)
-  
-      let fetchFunction = debounce(updateData(pooldata), 200);
-  
-      let y_axis = 'price'
-      let options = chartOptions(pooldata, y_axis, fetchFunction);
-      console.info('pooldata: ', pooldata)
-  
-  
-      let legend_label = createLegendLabel(pool_key, 'Liquidity')
-      var spec = chartSpec(pooldata, y_axis, legend_label, options)
-  
-      let ctx = document.getElementById('chart').getContext('2d')
-      let chart = new Chart(ctx, spec)
-      console.info("Chart Specification: ", spec)
-  
-      chart.update()
-      // setInterval(()=>{
-      //   chart.data.datasets[0].data = pooldata.map( i => [i.date, i.liquidity])
-      //   chart.update()
-      // },1000)
-      var handlers = {}
-      // handlers.toggleDataVisibility = (index, update = true) => {
-      //   if(chart.getDataVisibility(index)){
-      //     chart.setDatasetVisibility(index, false)
-      //     chart.hide(index)
-      //   }
-      //   else {
-      //     chart.setDatasetVisibility(index, true)
-      //     chart.show(index)
-      //   }
-      // }
-      handlers.loadLiquidity = () => {
-        Object.assign(chart.options, chartOptions(pooldata, 'liquidity', fetchFunction))
-        let dataset = chart.data.datasets[0]
-  
-        dataset.parsing.yAxisKey = 'liquidity'
-        dataset.label = createLegendLabel(pool_key, 'Liquidity')
-        chart.update()
-      }
-      handlers.loadPrice = () => {
-        Object.assign(chart.options, chartOptions(pooldata, 'price', fetchFunction))
-        let dataset = chart.data.datasets[0]
-  
-        dataset.parsing.yAxisKey = 'price'
-        dataset.label = createLegendLabel(pool_key, 'Price')
-        chart.update()
-      }
-      handlers.loadBeforeNow = (time) => {
-        return () => {
-          let timescale = { min: DateTime.now().minus(time).toMillis(), max: DateTime.now().toMillis() }
-          chart.zoomScale('x', timescale, 'easeInExpo')
-          setTimeout(() => fetchFunction({ chart }), 500)
-        }
-      }
-      handlers.loadLastDay = handlers.loadBeforeNow({ day: 1 })
-      handlers.loadLastWeek = handlers.loadBeforeNow({ week: 1 })
-      handlers.loadLastMonth = handlers.loadBeforeNow({ month: 1 })
-      handlers.loadAllTime = () => {
-        chart.resetZoom('easeOutQuad')
-        setTimeout(() => fetchFunction({ chart }), 500)
-      }
-  
-      return { pooldata, handlers, chart }
-    }
-    var melscan = {}
-    var handlers;
-    var chart;
-    var tooltip;
-    main().then(i => {
-      Object.assign(melscan, i)
-      handlers = melscan.handlers
-      chart = melscan.chart
-      tooltip = chart.options.plugins.tooltip
-      handlers.loadPrice()
-    })
+    // var melscan = {}
+    // var handlers;
+    // var chart;
+    // var tooltip;
+    // main().then(i => {
+    //   Object.assign(melscan, i)
+    //   handlers = melscan.handlers
+    //   chart = melscan.chart
+    //   tooltip = chart.options.plugins.tooltip
+    //   handlers.loadPrice()
+    // })
 </script>
+
+<template>
+    <canvas bind:this={chart_canvas}></canvas>
+</template>

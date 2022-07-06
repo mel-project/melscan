@@ -2,16 +2,16 @@
   "name": "melscan-ng",
   "version": "0.0.1",
   "scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"package": "svelte-kit package",
-		"preview": "vite preview",
-		"prepare": "svelte-kit sync",
-		"check": "svelte-check --tsconfig ./jsconfig.json",
-		"check:watch": "svelte-check --tsconfig ./jsconfig.json --watch",
-		"lint": "prettier --check --plugin-search-dir=. .",
-		"format": "prettier --write --plugin-search-dir=. ."
-	},
+    "dev": "vite dev",
+    "build": "vite build",
+    "package": "svelte-kit package",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync",
+    "check": "svelte-check --tsconfig ./jsconfig.json",
+    "check:watch": "svelte-check --tsconfig ./jsconfig.json --watch",
+    "lint": "prettier --check --plugin-search-dir=. .",
+    "format": "prettier --write --plugin-search-dir=. ."
+  },
   "devDependencies": {
     "@sveltejs/adapter-auto": "next",
     "@sveltejs/kit": "next",
@@ -29,5 +29,12 @@
     "typescript": "~4.6.2",
     "vite": "^2.9.13"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "chart.js": "^3.8.0",
+    "chartjs-adapter-luxon": "^1.1.0",
+    "chartjs-plugin-zoom": "^1.2.1",
+    "lodash": "^4.17.21",
+    "luxon": "^2.4.0"
+  }
 }

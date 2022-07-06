@@ -80,9 +80,9 @@ pub async fn block_full(height: u64) -> DynReply {
 pub async fn block_summary(height: u64) -> DynReply {
     generic_fallible_json(get_block_summary(CLIENT.to_owned(), height)).await
 }
-#[get("/raw/blocks/{height}/pools/{denom}")]
-pub async fn pool(height: u64, denom: Denom) -> DynReply {
-    generic_fallible_json(get_pool(CLIENT.to_owned(), height, denom.0)).await
+#[get("/raw/blocks/{height}/pools/{left}/{right}")]
+pub async fn pool(height: u64, left: Denom, right: Denom) -> DynReply {
+    generic_fallible_json(get_pool(CLIENT.to_owned(), height, left.0, right.0)).await
 }
 // #[get("/raw/pool-data-batch/{lowerblock}")]
 // pub async fn get_pooldata() -> DynReply {

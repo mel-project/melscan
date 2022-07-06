@@ -29,10 +29,10 @@ export enum NetID {
     Mainnet = 0xff,
 }
 
-interface Denom {
-     Mel,
-     Sym,
-     Erg,
+export enum Denom {
+     MEL,
+     SYM,
+     ERG,
  }
  
 export interface Header{
@@ -77,3 +77,10 @@ export interface PoolDataItem {
      ergs_per_mel: f64,
  }
  
+
+export interface PoolState {
+     lefts: u128,
+     rights: u128,
+     price_accum: u128,
+     liqs: u128,
+ }

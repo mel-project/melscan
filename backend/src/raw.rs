@@ -221,9 +221,9 @@ pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result
     Ok(create_block_summary(block, reward_amount))
 }
 
-pub async fn get_pool(client: ValClient, height: u64, denom: Denom) -> anyhow::Result<PoolState> {
+pub async fn get_pool(client: ValClient, height: u64, left: Denom, right: Denom) -> anyhow::Result<PoolState> {
     let older = client.older_snapshot(height).await?;
-    let cdh = older.get_pool(PoolKey::mel_and(denom)).await?;
+    let cdh = older.get_pool(PoolKey{left, right}).await?;
     cdh.ok_or(anyhow::format_err!("TODO"))
 }
 
