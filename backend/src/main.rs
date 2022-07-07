@@ -1,9 +1,10 @@
-use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 use endpoints::*;
 use rweb::Filter;
+use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
+
+use crate::globals::CMD_ARGS;
 mod endpoints;
 mod globals;
-mod indexer;
 mod raw;
 mod utils;
 
@@ -33,7 +34,6 @@ macro_rules! routes {
     };
 }
 
-
 #[tracing::instrument]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -48,11 +48,17 @@ async fn main() -> anyhow::Result<()> {
     let port = 13000;
     println!("Serving on port: {port}");
 
-    let routes = 
-        routes![overview, latest, transaction, coins, block_full, block_summary, pool, pooldata];
-    rweb::serve(routes)
-        .run(([127, 0, 0, 1], port))
-        .await;
-    
+    let routes = routes![
+        overview,
+        latest,
+        transaction,
+        coins,
+        block_full,
+        block_summary,
+        pool,
+        pooldata
+    ];
+    rweb::serve(routes).run(CMD_ARGS.listen).await;
+
     Ok(())
 }
