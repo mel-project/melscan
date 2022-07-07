@@ -1,15 +1,15 @@
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::net::SocketAddr;
 
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
-use themelio_nodeprot::{ValClient, cache::AsyncCache};
+use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
 
 #[derive(StructOpt)]
 pub struct Args {
     #[structopt(long)]
     /// Where to listen for incoming REST API calls
-    listen: SocketAddr,
+    pub listen: SocketAddr,
 
     #[structopt(long)]
     /// A full node to connect to
@@ -18,10 +18,6 @@ pub struct Args {
     #[structopt(long)]
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
-
-    #[structopt(long)]
-    /// Path to a "full" index file. If this is present, will act as a "full node" to pull huge amounts of info from the blockchain.
-    index_path: Option<PathBuf>,
 }
 
 /// Command-line arguments that were initially passed in.
@@ -43,8 +39,4 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
         client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
     }
     client
-});
-
-pub static CACHE: Lazy<Arc<AsyncCache>> = Lazy::new(|| {
-    Arc::new(AsyncCache::new(1000000)) 
 });

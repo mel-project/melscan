@@ -1,5 +1,4 @@
-
-use crate::raw::{BlockSummary, TransactionSummary, Header};
+use crate::raw::TransactionSummary;
 use futures_util::{stream::FuturesOrdered, Future};
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;
@@ -26,20 +25,6 @@ pub fn get_old_blocks(
     futs
 }
 
-pub fn create_block_summary(block: Block, reward: CoinValue) -> BlockSummary {
-        let transactions: Vec<TransactionSummary> = get_transactions(&block);
-        BlockSummary {
-            header: Header(block.header),
-            total_weight: block
-                .transactions
-                .iter()
-                .map(|v| v.weight(covenant_weight_from_bytes))
-                .sum(),
-            reward_amount: reward.0,
-            transactions: transactions.clone(), 
-        }
-}
-
 pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
     let mut transactions: Vec<TransactionSummary> = Vec::new();
     for transaction in &block.transactions {
@@ -49,11 +34,11 @@ pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
             height: block.header.height.0,
             weight: transaction.weight(covenant_weight_from_bytes),
             mel_moved: transaction
-                    .outputs
-                    .iter()
-                    .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-                    .sum::<u128>()
-                    + transaction.fee.0,
+                .outputs
+                .iter()
+                .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                .sum::<u128>()
+                + transaction.fee.0,
         })
     }
     transactions.sort_unstable();

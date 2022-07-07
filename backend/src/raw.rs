@@ -4,33 +4,49 @@ use std::{convert::TryInto, sync::Arc};
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
 use num_traits::ToPrimitive;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use themelio_nodeprot::{ValClient, ValClientSnapshot};
-
 use smol::{lock::Semaphore, prelude::*};
+use themelio_nodeprot::cache::AsyncCache;
+use themelio_nodeprot::{ValClient, ValClientSnapshot};
+use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::{
-    Block, BlockHeight, CoinDataHeight, CoinID, Denom, PoolKey, PoolState, Transaction, TxHash,
-    MICRO_CONVERTER,
+    Block, BlockHeight, CoinDataHeight, CoinID, CoinValue, Denom, Header, PoolKey, PoolState,
+    Transaction, TxHash, MICRO_CONVERTER,
 };
 use tmelcrypt::HashVal;
 
-use crate::{utils::*};
+use crate::utils::*;
 
 use async_trait::async_trait;
 
 #[derive(PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
 
-#[derive(serde::Serialize, rweb::Schema)]
-pub struct Header(pub themelio_structs::Header);
-
-#[derive(serde::Serialize, rweb::Schema)]
+#[derive(serde::Serialize)]
 // A block summary for the homepage.
 pub struct BlockSummary {
     pub header: Header,
     pub total_weight: u128,
-    pub reward_amount: u128,
+    pub reward_amount: CoinValue,
     pub transactions: Vec<TransactionSummary>,
+}
+
+impl BlockSummary {
+    /// Creates a new block summary from a full block and the reward amount
+    pub fn from_block(block: Block, reward_amount: CoinValue) -> Self {
+        let transactions: Vec<TransactionSummary> = get_transactions(&block);
+        Self {
+            header: block.header,
+            total_weight: block
+                .transactions
+                .iter()
+                .map(|v| v.weight(covenant_weight_from_bytes))
+                .sum(),
+            reward_amount,
+            transactions,
+        }
+    }
 }
 
 #[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, rweb::Schema)]
@@ -43,7 +59,7 @@ pub struct TransactionSummary {
     pub mel_moved: u128,
 }
 
-#[derive(Serialize, rweb::Schema)]
+#[derive(Serialize)]
 pub struct Overview {
     erg_per_mel: f64,
     sym_per_mel: f64,
@@ -135,6 +151,7 @@ async fn get_exchange(
     Ok(micro)
 }
 
+/// Generates an Overview structure from a client and height.
 pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
     let last_snap = match height {
         Some(height) => client.older_snapshot(height).await?,
@@ -146,7 +163,7 @@ pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Res
     let mut blocks: Vec<BlockSummary> = vec![];
     while let Some(inner) = futs.next().await {
         let (block, reward) = inner?;
-        blocks.push(create_block_summary(block, reward))
+        blocks.push(BlockSummary::from_block(block, reward))
     }
 
     let erg_per_mel = get_exchange(&last_snap, Denom::Mel, Denom::Erg).await?;
@@ -159,33 +176,30 @@ pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Res
     })
 }
 
-pub async fn get_latest(client: ValClient) -> anyhow::Result<Header> {
+/// Gets the latest blockchain header.
+pub async fn get_latest_header(client: ValClient) -> anyhow::Result<Header> {
     let last_snap = client.snapshot().await?;
-    anyhow::Ok(Header(last_snap.current_header()))
+    Ok(last_snap.current_header())
 }
 
+/// Gets a particular transaction at a height
 pub async fn get_transaction(
     client: ValClient,
     height: u64,
     txhash: String,
-) -> anyhow::Result<Transaction> {
-    let txhash: Vec<u8> = hex::decode(&txhash)?;
-    let txhash: TxHash = HashVal(
-        txhash
-            .try_into()
-            .map_err(|_| anyhow::anyhow!("not the right length"))?,
-    )
-    .into();
+) -> anyhow::Result<Option<Transaction>> {
+    let txhash: TxHash = TxHash(txhash.parse()?);
     let last_snap = client.snapshot().await?;
     let older = last_snap.get_older(height.into()).await?;
-    let tx = older.get_transaction(txhash).await?;
-    tx.ok_or(anyhow::format_err!("TODO"))
+    Ok(older.get_transaction(txhash).await?)
 }
+
+/// Gets a particular coin at a height
 pub async fn get_coin(
     client: ValClient,
     height: u64,
     coinid_string: String,
-) -> anyhow::Result<CoinDataHeight> {
+) -> anyhow::Result<Option<CoinDataHeight>> {
     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
     if coinid_exploded.len() != 2 {
         return Err(anyhow::format_err!("bad coinid"));
@@ -198,14 +212,11 @@ pub async fn get_coin(
     )
     .into();
     let index: u8 = coinid_exploded[1].parse()?;
-    let older = client.older_snapshot(height.into()).await?;
-    let cdh = older.get_coin(CoinID { txhash, index }).await?;
-    cdh.ok_or(anyhow::format_err!("TODO"))
+    let older = client.older_snapshot(height).await?;
+    Ok(older.get_coin(CoinID { txhash, index }).await?)
 }
 
-
 /// Get a particular block
-// #[tracing::instrument(skip(req))]
 pub async fn get_full_block(client: ValClient, height: u64) -> anyhow::Result<Block> {
     let older = client.older_snapshot(height).await?;
     let block = older.current_block().await?;
@@ -213,34 +224,33 @@ pub async fn get_full_block(client: ValClient, height: u64) -> anyhow::Result<Bl
 }
 
 /// Get block summary
-// #[tracing::instrument(skip(req))]
 pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result<BlockSummary> {
     let older = client.older_snapshot(height).await?;
     let block = older.current_block().await?;
     let reward_amount = client.get_reward_amount(height).await?;
-    Ok(create_block_summary(block, reward_amount))
+    Ok(BlockSummary::from_block(block, reward_amount))
 }
 
-pub async fn get_pool(client: ValClient, height: u64, left: Denom, right: Denom) -> anyhow::Result<PoolState> {
+pub async fn get_pool(
+    client: ValClient,
+    height: u64,
+    left: Denom,
+    right: Denom,
+) -> anyhow::Result<Option<PoolState>> {
     let older = client.older_snapshot(height).await?;
-    let cdh = older.get_pool(PoolKey{left, right}).await?;
-    cdh.ok_or(anyhow::format_err!("TODO"))
+    Ok(older.get_pool(PoolKey { left, right }).await?)
 }
 
-// pub async fn get_pooldata(client: ValClient, lower_block: u64) -> anyhow::Result<Vec<PoolDataItem>> {
-//     let denom = Denom::from_bytes(&hex::decode("73")?)
-//     .ok_or(anyhow::format_err!("couldn't decode 73 into denom"))cac
-//     snapshot.poo
-// }
-
+/// Obtains some pooldatas for the given range
 pub async fn get_pooldata_range(
     client: ValClient,
-    cache: &Arc<themelio_nodeprot::cache::AsyncCache>,
     left: Denom,
     right: Denom,
     lower_block: u64,
     upper_block: u64,
 ) -> anyhow::Result<Vec<PoolDataItem>> {
+    static CACHE: Lazy<AsyncCache> = Lazy::new(|| AsyncCache::new(1_000_000));
+
     let pool_key = PoolKey { left, right };
     let snapshot = &client.snapshot().await?;
 
@@ -261,26 +271,14 @@ pub async fn get_pooldata_range(
         item_futs.push(async move {
             let _guard = semaphore.acquire().await;
             let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
-            // let item = {
-            //     if cache.contains_key(&cache_key) {
-            //         log::debug!("cache hit {}", height);
-            //         let item = cache.get(&cache_key).unwrap().value().clone();
-            //         item
-            //     } else {
-            //         log::debug!("cache miss {} ({})", height, cache.len());
-            //         let item = snapshot.get_older_pool_data_item(pool_key, *height).await?;
-            //         cache.insert(cache_key, item.clone());
-            //         drop(_guard);
-            //         item
-
-            //     }
-            // };
-            cache
+            CACHE
                 .get_or_try_fill(&cache_key, async {
                     snapshot
                         .get_older_pool_data_item(pool_key, *height)
                         .await
-                        .map_err(|err| anyhow::format_err!("failed to get pool data item at {height}"))
+                        .map_err(|err| {
+                            anyhow::anyhow!("failed to get pool data item at {height}: {err}")
+                        })
                 })
                 .await
         });
@@ -301,4 +299,3 @@ pub async fn get_pooldata_range(
 
     Ok(output)
 }
-
