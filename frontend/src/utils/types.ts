@@ -84,3 +84,5 @@ export interface PoolState {
      price_accum: u128,
      liqs: u128,
  }
+
+ 

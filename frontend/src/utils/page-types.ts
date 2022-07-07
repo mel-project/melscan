@@ -1,4 +1,4 @@
-import type { BlockSummary, bool, f64, PoolDataItem, PoolKey, Vec } from './types';
+import type { BlockSummary, bool, f64, PoolDataItem, PoolKey, PoolState, Vec } from './types';
 
 export interface Overview {
     erg_per_mel: f64,
@@ -12,4 +12,9 @@ export interface PoolTemplate {
     friendly_denom: String,
     pool_key: PoolKey,
     last_item: PoolDataItem,
+}
+
+interface PoolInfo {
+    pool_state: PoolState,
+    latest_item: PoolDataItem,
 }

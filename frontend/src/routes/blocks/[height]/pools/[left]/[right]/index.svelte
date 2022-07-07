@@ -11,11 +11,14 @@
 	import type { PoolDataItem, PoolKey, PoolState } from '@utils/types';
 	import TopNav from '@components/TopNav.svelte';
 
-	export let lefts;
-	export let rights;
-	export let price_accum;
-	export let liqs;
+	export let pool_state: PoolState;
+	export let latest_item: PoolDataItem;
 	export let params;
+
+
+	let denom_tooltip = '';
+	let last_item = latest_item;
+
 
 	let { left, right, height } = params;
 	let pool_key: PoolKey = { left, right };
@@ -29,9 +32,6 @@
 	let tooltips = new Proxy({}, handler);
   // temp end 
 
-
-	let denom_tooltip = '';
-	let last_item = { price: price_accum, liquidity: liqs, height };
 </script>
 
 <template>
@@ -47,14 +47,14 @@
 			<div class="col-span-12 md:col-span-3 card ticker-card">
 				<div><small>Price</small>{tooltips['price']}</div>
 				<div class="text-lg font-medium">
-					{(last_item.price * 1000.0) / 1000.0}
+					{Math.round(last_item.price * 1000.0) / 1000.0}
 					{pool_key.left}/{pool_key.right}
 				</div>
 			</div>
 			<div class="col-span-12 md:col-span-3 card ticker-card">
 				<div><small>Liquidity</small>{tooltips['liquidity']}</div>
 				<div class="text-lg font-medium">
-					{(last_item.liquidity * 1000.0) / 1000.0}
+					{Math.round(last_item.liquidity * 1000.0) / 1000.0}
 					<span class="text-sm">({pool_key.left} × {pool_key.right})<sup>1/2</sup></span>
 				</div>
 			</div>

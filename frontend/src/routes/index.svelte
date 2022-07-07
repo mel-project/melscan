@@ -12,7 +12,7 @@
 	export let erg_per_mel: number;
 	export let sym_per_mel: number;
 	export let recent_blocks: [any];
-
+	$: height = recent_blocks[recent_blocks.length -1]
 
 	$: recentTxx = () => {
 		let x = recent_blocks.map((b) => b.transactions).flat();
