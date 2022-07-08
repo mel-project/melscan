@@ -3,12 +3,12 @@
     "selected": 1
   },
   "1 error pnpm": {
-    "code": "ERR_PNPM_NO_SCRIPT",
+    "code": "ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND",
     "err": {
       "name": "pnpm",
-      "message": "Missing script: dev",
-      "code": "ERR_PNPM_NO_SCRIPT",
-      "stack": "pnpm: Missing script: dev\n    at Object.handler (/snapshot/dist/pnpm.cjs)\n    at async /snapshot/dist/pnpm.cjs\n    at async run (/snapshot/dist/pnpm.cjs)\n    at async runPnpm (/snapshot/dist/pnpm.cjs)\n    at async /snapshot/dist/pnpm.cjs"
+      "message": "No package.json (or package.yaml, or package.json5) was found in \"/home/shmendez/dev/themeliolabs/melscan\".",
+      "code": "ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND",
+      "stack": "pnpm: No package.json (or package.yaml, or package.json5) was found in \"/home/shmendez/dev/themeliolabs/melscan\".\n    at readProjectManifest (/usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:20853:13)\n    at async readProjectManifest (/usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:44012:60)\n    at async Object.handler (/usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:128744:67)\n    at async /usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:192576:21\n    at async run (/usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:192550:34)\n    at async runPnpm (/usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:192768:5)\n    at async /usr/local/lib/node_modules/pnpm/dist/pnpm.cjs:192760:7"
     }
   }
 }

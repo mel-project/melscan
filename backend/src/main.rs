@@ -1,5 +1,6 @@
 use endpoints::*;
 use rweb::Filter;
+use tracing::info;
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::globals::CMD_ARGS;
@@ -37,7 +38,7 @@ macro_rules! routes {
 #[tracing::instrument]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "melscan=debug,warn".into());
+    let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "melscan=debug,warn,info".into());
     std::env::set_var("RUST_LOG", log_conf);
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
@@ -58,7 +59,17 @@ async fn main() -> anyhow::Result<()> {
         pool,
         pooldata
     ];
-    rweb::serve(routes).run(CMD_ARGS.listen).await;
+    let cors = warp::cors().allow_any_origin(); // URGENT is this safe?
+    rweb::serve(routes.with(cors).with(warp::trace(|info| {
+        // Create a span using tracing macros
+        tracing::info_span!(
+            "request",
+            method = %info.method(),
+            path = %info.path(),
+        )
+    })))
+    .run(CMD_ARGS.listen)
+    .await;
 
     Ok(())
 }

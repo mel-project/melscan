@@ -3,6 +3,8 @@
 </script>
 
 <script lang="ts">
+import type { BlockSummary } from '@utils/types';
+
 	import TopNav from '../components/TopNav.svelte';
 	export let refresh: (s?: string)=>Promise<JSON>;
 	export let autorefresh: () => Promise<number>
@@ -11,9 +13,12 @@
 
 	export let erg_per_mel: number;
 	export let sym_per_mel: number;
-	export let recent_blocks: [any];
-	$: height = recent_blocks[recent_blocks.length -1]
-
+	export let recent_blocks: BlockSummary[];
+	let height: number;
+	$: {
+		height = recent_blocks[recent_blocks.length -1].header.height
+		console.log(height)
+	}
 	$: recentTxx = () => {
 		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
@@ -23,8 +28,7 @@
 	};
 </script>
 
-<TopNav>Melscan</TopNav>
-<a href="/blocks">blocks</a>
+<TopNav><a href="/">Melscan</a></TopNav>
 <div class="container mx-auto max-w-screen-lg">
 	<div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
 		<div class="col-span-2 mb-3">
@@ -36,7 +40,7 @@
 				{(erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href={`/blocks/{height}/pools/MEL/ERG`}>See details →</a></small>
 		</div>
 		<div>
 			<span class="text-lg font-bold">
@@ -44,7 +48,7 @@
 				{(sym_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href="/blocks/{height}/pools/MEL/SYM">See details →</a></small>
 		</div>
 	</div>
 

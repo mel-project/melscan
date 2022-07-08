@@ -5,6 +5,7 @@ use crate::{globals::CLIENT, raw::*};
 use futures_util::Future;
 use rweb::*;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -16,6 +17,8 @@ async fn generic_fallible<R: warp::Reply + 'static>(
         Ok(res) => Ok(Box::new(res)),
         Err(err) => {
             let mut map = HashMap::new();
+            let err_string = err.to_string();
+            info!("{err_string}");
             map.insert("error", err.to_string());
             Ok(Box::new(rweb::reply::with_status(
                 rweb::reply::json(&map),
@@ -66,9 +69,11 @@ impl FromStr for Denom {
     }
 }
 
+
 #[get("/raw/overview")]
 pub async fn overview() -> DynReply {
-    generic_fallible_json(get_overview(CLIENT.to_owned(), None)).await
+    let overview = get_overview(CLIENT.to_owned(), None);
+    generic_fallible_json(overview).await
 }
 
 #[get("/raw/latest")]

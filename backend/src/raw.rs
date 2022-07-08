@@ -23,7 +23,7 @@ use async_trait::async_trait;
 #[derive(PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug)]
 // A block summary for the homepage.
 pub struct BlockSummary {
     pub header: Header,
@@ -49,7 +49,7 @@ impl BlockSummary {
     }
 }
 
-#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, rweb::Schema)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, rweb::Schema, Debug)]
 // A transaction summary for the homepage.
 pub struct TransactionSummary {
     pub hash: String,
@@ -59,7 +59,7 @@ pub struct TransactionSummary {
     pub mel_moved: u128,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Overview {
     erg_per_mel: f64,
     sym_per_mel: f64,
@@ -76,7 +76,11 @@ pub struct PoolDataItem {
     liquidity: f64,
     ergs_per_mel: f64,
 }
-
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PoolInfo {
+    pool_state: PoolState,
+    latest_item: PoolDataItem,
+}
 #[async_trait]
 pub trait AsPoolDataItem {
     async fn as_pool_data_item(&self, pool_key: PoolKey) -> anyhow::Result<Option<PoolDataItem>>;
@@ -151,6 +155,8 @@ async fn get_exchange(
     Ok(micro)
 }
 
+
+#[tracing::instrument(skip(client))]
 /// Generates an Overview structure from a client and height.
 pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
     let last_snap = match height {
@@ -236,9 +242,21 @@ pub async fn get_pool(
     height: u64,
     left: Denom,
     right: Denom,
-) -> anyhow::Result<Option<PoolState>> {
+) -> anyhow::Result<Option<PoolInfo>> {
     let older = client.older_snapshot(height).await?;
-    Ok(older.get_pool(PoolKey { left, right }).await?)
+    let key = PoolKey { left, right };
+    let pool_state = older
+        .get_pool(key)
+        .await?
+        .ok_or(anyhow::format_err!("Unable to get pool state"))?;
+    let latest_item = older
+        .as_pool_data_item(key)
+        .await?
+        .ok_or(anyhow::format_err!("Unable to get pool data item"))?;
+    Ok(Some(PoolInfo {
+        pool_state,
+        latest_item,
+    }))
 }
 
 /// Obtains some pooldatas for the given range
