@@ -3,7 +3,7 @@
 	export let load = loader((event) => {
 		let { params } = event;
 		let { height, left, right } = params;
-		return `/raw/blocks/${height}/pools/${left}/${right}`;
+		return [`/raw/blocks/${height}/pools/${left}/${right}`];
 	});
 </script>
 

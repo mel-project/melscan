@@ -7,10 +7,12 @@ import { onDestroy } from "svelte";
 
 
 
+
+export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
+
 export const url_mapping = {
-	'/': ['/raw/overview']
+	'/': [backendUrl('/raw/overview')]
 }
-export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + (url_mapping[endpoint] || endpoint);
 
 export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
 
@@ -25,36 +27,26 @@ export const melscan = async (fetch: Fetch, url: string): Promise<JSON> => {
 };
 
 
-export type EndpointLoader =  (loadEvent: LoadEvent) => string | [string];
-export const loader =  (endpoints?: string | [string] | EndpointLoader) => async (event: LoadEvent) => {
+export type EndpointLoader =  (loadEvent: LoadEvent) => [string];
+export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEvent) => {
 	let {url, fetch, params} = event;
-
-	if(typeof endpoints == "function"){
-		endpoints = endpoints(event)
-	}
-
-	if(typeof endpoints == "string"){
-		endpoints = [endpoints]
-	}
-	let paths: string[] = endpoints || url_mapping[url.pathname] || [url.pathname]
-	let sources = paths.map(path => backendUrl(path))
-	let data: JSON[] = (await Promise.all(sources.map(source => melscan(fetch,source)))).flat();
-	let props = Object.assign(...data);
+	let sources = endpoint_loader(event)
 	// console.log("Props: ", props);
 	const refresh = ()=>Promise.all(sources.map(e => melscan(fetch, e)))
+	let data: JSON[] = await refresh();
+	console.log(data);
+	let props = Object.assign(...data);
 	return {
 		status: 200,
 		props: {
 			refresh,
 			autorefresh: (interval?: number)=>{
-				console.log("autorefresh called)")
 				if(browser){
 					console.log(browser)
 					interval = interval || 1000;
 					let interval_code = setInterval(async () => {
 						// let v = await refresh()
 						sources.map(i => {
-							console.log("invalidating:",i);
 							invalidate(i)
 						})
 
@@ -69,4 +61,4 @@ export const loader =  (endpoints?: string | [string] | EndpointLoader) => async
 	};
 }
 
-export const load = loader()
+export const load = loader(({url})=> url_mapping[url.pathname] || [url.pathname])

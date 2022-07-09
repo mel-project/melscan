@@ -13,6 +13,8 @@ export type Vec<T> = T[];
 export type BlockHeight = u64;
 export type CoinValue = u128;
 
+
+// [u8; 32]
 export type HashVal = [u8,u8,u8,u8,u8,u8,u8,u8,
                         u8,u8,u8,u8,u8,u8,u8,u8,
                         u8,u8,u8,u8,u8,u8,u8,u8,

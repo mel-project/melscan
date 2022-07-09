@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-import type { BlockSummary } from '@utils/types';
+import type { BlockHeight, BlockSummary } from '@utils/types';
 import { onDestroy } from 'svelte';
 
 	import TopNav from '../components/TopNav.svelte';
@@ -15,11 +15,7 @@ import { onDestroy } from 'svelte';
 	export let erg_per_mel: number;
 	export let sym_per_mel: number;
 	export let recent_blocks: BlockSummary[];
-	let height: number;
-	$: {
-		height = recent_blocks[0].header.height
-		console.log(height)
-	}
+	let height: BlockHeight = recent_blocks[0].header.height
 	$: recentTxx = () => {
 		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {

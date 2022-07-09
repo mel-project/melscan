@@ -23,7 +23,7 @@ use async_trait::async_trait;
 #[derive(PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, Debug, Clone)]
 // A block summary for the homepage.
 pub struct BlockSummary {
     pub header: Header,
@@ -59,7 +59,7 @@ pub struct TransactionSummary {
     pub mel_moved: u128,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Overview {
     pub erg_per_mel: f64,
     pub sym_per_mel: f64,

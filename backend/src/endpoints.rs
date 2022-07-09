@@ -4,6 +4,8 @@ use std::{collections::HashMap, str::FromStr};
 use crate::{globals::CLIENT, raw::*};
 use futures_util::Future;
 use rweb::*;
+use rweb::reply::Json;
+use serde_json;
 use serde::{Deserialize, Serialize};
 use tracing::{info, debug};
 
@@ -75,7 +77,11 @@ pub async fn overview() -> DynReply {
     generic_fallible_json(async move {
         let overview =  get_overview(CLIENT.to_owned(), None).await?;
         let height = overview.recent_blocks[0].header.height;
+        let mut o = overview.clone();
+        o.recent_blocks = vec![];
+        let overview2 = serde_json::to_string_pretty(&o)?;
         debug!("Found Height: {height}");
+        println!("{overview2:?}");
         anyhow::Ok(overview)
     }).await
 }
