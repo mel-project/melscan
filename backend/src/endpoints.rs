@@ -5,7 +5,7 @@ use crate::{globals::CLIENT, raw::*};
 use futures_util::Future;
 use rweb::*;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, debug};
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -72,8 +72,12 @@ impl FromStr for Denom {
 
 #[get("/raw/overview")]
 pub async fn overview() -> DynReply {
-    let overview = get_overview(CLIENT.to_owned(), None);
-    generic_fallible_json(overview).await
+    generic_fallible_json(async move {
+        let overview =  get_overview(CLIENT.to_owned(), None).await?;
+        let height = overview.recent_blocks[0].header.height;
+        debug!("Found Height: {height}");
+        anyhow::Ok(overview)
+    }).await
 }
 
 #[get("/raw/latest")]

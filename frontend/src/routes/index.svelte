@@ -4,19 +4,20 @@
 
 <script lang="ts">
 import type { BlockSummary } from '@utils/types';
+import { onDestroy } from 'svelte';
 
 	import TopNav from '../components/TopNav.svelte';
 	export let refresh: (s?: string)=>Promise<JSON>;
-	export let autorefresh: () => Promise<number>
+	export let autorefresh: () => void;
 
-	// autorefresh();
+	autorefresh();
 
 	export let erg_per_mel: number;
 	export let sym_per_mel: number;
 	export let recent_blocks: BlockSummary[];
 	let height: number;
 	$: {
-		height = recent_blocks[recent_blocks.length -1].header.height
+		height = recent_blocks[0].header.height
 		console.log(height)
 	}
 	$: recentTxx = () => {
@@ -40,7 +41,7 @@ import type { BlockSummary } from '@utils/types';
 				{(erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href={`/blocks/{height}/pools/MEL/ERG`}>See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href={"/blocks/{height}/pools/MEL/ERG"}>See details →</a></small>
 		</div>
 		<div>
 			<span class="text-lg font-bold">

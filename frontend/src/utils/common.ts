@@ -1,21 +1,22 @@
 
 import { browser } from "$app/env";
-import { invalidate } from "$app/navigation";
+import { goto, invalidate } from "$app/navigation";
 import { getStores } from "$app/stores";
 import type {Load, LoadEvent} from "@sveltejs/kit/types"
+import { onDestroy } from "svelte";
 
-export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
 
-export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
 
 export const url_mapping = {
 	'/': ['/raw/overview']
 }
+export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + (url_mapping[endpoint] || endpoint);
 
-export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => {
-	const url = backendUrl(endpoint);
+export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
+
+export const melscan = async (fetch: Fetch, url: string): Promise<JSON> => {
 	const response = await fetch(url);
-	console.log(`requesting ${endpoint}`)
+	console.log(`requesting ${url}`)
 	if (!response.ok) {
 		throw `failed to fetch '${url}' data`;
 	}
@@ -35,25 +36,32 @@ export const loader =  (endpoints?: string | [string] | EndpointLoader) => async
 	if(typeof endpoints == "string"){
 		endpoints = [endpoints]
 	}
-	let sources: string[] = endpoints || url_mapping[url.pathname] || [url.pathname]
-	let data: JSON[] = (await Promise.all(sources.map(e => melscan(fetch,e)))).flat();
+	let paths: string[] = endpoints || url_mapping[url.pathname] || [url.pathname]
+	let sources = paths.map(path => backendUrl(path))
+	let data: JSON[] = (await Promise.all(sources.map(source => melscan(fetch,source)))).flat();
 	let props = Object.assign(...data);
-	params = Object.assign({}, params)
-	console.log("params: ",params);
+	// console.log("Props: ", props);
 	const refresh = ()=>Promise.all(sources.map(e => melscan(fetch, e)))
 	return {
 		status: 200,
 		props: {
 			refresh,
-			autorefresh: ()=>{	
-				setInterval(async () => {
-					let v = await refresh()
-					.catch((e)=>console.error(e))
-					.then(async data=> {
-						if(browser)
-							invalidate(url.href);
-					})
-				}, 1000)
+			autorefresh: (interval?: number)=>{
+				console.log("autorefresh called)")
+				if(browser){
+					console.log(browser)
+					interval = interval || 1000;
+					let interval_code = setInterval(async () => {
+						// let v = await refresh()
+						sources.map(i => {
+							console.log("invalidating:",i);
+							invalidate(i)
+						})
+
+					}, interval)
+					console.log(interval_code)
+					onDestroy(()=>clearInterval(interval_code))
+				}
 			},
 			...props,
 			params,

@@ -61,9 +61,9 @@ pub struct TransactionSummary {
 
 #[derive(Serialize, Debug)]
 pub struct Overview {
-    erg_per_mel: f64,
-    sym_per_mel: f64,
-    recent_blocks: Vec<BlockSummary>,
+    pub erg_per_mel: f64,
+    pub sym_per_mel: f64,
+    pub recent_blocks: Vec<BlockSummary>,
 }
 
 // 2 million cached pooldataitems is 64 mb
