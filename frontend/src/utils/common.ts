@@ -61,4 +61,14 @@ export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEv
 	};
 }
 
+
 export const load = loader(({url})=> url_mapping[url.pathname] || [url.pathname])
+
+// temp start 
+let handler = {
+	get: function (target) {
+		return '';
+	}
+};
+export const tooltips = new Proxy({}, handler);
+// temp end 

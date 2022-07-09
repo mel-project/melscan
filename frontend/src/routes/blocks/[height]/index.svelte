@@ -1,12 +1,22 @@
 <script context="module" lang="ts">
 	import TopNav from './../../../components/TopNav.svelte';
-	export { load } from '@utils/common';
+	import { backendUrl, loader } from '@utils/common';
+	import type { LoadEvent } from '@sveltejs/kit';
+	import type { BlockSummary, HashVal, Header, TransactionSummary } from '@utils/types';
+	import { tooltips } from '@utils/common';
+
+	export let load = loader(({url}) => {
+		return [backendUrl('/raw'+url.pathname+'/summary')]
+	})
 </script>
 <script lang="ts">
-import type { BlockSummary, Header } from '@utils/types';
-	export let summary: BlockSummary;
-	let header:Header = summary.header;
-	let tooltips = {};
+	export let header: Header;
+	export let total_weight: number;
+	export let reward_amount: number;
+    export let transactions: TransactionSummary[];
+	export let total_fees: number;
+	export let header_hash: HashVal;
+	export let fee_multiplier: number;
 </script>
 <template>
 	<TopNav>Melscan</TopNav>
@@ -21,7 +31,7 @@ import type { BlockSummary, Header } from '@utils/types';
 			<span class="text-ellipsis overflow-hidden">Hash</span>
 			{ tooltips["blockHash"] }
 		</td>
-		<td class="font-medium">{header.hash() }</td>
+		<td class="font-medium">{header_hash}</td>
 		</tr>
 		<tr>
 		<td class="w-1/3 text-black text-opacity-50 font-bold">
@@ -32,13 +42,13 @@ import type { BlockSummary, Header } from '@utils/types';
 		</tr>
 		<tr>
 		<td class="w-1/3 text-black text-opacity-50 font-bold">Number of transactions</td>
-		<td>{txcount }</td>
+		<td>{transactions.length}</td>
 		</tr>
 		<tr>
 		<td class="w-1/3 text-black text-opacity-50 font-bold">
 			Total transaction weight
 		</td>
-		<td>{txweight } wu</td>
+		<td>{total_weight} wu</td>
 		</tr>
 	</tbody>
 	</table>
@@ -49,18 +59,18 @@ import type { BlockSummary, Header } from '@utils/types';
 			<span class="name">Fees charged</span>
 			{tooltips["feesCharged"] }
 		</td>
-		<td>{total_fees }</td>
+		<td>{total_fees/1000000} MEL</td>
 		<tr>
 		<td class="w-1/3 text-black text-opacity-50 font-bold">
 			Fee multiplier
 		</td>
-		<td>{fee_multiplier } µMEL/wu</td>
+		<td>{fee_multiplier} µMEL/wu</td>
 		</tr>
 		<tr>
 		<td class="w-1/3 text-black text-opacity-50 font-bold">
 			Fee pool {tooltips["feePool"]}
 		</td>
-		<td>{fee_pool }</td>
+		<td>{header.fee_pool/1000000} MEL</td>
 		</tr>
 	</tbody>
 	</table>

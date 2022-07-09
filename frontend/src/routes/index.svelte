@@ -15,7 +15,9 @@ import { onDestroy } from 'svelte';
 	export let erg_per_mel: number;
 	export let sym_per_mel: number;
 	export let recent_blocks: BlockSummary[];
-	let height: BlockHeight = recent_blocks[0].header.height
+	let height: BlockHeight;
+	
+	$: height = recent_blocks[0].header.height
 	$: recentTxx = () => {
 		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {

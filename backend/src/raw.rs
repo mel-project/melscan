@@ -30,14 +30,20 @@ pub struct BlockSummary {
     pub total_weight: u128,
     pub reward_amount: CoinValue,
     pub transactions: Vec<TransactionSummary>,
+    pub header_hash: HashVal,
+    pub total_fees: u128,
+    pub fee_multiplier: f64
 }
 
 impl BlockSummary {
     /// Creates a new block summary from a full block and the reward amount
     pub fn from_block(block: Block, reward_amount: CoinValue) -> Self {
+        
         let transactions: Vec<TransactionSummary> = get_transactions(&block);
+        let header = block.header;
+        let fee_multiplier = header.fee_multiplier as f64 / 65536.0;
         Self {
-            header: block.header,
+            header,
             total_weight: block
                 .transactions
                 .iter()
@@ -45,6 +51,9 @@ impl BlockSummary {
                 .sum(),
             reward_amount,
             transactions,
+            header_hash: header.hash(),
+            total_fees: block.transactions.iter().map(|v| v.fee.0).sum(),
+            fee_multiplier,
         }
     }
 }

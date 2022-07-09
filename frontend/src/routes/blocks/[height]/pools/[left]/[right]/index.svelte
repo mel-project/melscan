@@ -1,9 +1,9 @@
 <script context="module">
-	import { loader } from '@utils/common';
+	import { backendUrl, loader } from '@utils/common';
 	export let load = loader((event) => {
 		let { params } = event;
 		let { height, left, right } = params;
-		return [`/raw/blocks/${height}/pools/${left}/${right}`];
+		return [backendUrl(`/raw/blocks/${height}/pools/${left}/${right}`)];
 	});
 </script>
 
@@ -36,7 +36,6 @@
 
 <template>
 	<TopNav>Melscan</TopNav>
-
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8" style="display: flex">
 			<h3 class="text-2xl font-bold">Pair {pool_key.left}/{pool_key.right}</h3>
