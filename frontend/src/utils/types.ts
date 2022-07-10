@@ -14,6 +14,10 @@ export type BlockHeight = u64;
 export type CoinValue = u128;
 
 
+export type Obj<T> = {[key: string]: T}
+export type BTreeMap<T extends string | number | symbol,K> = Record<T,K>
+
+
 // [u8; 32]
 export type HashVal = [u8,u8,u8,u8,u8,u8,u8,u8,
                         u8,u8,u8,u8,u8,u8,u8,u8,
@@ -129,3 +133,10 @@ export enum TxKind {
      Swap = 0x51,
  }
 
+export type MicroUnit = number;
+
+
+export interface CoinDataHeight {
+    coin_data: CoinData,
+    height: BlockHeight,
+}
