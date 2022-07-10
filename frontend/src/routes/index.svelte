@@ -1,20 +1,33 @@
 <script context="module" lang='ts'>
-	export { load } from '@utils/common';
+
+	import { backendUrl, loader, melscan, type LoadFunction } from '@utils/common';
+	import type { Overview } from '@utils/page-types';
+	interface OverviewPage {
+		overview: Overview
+	}
+	export let load: LoadFunction<OverviewPage> = async (loadEvent)=>{
+		return {
+			overview: await melscan(loadEvent.fetch, backendUrl("/raw/overview")) as unknown as Overview,
+		}
+	};
 </script>
 
 <script lang="ts">
-import type { BlockHeight, BlockSummary } from '@utils/types';
+import type { BlockHeight, BlockSummary, Transaction } from '@utils/types';
 import { onDestroy } from 'svelte';
 
 	import TopNav from '../components/TopNav.svelte';
-	export let refresh: (s?: string)=>Promise<JSON>;
-	export let autorefresh: () => void;
+	// export let refresh: (s?: string)=>Promise<JSON>;
+	// export let autorefresh: () => void;
 
-	autorefresh();
+	// autorefresh();
+	
+	export let overview;
+	let {erg_per_mel, sym_per_mel, recent_blocks} = overview;
 
-	export let erg_per_mel: number;
-	export let sym_per_mel: number;
-	export let recent_blocks: BlockSummary[];
+		
+	
+
 	let height: BlockHeight;
 	
 	$: height = recent_blocks[0].header.height

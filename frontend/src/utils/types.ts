@@ -87,4 +87,45 @@ export interface PoolState {
      liqs: u128,
  }
 
+ export interface CoinData {
+     
+     covhash: Address,
+     value: CoinValue,
+     denom: Denom,
+     
+     additional_data: Vec<u8>,
+ }
+ export interface Transaction {
+     kind: TxKind,
+     inputs: Vec<CoinID>,
+     outputs: Vec<CoinData>,
+     fee: CoinValue,
+     
+     covenants: Vec<Vec<u8>>,
+     
+     data: Vec<u8>,
+     
+     sigs: Vec<Vec<u8>>,
+ }
  
+ export interface CoinID {
+     txhash: TxHash,
+     index: u8,
+ }
+ 
+ 
+ export type TxHash = HashVal ;
+ export type Address = HashVal;
+
+/// Transaction represents an individual, serializable Themelio transaction.
+
+export enum TxKind {
+     DoscMint = 0x50,
+     Faucet = 0xff,
+     LiqDeposit = 0x52,
+     LiqWithdraw = 0x53,
+     Normal = 0x00,
+     Stake = 0x10,
+     Swap = 0x51,
+ }
+

@@ -9,7 +9,6 @@ import { onDestroy } from "svelte";
 
 
 export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
-
 export const url_mapping = {
 	'/': [backendUrl('/raw/overview')]
 }
@@ -27,13 +26,22 @@ export const melscan = async (fetch: Fetch, url: string): Promise<JSON> => {
 };
 
 
-export type EndpointLoader =  (loadEvent: LoadEvent) => [string];
+export type EndpointLoader =  (loadEvent: LoadEvent) => {[key: string]: string};
+
+export type LoadFunction<T> =  (loadEvent: LoadEvent<Record<string, string>, Record<string, any>>)  => Promise<T>;
+export type Loader<T> = (endpoint_loader: EndpointLoader) => LoadFunction<T>
 export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEvent) => {
 	let {url, fetch, params} = event;
-	let sources = endpoint_loader(event)
+	let sources_map = endpoint_loader(event)
 	// console.log("Props: ", props);
-	const refresh = ()=>Promise.all(sources.map(e => melscan(fetch, e)))
-	let data: JSON[] = await refresh();
+	let sources = Object.values(sources_map);
+	const refresh = ()=>Object.assign(Promise.all(Object.entries(sources_map).map(async (entry) => {
+		let prop = entry[0];
+		let domain = entry[1];
+		console.log("hitting: ", domain);
+		return {[prop]: await melscan(fetch, domain)}
+	})))
+	let data = await refresh();
 	console.log(data);
 	let props = Object.assign(...data);
 	return {
@@ -62,7 +70,6 @@ export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEv
 }
 
 
-export const load = loader(({url})=> url_mapping[url.pathname] || [url.pathname])
 
 // temp start 
 let handler = {
