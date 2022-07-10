@@ -51,14 +51,7 @@
     export let net_gain: Obj<Vec<MicroUnit>>;
     export let gross_gain: Vec<MicroUnit>;
 
-    $: {
-      let entries = Object.entries(net_loss)
-
-      net_losers = {
-        0: entries[0],
-        1: entries[1]
-      }
-    }
+    $: transaction_weight = "Todo"
 </script>
 
 <template>
@@ -89,14 +82,13 @@
           </td>
           <td class="font-medium">{ txhash }</td>
         </tr>
-        <tr>
     </table>
   </div>
 
   <div class="m-3">
     <table class="table-fixed w-full text-sm text-left">
       <td class="text-black text-opacity-50 font-bold w-1/3">Total output</td>
-      <td> {#each gain_entry as gross_gain}
+      <td> {#each gross_gain as gain_entry}
         { gain_entry }
         {/each}
       </td>
@@ -128,13 +120,11 @@
       </span><br>
       <table class="table-fixed w-full text-left">
         <tbody>
-          {#each loss_entry as net_lossers}
+          {#each Object.entries(net_loss) as loss_entry}
           <tr>
             <td class="text-ellipsis overflow-hidden">{ loss_entry[0] }</td>
             <td class="font-medium" style="color: #a22041">
-              {#each loss_denom as loss_entry.1}
-              { loss_denom }<br>
-              {/each}
+            
             </td>
           </tr>
           {/each}
@@ -147,13 +137,10 @@
       { tooltips["netRecievers"] }
       <table class="table-fixed w-full text-left">
         <tbody>
-          {#each gain_entry as net_gain}
+          {#each Object.entries(net_gain) as gain_entry}
           <tr>
-            <td class="text-ellipsis overflow-hidden">{ gain_entry.0 }</td>
             <td class="font-medium" style="color: #007b43">
-              {#each gain_denom as gain_entry.1}
-              { gain_denom }<br>
-              {/each}
+             
             </td>
           </tr>
           {/each}
@@ -174,7 +161,7 @@
   </div>
 
   <div class="m-3">
-    {#each (index, input, cdh, value) as inputs_with_cdh}
+    {#each inputs_with_cdh as [input, cdh, value],index}
     <table class="table-fixed w-full text-sm text-left mt-1 mb-1">
       <tbody>
         <tr>
@@ -191,11 +178,10 @@
         </tr>
         <tr>
           <td class="text-black text-opacity-50 font-bold">Recipient</td>
-          <td>{cdh.coin_data.covhash.0.to_addr()}</td>
         </tr>
         <tr>
           <td class="text-black text-opacity-50 font-bold">Additional data</td>
-          <td>{cdh.coin_data.additional_data_hex()}</td>
+          <td>{cdh.coin_data}.additional_data_hex()</td>
         </tr>
       </tbody>
     </table>
@@ -207,7 +193,7 @@
   </div>
 
   <div class="m-3">
-    {#each (index, coin_data, value) as outputs }
+    {#each  outputs as [coin_data, value], index}
     <table class="table-fixed w-full text-sm text-left mt-1 mb-1">
       <tbody>
         <tr>
@@ -220,14 +206,14 @@
         </tr>
         <tr>
           <td class="text-black text-opacity-50 font-bold">Recipient</td>
-          <td>{coin_data.covhash.0.to_addr()}</td>
         </tr>
         <tr>
           <td class="text-black text-opacity-50 font-bold">Additional data</td>
-          <td>{coin_data.additional_data_hex()}</td>
+          <td>{coin_data}.additional_data_hex()</td>
         </tr>
       </tbody>
     </table>
     {/each}
   </div>
+</div>
 </template>

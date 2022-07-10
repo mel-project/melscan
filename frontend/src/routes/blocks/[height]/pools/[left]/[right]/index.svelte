@@ -1,5 +1,5 @@
 <script context="module">
-	import { backendUrl, loader } from '@utils/common';
+	import { backendUrl } from '@utils/common';
 	export let load = loader((event) => {
 		let { params } = event;
 		let { height, left, right } = params;
