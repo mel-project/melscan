@@ -1,13 +1,21 @@
 <script context="module" lang='ts'>
 
-	import { backendUrl, loader, melscan, type LoadFunction } from '@utils/common';
+	import { backendUrl, melscan, type LoadFunction } from '@utils/common';
 	import type { Overview } from '@utils/page-types';
 	interface OverviewPage {
-		overview: Overview
+		status: number,
+		props: {
+			overview: Overview
+		}
 	}
+
 	export let load: LoadFunction<OverviewPage> = async (loadEvent)=>{
+		let props = {
+			overview: await melscan(loadEvent.fetch, "/raw/overview") as unknown as Overview,
+		}
 		return {
-			overview: await melscan(loadEvent.fetch, backendUrl("/raw/overview")) as unknown as Overview,
+			status: 200,
+			props
 		}
 	};
 </script>

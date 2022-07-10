@@ -15,7 +15,8 @@ export const url_mapping = {
 
 export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
 
-export const melscan = async (fetch: Fetch, url: string): Promise<JSON> => {
+export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => {
+	const url = backendUrl(endpoint);
 	const response = await fetch(url);
 	console.log(`requesting ${url}`)
 	if (!response.ok) {
@@ -29,45 +30,45 @@ export const melscan = async (fetch: Fetch, url: string): Promise<JSON> => {
 export type EndpointLoader =  (loadEvent: LoadEvent) => {[key: string]: string};
 
 export type LoadFunction<T> =  (loadEvent: LoadEvent<Record<string, string>, Record<string, any>>)  => Promise<T>;
-export type Loader<T> = (endpoint_loader: EndpointLoader) => LoadFunction<T>
-export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEvent) => {
-	let {url, fetch, params} = event;
-	let sources_map = endpoint_loader(event)
-	// console.log("Props: ", props);
-	let sources = Object.values(sources_map);
-	const refresh = ()=>Object.assign(Promise.all(Object.entries(sources_map).map(async (entry) => {
-		let prop = entry[0];
-		let domain = entry[1];
-		console.log("hitting: ", domain);
-		return {[prop]: await melscan(fetch, domain)}
-	})))
-	let data = await refresh();
-	console.log(data);
-	let props = Object.assign(...data);
-	return {
-		status: 200,
-		props: {
-			refresh,
-			autorefresh: (interval?: number)=>{
-				if(browser){
-					console.log(browser)
-					interval = interval || 1000;
-					let interval_code = setInterval(async () => {
-						// let v = await refresh()
-						sources.map(i => {
-							invalidate(i)
-						})
+// export type Loader<T> = (endpoint_loader: EndpointLoader) => LoadFunction<T>
+// export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEvent) => {
+// 	let {url, fetch, params} = event;
+// 	let sources_map = endpoint_loader(event)
+// 	// console.log("Props: ", props);
+// 	let sources = Object.values(sources_map);
+// 	const refresh = ()=>Object.assign(Promise.all(Object.entries(sources_map).map(async (entry) => {
+// 		let prop = entry[0];
+// 		let domain = entry[1];
+// 		console.log("hitting: ", domain);
+// 		return {[prop]: await melscan(fetch, domain)}
+// 	})))
+// 	let data = await refresh();
+// 	console.log(data);
+// 	let props = Object.assign(...data);
+// 	return {
+// 		status: 200,
+// 		props: {
+// 			refresh,
+// 			autorefresh: (interval?: number)=>{
+// 				if(browser){
+// 					console.log(browser)
+// 					interval = interval || 1000;
+// 					let interval_code = setInterval(async () => {
+// 						// let v = await refresh()
+// 						sources.map(i => {
+// 							invalidate(i)
+// 						})
 
-					}, interval)
-					console.log(interval_code)
-					onDestroy(()=>clearInterval(interval_code))
-				}
-			},
-			...props,
-			params,
-		}
-	};
-}
+// 					}, interval)
+// 					console.log(interval_code)
+// 					onDestroy(()=>clearInterval(interval_code))
+// 				}
+// 			},
+// 			...props,
+// 			params,
+// 		}
+// 	};
+// }
 
 
 
