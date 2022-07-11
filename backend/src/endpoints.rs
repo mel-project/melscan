@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
+use std::fmt::Display;
 use std::{collections::HashMap, str::FromStr};
 
 use crate::{globals::CLIENT, raw::*};
@@ -7,6 +8,7 @@ use anyhow::Context;
 use futures_util::Future;
 use rweb::*;
 use rweb::reply::Json;
+use serde::ser::SerializeTupleStruct;
 use serde_json;
 use serde::{Deserialize, Serialize};
 use smol::Task;
@@ -66,17 +68,6 @@ async fn generic_fallible_json_option<R: Serialize>(
     .await
 }
 
-#[derive(Debug, Schema, Serialize, Deserialize)]
-struct Denom(themelio_structs::Denom);
-
-impl FromStr for Denom {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Denom(themelio_structs::Denom::from_str(s)?))
-    }
-}
-
-
 #[get("/raw/overview")]
 pub async fn overview() -> DynReply {
     generic_fallible_json(async move {
@@ -117,28 +108,80 @@ pub async fn block_summary(height: u64) -> DynReply {
 }
 #[get("/raw/blocks/{height}/pools/{left}/{right}")]
 pub async fn pool(height: u64, left: Denom, right: Denom) -> DynReply {
-    generic_fallible_json_option(get_pool(CLIENT.to_owned(), height, left.0, right.0)).await
+    generic_fallible_json_option(get_pool(CLIENT.to_owned(), height, left, right)).await
 }
 
 #[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
 pub async fn pooldata(
     denom_left: Denom,
-    denom_right: Denom,
+    denom_right:Denom,
     lowerblock: u64,
     upperblock: u64,
 ) -> DynReply {
     generic_fallible_json(get_pooldata_range(
         CLIENT.to_owned(),
-        denom_left.0,
-        denom_right.0,
+        denom_left,
+        denom_right,
         lowerblock,
         upperblock,
     ))
     .await
 }
 
-#[derive(Serialize, Debug)]
-struct MicroUnit(u128, themelio_structs::Denom);
+#[derive(Debug)]
+struct MicroUnit(u128, FriendlyDenom);
+
+impl Display for MicroUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}.{:06} {}",
+            self.0 / MICRO_CONVERTER,
+            self.0 % MICRO_CONVERTER,
+            self.1,
+        )
+    }
+}
+
+impl Serialize for MicroUnit {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+            let mut state = serializer.serialize_tuple_struct("MicroUnit", 2)?;
+            let value = &format!(            
+                "{}.{:06}",
+                self.0 / MICRO_CONVERTER,
+                self.0 % MICRO_CONVERTER);
+            state.serialize_field(value)?;
+            state.serialize_field(&self.1)?;
+            state.end()
+    }
+}
+#[derive(Debug, Clone)]
+struct FriendlyDenom(Denom);
+impl Display for FriendlyDenom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let denom = match self.0 {
+            Denom::Mel => "MEL".into(),
+            Denom::Sym => "SYM".into(),
+            Denom::Erg => "ERG".into(),
+            Denom::Custom(hash) => format!("Custom ({}..)", hex::encode(&hash.0[..5])),
+            Denom::NewCoin => "(new denom)".into(),
+        };
+        write!(
+            f,
+            "{denom}"
+        )
+    }
+}
+
+impl Serialize for FriendlyDenom {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+    S: serde::Serializer {
+        serializer.serialize_str(&format!("{self}"))
+    }
+}
 
 #[derive(Serialize, Debug)]
 struct TransactionTemplate {
@@ -156,6 +199,10 @@ struct TransactionTemplate {
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
 }
+
+
+
+
 
 #[get("/raw/blocks/{height}/{txhash}")]
 pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
@@ -225,12 +272,12 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                     net_loss
                         .entry(addr.0.to_addr())
                         .or_default()
-                        .push(MicroUnit((-balance) as u128, denom));
+                        .push(MicroUnit((-balance) as u128, FriendlyDenom(denom)));
                 } else if balance > 0 {
                     net_gain
                         .entry(addr.0.to_addr())
                         .or_default()
-                        .push(MicroUnit(balance as u128, denom));
+                        .push(MicroUnit(balance as u128, FriendlyDenom(denom)));
                 }
             }
         }
@@ -257,12 +304,12 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                 cdh.clone(),
                 MicroUnit(
                     cdh.coin_data.value.into(),
-                    cdh.coin_data.denom,
+                    FriendlyDenom(cdh.coin_data.denom),
                 ),
             ));
         }
     
-        let MEL = themelio_structs::Denom::Mel;
+        let MEL = FriendlyDenom(themelio_structs::Denom::Mel);
         let body = TransactionTemplate {
             testnet: client.netid() == NetID::Testnet,
             txhash,
@@ -280,17 +327,17 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                     (
                         i,
                         cd.clone(),
-                        MicroUnit(cd.value.0, cd.denom),
+                        MicroUnit(cd.value.0, FriendlyDenom(cd.denom)),
                     )
                 })
                 .collect(),
-            fee: MicroUnit(fee.0, MEL),
-            base_fee: MicroUnit(base_fee, MEL),
+            fee: MicroUnit(fee.0, MEL.clone()),
+            base_fee: MicroUnit(base_fee, MEL.clone()),
             tips: MicroUnit(tips, MEL),
             gross_gain: transaction
                 .total_outputs()
                 .iter()
-                .map(|(denom, val)| MicroUnit(val.0,*denom))
+                .map(|(denom, val)| MicroUnit(val.0,FriendlyDenom(*denom)))
                 .collect(),
         };
 

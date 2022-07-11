@@ -136,10 +136,7 @@ export enum TxKind {
     Swap = 0x51,
 }
 
-export interface MicroUnit {
-    0: number,
-    1: string,
-};
+export type MicroUnit = [number, string]
 
 
 export interface CoinDataHeight {

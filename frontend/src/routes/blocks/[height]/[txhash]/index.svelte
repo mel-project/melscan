@@ -1,6 +1,6 @@
 <script context="module" lang="ts">
 	import TopNav from '@components/TopNav.svelte';
-	import { backendUrl, melscan, type LoadFunction } from '@utils/common';
+	import { backendUrl, melscan, type Assertion, type LoadFunction } from '@utils/common';
 	import type { LoadEvent } from '@sveltejs/kit';
 	import type { BlockSummary, bool, BTreeMap, CoinData, CoinDataHeight, CoinID, HashVal, Header, MicroUnit, Obj, Transaction, TransactionSummary, TxHash, u64, Vec } from '@utils/types';
 	import { tooltips } from '@utils/common';
@@ -20,6 +20,10 @@
       net_gain: BTreeMap<string, Vec<MicroUnit>>,
       gross_gain: Vec<MicroUnit>,
   }
+
+  declare function assert(value: unknown): asserts value;
+
+
   export interface TransactionPage {
     status: number,
     props: TransactionResponse
@@ -29,6 +33,7 @@
     let {height, txhash} = loadEvent.params;
     let url = `/raw/blocks/${height}/${txhash}`;
 		let res = await melscan(loadEvent.fetch, url) as unknown as TransactionResponse;
+    
     console.log(res)
 		return {
 			status: 200,
@@ -90,8 +95,10 @@
   <div class="m-3">
     <table class="table-fixed w-full text-sm text-left">
       <td class="text-black text-opacity-50 font-bold w-1/3">Total output</td>
+      
       <td> {#each gross_gain as gain_entry}
-        { gain_entry }
+        { gain_entry[0] } {gain_entry[1]}
+        <br/>
         {/each}
       </td>
       <tr>

@@ -6,6 +6,10 @@ import type {Load, LoadEvent} from "@sveltejs/kit/types"
 import { onDestroy } from "svelte";
 
 
+export interface Assertion<T, K> {
+	field: T,
+	type: K
+}
 
 
 export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
