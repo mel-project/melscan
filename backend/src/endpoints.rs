@@ -183,21 +183,26 @@ impl Serialize for FriendlyDenom {
     }
 }
 
+
+type Inputs = Vec<(usize, CoinID, CoinDataHeight, MicroUnit, String, String)>;
+type Outputs = Vec<(usize, CoinData, MicroUnit, String, String)>;
 #[derive(Serialize, Debug)]
-struct TransactionTemplate {
+struct TransactionTemplate { 
     testnet: bool,
     txhash: TxHash,
     txhash_abbr: String,
     height: u64,
     transaction: Transaction,
-    inputs_with_cdh: Vec<(usize, CoinID, CoinDataHeight, MicroUnit)>,
-    outputs: Vec<(usize, CoinData, MicroUnit)>,
+    inputs_with_cdh: Inputs, 
+    outputs: Outputs,
     fee: MicroUnit,
     base_fee: MicroUnit,
     tips: MicroUnit,
     net_loss: BTreeMap<String, Vec<MicroUnit>>,
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
+    weight: u128,
+    
 }
 
 
@@ -238,6 +243,7 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
         let denoms: BTreeSet<_> = transaction.outputs.iter().map(|v| v.denom).collect();
         let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
         let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
+
         for denom in denoms {
             let mut balance: BTreeMap<Address, i128> = BTreeMap::new();
             // we add to the balance
@@ -293,7 +299,7 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
             .0;
         let tips = fee.0.saturating_sub(base_fee);
 
-        let mut inputs_with_cdh = vec![];
+        let mut inputs_with_cdh: Inputs = vec![];
         // we subtract from the balance
         for (index, input) in transaction.inputs.iter().copied().enumerate() {
             debug!("rendering input {} of {}", index, transaction.hash_nosigs());
@@ -306,6 +312,8 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                     cdh.coin_data.value.into(),
                     FriendlyDenom(cdh.coin_data.denom),
                 ),
+                cdh.coin_data.additional_data_hex(),
+                cdh.coin_data.covhash.0.to_addr(),
             ));
         }
     
@@ -328,6 +336,8 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                         i,
                         cd.clone(),
                         MicroUnit(cd.value.0, FriendlyDenom(cd.denom)),
+                        cd.additional_data_hex(),
+                        cd.covhash.0.to_addr(),
                     )
                 })
                 .collect(),
@@ -339,6 +349,7 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                 .iter()
                 .map(|(denom, val)| MicroUnit(val.0,FriendlyDenom(*denom)))
                 .collect(),
+            weight: transaction.weight(themelio_stf::melvm::covenant_weight_from_bytes),
         };
 
         Ok(Some(body))

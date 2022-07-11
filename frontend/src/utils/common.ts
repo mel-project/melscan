@@ -16,7 +16,7 @@ export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
 
 export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
 
-export const melscan = async (fetch: Fetch, endpoint: string): Promise<JSON> => {
+export const melscan = async (fetch: Fetch, endpoint: string): Promise<any> => {
 	const url = backendUrl(endpoint);
 	const response = await fetch(url);
 	console.log(`requesting ${url}`)
