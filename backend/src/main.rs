@@ -57,7 +57,8 @@ async fn main() -> anyhow::Result<()> {
         block_full,
         block_summary,
         pool,
-        pooldata
+        pooldata,
+        transaction_page
     ];
     let cors = warp::cors().allow_any_origin(); // URGENT is this safe?
     rweb::serve(routes.with(cors).with(warp::trace(|info| {

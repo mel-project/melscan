@@ -199,7 +199,7 @@ pub async fn get_latest_header(client: ValClient) -> anyhow::Result<Header> {
 
 /// Gets a particular transaction at a height
 pub async fn get_transaction(
-    client: ValClient,
+    client: &ValClient,
     height: u64,
     txhash: String,
 ) -> anyhow::Result<Option<Transaction>> {

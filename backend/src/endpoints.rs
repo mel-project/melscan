@@ -1,12 +1,17 @@
-use std::convert::Infallible;
+use std::collections::{BTreeMap, BTreeSet};
+use std::convert::{Infallible, TryInto};
 use std::{collections::HashMap, str::FromStr};
 
 use crate::{globals::CLIENT, raw::*};
+use anyhow::Context;
 use futures_util::Future;
 use rweb::*;
 use rweb::reply::Json;
 use serde_json;
 use serde::{Deserialize, Serialize};
+use smol::Task;
+use themelio_stf::melvm::covenant_weight_from_bytes;
+use themelio_structs::*;
 use tracing::{info, debug};
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
@@ -93,7 +98,7 @@ pub async fn latest() -> DynReply {
 
 #[get("/raw/blocks/{height}/transactions/{txhash}")]
 pub async fn transaction(height: u64, txhash: String) -> DynReply {
-    generic_fallible_json_option(get_transaction(CLIENT.to_owned(), height, txhash)).await
+    generic_fallible_json_option(get_transaction(&CLIENT.to_owned(), height, txhash)).await
 }
 
 #[get("/raw/blocks/{height}/coins/{coinid}")]
@@ -130,4 +135,167 @@ pub async fn pooldata(
         upperblock,
     ))
     .await
+}
+
+#[derive(Serialize, Debug)]
+struct MicroUnit(u128, themelio_structs::Denom);
+
+#[derive(Serialize, Debug)]
+struct TransactionTemplate {
+    testnet: bool,
+    txhash: TxHash,
+    txhash_abbr: String,
+    height: u64,
+    transaction: Transaction,
+    inputs_with_cdh: Vec<(usize, CoinID, CoinDataHeight, MicroUnit)>,
+    outputs: Vec<(usize, CoinData, MicroUnit)>,
+    fee: MicroUnit,
+    base_fee: MicroUnit,
+    tips: MicroUnit,
+    net_loss: BTreeMap<String, Vec<MicroUnit>>,
+    net_gain: BTreeMap<String, Vec<MicroUnit>>,
+    gross_gain: Vec<MicroUnit>,
+}
+
+#[get("/raw/blocks/{height}/{txhash}")]
+pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
+    
+    generic_fallible_json_option(async move {
+        let client = CLIENT.to_owned();
+        let txhash: TxHash = TxHash(txhash.parse()?);
+        let snap = client.older_snapshot(height.into()).await?;
+        let transaction = snap.get_transaction(txhash).await?.ok_or(anyhow::anyhow!("Error getting snapshot"))?;
+        let tmapping: BTreeMap<CoinID, Task<anyhow::Result<CoinDataHeight>>> = transaction
+        .inputs
+        .iter()
+        .map(|cid| {
+            let cid = *cid;
+            let snap = snap.clone();
+            (
+                cid,
+                smolscale::spawn(async move {
+                   snap
+                        .get_coin_spent_here(cid)
+                        .await?.ok_or(anyhow::anyhow!("Error getting"))
+                }),
+            )
+        })
+        .collect();
+        let mut coin_map: BTreeMap<CoinID, CoinDataHeight> = BTreeMap::new();
+        for (i, (cid, task)) in tmapping.into_iter().enumerate() {
+            debug!("resolving input {} for {}", i, txhash);
+            coin_map.insert(cid, task.await?);
+        }
+
+    // now that we have the transaction, we can construct the info.
+        let denoms: BTreeSet<_> = transaction.outputs.iter().map(|v| v.denom).collect();
+        let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
+        let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
+        for denom in denoms {
+            let mut balance: BTreeMap<Address, i128> = BTreeMap::new();
+            // we add to the balance
+            for output in transaction.outputs.iter() {
+                if output.denom == denom {
+                    let new_balance = balance
+                        .get(&output.covhash)
+                        .cloned()
+                        .unwrap_or_default()
+                        .checked_add(output.value.0.try_into()?)
+                        .context("cannot add")?;
+                    balance.insert(output.covhash, new_balance);
+                }
+            }
+            // we subtract from the balance
+            for input in transaction.inputs.iter().copied() {
+                debug!("getting input {} of {}", input, transaction.hash_nosigs());
+                let cdh = coin_map[&input].clone();
+                if cdh.coin_data.denom == denom {
+                    let new_balance = balance
+                        .get(&cdh.coin_data.covhash)
+                        .cloned()
+                        .unwrap_or_default()
+                        .checked_sub(cdh.coin_data.value.0.try_into()?)
+                        .context("cannot add")?;
+                    balance.insert(cdh.coin_data.covhash, new_balance);
+                }
+            }
+            // we update net loss/gain
+            for (addr, balance) in balance {
+                if balance < 0 {
+                    net_loss
+                        .entry(addr.0.to_addr())
+                        .or_default()
+                        .push(MicroUnit((-balance) as u128, denom));
+                } else if balance > 0 {
+                    net_gain
+                        .entry(addr.0.to_addr())
+                        .or_default()
+                        .push(MicroUnit(balance as u128, denom));
+                }
+            }
+        }
+
+        let fee = transaction.fee;
+        let fee_mult = snap
+            .get_older((height - 1).into())
+            .await?
+            .current_header()
+            .fee_multiplier;
+        let base_fee = transaction
+            .base_fee(fee_mult, 0, covenant_weight_from_bytes)
+            .0;
+        let tips = fee.0.saturating_sub(base_fee);
+
+        let mut inputs_with_cdh = vec![];
+        // we subtract from the balance
+        for (index, input) in transaction.inputs.iter().copied().enumerate() {
+            debug!("rendering input {} of {}", index, transaction.hash_nosigs());
+            let cdh = coin_map[&input].clone();
+            inputs_with_cdh.push((
+                index,
+                input,
+                cdh.clone(),
+                MicroUnit(
+                    cdh.coin_data.value.into(),
+                    cdh.coin_data.denom,
+                ),
+            ));
+        }
+    
+        let MEL = themelio_structs::Denom::Mel;
+        let body = TransactionTemplate {
+            testnet: client.netid() == NetID::Testnet,
+            txhash,
+            txhash_abbr: hex::encode(&txhash.0[..5]),
+            height,
+            transaction: transaction.clone(),
+            net_loss,
+            inputs_with_cdh,
+            net_gain,
+            outputs: transaction
+                .outputs
+                .iter()
+                .enumerate()
+                .map(|(i, cd)| {
+                    (
+                        i,
+                        cd.clone(),
+                        MicroUnit(cd.value.0, cd.denom),
+                    )
+                })
+                .collect(),
+            fee: MicroUnit(fee.0, MEL),
+            base_fee: MicroUnit(base_fee, MEL),
+            tips: MicroUnit(tips, MEL),
+            gross_gain: transaction
+                .total_outputs()
+                .iter()
+                .map(|(denom, val)| MicroUnit(val.0,*denom))
+                .collect(),
+        };
+
+        Ok(Some(body))
+        
+
+    }).await
 }

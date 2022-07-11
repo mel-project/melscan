@@ -26,8 +26,10 @@
 }
 
 	export let load: LoadFunction<TransactionPage> = async (loadEvent)=>{
-		let res = await melscan(loadEvent.fetch, "/raw/overview") as unknown as TransactionResponse
-    
+    let {height, txhash} = loadEvent.params;
+    let url = `/raw/blocks/${height}/${txhash}`;
+		let res = await melscan(loadEvent.fetch, url) as unknown as TransactionResponse;
+    console.log(res)
 		return {
 			status: 200,
 			props: res

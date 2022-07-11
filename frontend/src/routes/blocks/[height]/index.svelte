@@ -1,13 +1,19 @@
 <script context="module" lang="ts">
 	import TopNav from './../../../components/TopNav.svelte';
-	import { backendUrl, loader } from '@utils/common';
+	import { backendUrl, melscan } from '@utils/common';
 	import type { LoadEvent } from '@sveltejs/kit';
 	import type { BlockSummary, HashVal, Header, TransactionSummary } from '@utils/types';
 	import { tooltips } from '@utils/common';
 
-	export let load = loader(({url}) => {
-		return [backendUrl('/raw'+url.pathname+'/summary')]
-	})
+
+	export let load = async (event) => {
+		let {params, fetch, url} = event
+		let res = await melscan(fetch, '/raw'+url.pathname+'/summary') as unknown as BlockSummary
+		return {
+			status: 200,
+			props: res
+		}
+	}	
 </script>
 <script lang="ts">
 	export let header: Header;
@@ -109,6 +115,13 @@
 		</tr>
 	</thead>
 	<tbody>
+		{#each transactions as transaction}
+		<tr>
+		  <td class="text-ellipsis overflow-hidden"><a href="/blocks/{header.height}/{transaction.hash}" class="text-blue-600">
+			{transaction.hash}</a></td>
+		  <td>{transaction.weight} wu</td>
+		</tr>
+		{/each}
 	</tbody>
 	</table>
 
