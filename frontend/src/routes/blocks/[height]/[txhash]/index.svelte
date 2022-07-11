@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	import BreadCrumbs from '@components/BreadCrumbs.svelte';
 	import TopNav from '@components/TopNav.svelte';
 	import { backendUrl, melscan, type Assertion, type LoadFunction } from '@utils/common';
 	import type { LoadEvent } from '@sveltejs/kit';
@@ -20,6 +21,7 @@
 		Vec
 	} from '@utils/types';
 	import { tooltips } from '@utils/common';
+import { BreadCrumb } from '@utils/page-types';
 
 	export interface TransactionResponse {
 		testnet: bool;
@@ -77,7 +79,7 @@
   export let weight: number;
   export let kind: string;
 
-
+  let breadcrumbs = [BreadCrumb("Melscan", "/"), BreadCrumb(`Block ${height}`, `.`), BreadCrumb(`Transaction ${txhash}`, '')]
 
 function print_coin(coin: MicroUnit) {
   return `${coin[0]} ${coin[1]}`
@@ -85,6 +87,9 @@ function print_coin(coin: MicroUnit) {
 </script>
 
 <template>
+  <TopNav>
+    <BreadCrumbs {breadcrumbs}></BreadCrumbs>
+  </TopNav>
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Summary</h3>

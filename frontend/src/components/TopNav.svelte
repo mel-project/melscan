@@ -16,3 +16,18 @@
 		</b>
 	</span>
 </nav>
+
+<style lang="scss">
+
+	nav{
+	}
+	nav :global(a){
+		
+		text-overflow: ellipsis;
+		
+		&:hover{
+			text-decoration: underline;
+		}
+		
+	}
+</style>

@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	import BreadCrumbs  from '@components/BreadCrumbs.svelte';
 	import { melscan } from '@utils/common';
 
 	export let load = async (event) => {
@@ -16,7 +17,7 @@
 <script lang="ts">
 	import type { PoolDataItem, PoolKey, PoolState } from '@utils/types';
 	import TopNav from '@components/TopNav.svelte';
-	import type { PoolInfo } from '@utils/page-types';
+	import { BreadCrumb, type PoolInfo } from '@utils/page-types';
 
 	export let pool_state: PoolState;
 	export let latest_item: PoolDataItem;
@@ -26,8 +27,12 @@
 	let last_item = latest_item;
 
 
-	let { left, right } = params;
+	let { left, right, height } = params;
 	let pool_key: PoolKey = { left, right };
+
+
+	let breadcrumbs = [BreadCrumb("Melscan", "/")]
+	
 
   // temp start 
 	let handler = {
@@ -41,7 +46,7 @@
 </script>
 
 <template>
-	<TopNav>Melscan</TopNav>
+	<TopNav><BreadCrumbs {breadcrumbs}></BreadCrumbs></TopNav>
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8" style="display: flex">
 			<h3 class="text-2xl font-bold">Pair {pool_key.left}/{pool_key.right}</h3>

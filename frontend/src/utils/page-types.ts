@@ -19,3 +19,14 @@ export interface PoolInfo {
     latest_item: PoolDataItem,
 }
 
+export interface BreadCrumb {
+    title: string,
+    href: string,
+}
+
+export let BreadCrumb: (t: string, h: string) => BreadCrumb = (title, href) => {
+    return {
+        title, 
+        href
+    }
+}

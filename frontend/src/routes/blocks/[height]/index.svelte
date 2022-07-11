@@ -1,9 +1,11 @@
 <script context="module" lang="ts">
 	import TopNav from './../../../components/TopNav.svelte';
+	import BreadCrumbs from '@components/BreadCrumbs.svelte';
 	import { backendUrl, melscan } from '@utils/common';
 	import type { LoadEvent } from '@sveltejs/kit';
 	import type { BlockSummary, HashVal, Header, TransactionSummary } from '@utils/types';
 	import { tooltips } from '@utils/common';
+import { BreadCrumb } from '@utils/page-types';
 
 
 	export let load = async (event) => {
@@ -23,9 +25,11 @@
 	export let total_fees: number;
 	export let header_hash: HashVal;
 	export let fee_multiplier: number;
+	let breadcrumbs = [BreadCrumb("Melscan", "/"), BreadCrumb(`Block ${header.height}`, ``)]
+
 </script>
 <template>
-	<TopNav>Melscan</TopNav>
+	<TopNav><BreadCrumbs {breadcrumbs}></BreadCrumbs></TopNav>
 	<div class="mb-3 mt-8">
 		<h3 class="text-2xl font-bold">Summary</h3>
 	</div>
