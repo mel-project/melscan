@@ -8,7 +8,7 @@
 
 	export let load = async (event) => {
 		let {params, fetch, url} = event
-		let res = await melscan(fetch, '/raw'+url.pathname+'/summary') as unknown as BlockSummary
+		let res = await melscan(fetch, '/raw'+url.pathname+'/summary') as BlockSummary
 		return {
 			status: 200,
 			props: res

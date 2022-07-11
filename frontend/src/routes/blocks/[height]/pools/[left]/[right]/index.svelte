@@ -1,26 +1,32 @@
-<script context="module">
-	import { backendUrl } from '@utils/common';
-	export let load = loader((event) => {
+<script context="module" lang="ts">
+	import { melscan } from '@utils/common';
+
+	export let load = async (event) => {
 		let { params } = event;
+		console.log(params);
 		let { height, left, right } = params;
-		return [backendUrl(`/raw/blocks/${height}/pools/${left}/${right}`)];
-	});
+		let res = (await melscan(fetch, `/raw/blocks/${height}/pools/${left}/${right}`)) as PoolInfo;
+		return {
+			status: 200,
+			props: {...res, params}
+		}
+	};
 </script>
 
 <script lang="ts">
 	import type { PoolDataItem, PoolKey, PoolState } from '@utils/types';
 	import TopNav from '@components/TopNav.svelte';
+	import type { PoolInfo } from '@utils/page-types';
 
 	export let pool_state: PoolState;
 	export let latest_item: PoolDataItem;
-	export let params;
-
+	export let params: any;
 
 	let denom_tooltip = '';
 	let last_item = latest_item;
 
 
-	let { left, right, height } = params;
+	let { left, right } = params;
 	let pool_key: PoolKey = { left, right };
 
   // temp start 

@@ -193,6 +193,7 @@ struct TransactionTemplate {
     txhash_abbr: String,
     height: u64,
     transaction: Transaction,
+    kind: String,
     inputs_with_cdh: Inputs, 
     outputs: Outputs,
     fee: MicroUnit,
@@ -350,6 +351,7 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                 .map(|(denom, val)| MicroUnit(val.0,FriendlyDenom(*denom)))
                 .collect(),
             weight: transaction.weight(themelio_stf::melvm::covenant_weight_from_bytes),
+            kind: format!("{}", transaction.kind),
         };
 
         Ok(Some(body))

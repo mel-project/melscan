@@ -36,6 +36,7 @@
 		net_gain: BTreeMap<string, Vec<MicroUnit>>;
 		gross_gain: Vec<MicroUnit>;
     weight: number;
+    kind: string;
 	}
 
 	declare function assert(value: unknown): asserts value;
@@ -74,6 +75,7 @@
 	export let net_gain: Obj<Vec<MicroUnit>>;
 	export let gross_gain: Vec<MicroUnit>;
   export let weight: number;
+  export let kind: string;
 
 
 
@@ -100,7 +102,7 @@ function print_coin(coin: MicroUnit) {
 							<span class="name">Kind</span>
 							{tooltips['kind']}
 						</td>
-						<td class="font-medium">{transaction.kind}</td>
+						<td class="font-medium">{kind}</td>
 					</tr>
 					<tr>
 						<td class="text-black text-opacity-50 font-bold">
@@ -255,3 +257,9 @@ function print_coin(coin: MicroUnit) {
 		</div>
 	</div>
 </template>
+
+<style>
+  td{
+    vertical-align: top;
+  }
+</style>

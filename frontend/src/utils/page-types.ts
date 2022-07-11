@@ -14,7 +14,8 @@ export interface PoolTemplate {
     last_item: PoolDataItem,
 }
 
-interface PoolInfo {
+export interface PoolInfo {
     pool_state: PoolState,
     latest_item: PoolDataItem,
 }
+
