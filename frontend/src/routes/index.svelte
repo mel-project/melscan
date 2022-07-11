@@ -60,7 +60,7 @@ import { onDestroy } from 'svelte';
 				{(erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href={"/blocks/{height}/pools/MEL/ERG"}>See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href="/blocks/{height}/pools/MEL/ERG">See details →</a></small>
 		</div>
 		<div>
 			<span class="text-lg font-bold">

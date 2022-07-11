@@ -175,8 +175,8 @@
 					<tbody>
 						{#each Object.entries(net_gain) as entry}
 							<tr>
-								<td class="text-ellipsis overflow-hidden">{entry[0]}></td>
-								<td class="font-medium" style="color: #a22041">
+								<td class="text-ellipsis overflow-hidden">{entry[0]}</td>
+								<td class="font-medium" style="color:#007b43">
 									{entry[1][0][0]} {entry[1][0][1]}</td
 								>
 							</tr>
