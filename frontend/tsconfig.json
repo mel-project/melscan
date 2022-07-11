@@ -1,12 +1,13 @@
 {
-    "extends": "./.svelte-kit/tsconfig.json",
-    "compilerOptions": {
-        "baseUrl": "./src",
-        "paths": {
-            "@utils/*":[ "utils/*"],
-            "@components/*":[ "components/*"]     
-        }
-    },
-    "target": "es2017",
-    "lib": ["es2020"]
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"baseUrl": "./src",
+		"paths": {
+			"@utils/*": ["utils/*"],
+			"@components/*": ["components/*"]
+		}
+	},
+	"target": "es2017",
+	"lib": ["es2020"],
+	"transform": "typescript-is/lib/transform-inline/transformer"
 }

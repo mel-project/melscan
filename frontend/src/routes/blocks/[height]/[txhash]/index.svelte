@@ -1,27 +1,22 @@
 <script context="module" lang="ts">
 	import BreadCrumbs from '@components/BreadCrumbs.svelte';
 	import TopNav from '@components/TopNav.svelte';
-	import { backendUrl, melscan, type Assertion, type LoadFunction } from '@utils/common';
-	import type { LoadEvent } from '@sveltejs/kit';
+	import { melscan, type LoadFunction } from '@utils/common';
 	import type {
-		BlockSummary,
 		bool,
 		BTreeMap,
 		CoinData,
 		CoinDataHeight,
 		CoinID,
-		HashVal,
-		Header,
 		MicroUnit,
 		Obj,
 		Transaction,
-		TransactionSummary,
 		TxHash,
 		u64,
 		Vec
 	} from '@utils/types';
 	import { tooltips } from '@utils/common';
-import { BreadCrumb } from '@utils/page-types';
+	import { BreadCrumb } from '@utils/page-types';
 
 	export interface TransactionResponse {
 		testnet: bool;
@@ -37,8 +32,8 @@ import { BreadCrumb } from '@utils/page-types';
 		net_loss: BTreeMap<string, Vec<MicroUnit>>;
 		net_gain: BTreeMap<string, Vec<MicroUnit>>;
 		gross_gain: Vec<MicroUnit>;
-    weight: number;
-    kind: string;
+		weight: number;
+		kind: string;
 	}
 
 	declare function assert(value: unknown): asserts value;
@@ -76,20 +71,24 @@ import { BreadCrumb } from '@utils/page-types';
 	export let net_loss: Obj<Vec<MicroUnit>>;
 	export let net_gain: Obj<Vec<MicroUnit>>;
 	export let gross_gain: Vec<MicroUnit>;
-  export let weight: number;
-  export let kind: string;
+	export let weight: number;
+	export let kind: string;
 
-  let breadcrumbs = [BreadCrumb("Melscan", "/"), BreadCrumb(`Block ${height}`, `.`), BreadCrumb(`Transaction ${txhash}`, '')]
+	let breadcrumbs = [
+		BreadCrumb('Melscan', '/'),
+		BreadCrumb(`Block ${height}`, `.`),
+		BreadCrumb(`Transaction ${txhash}`, '')
+	];
 
-function print_coin(coin: MicroUnit) {
-  return `${coin[0]} ${coin[1]}`
-}
+	function print_coin(coin: MicroUnit) {
+		return `${coin[0]} ${coin[1]}`;
+	}
 </script>
 
 <template>
-  <TopNav>
-    <BreadCrumbs {breadcrumbs}></BreadCrumbs>
-  </TopNav>
+	<TopNav>
+		<BreadCrumbs {breadcrumbs} />
+	</TopNav>
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Summary</h3>
@@ -264,7 +263,7 @@ function print_coin(coin: MicroUnit) {
 </template>
 
 <style>
-  td{
-    vertical-align: top;
-  }
+	td {
+		vertical-align: top;
+	}
 </style>

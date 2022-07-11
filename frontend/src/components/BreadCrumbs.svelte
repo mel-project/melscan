@@ -16,7 +16,8 @@
 </template>
 
 <style lang="scss">
-    .breadcrumbs{
+    .breadcrumb:first-child{
+        margin-left: 0;
     }
     .breadcrumb{
         color: gray;

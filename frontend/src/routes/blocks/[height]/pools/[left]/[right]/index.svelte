@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-	import BreadCrumbs  from '@components/BreadCrumbs.svelte';
+	import BreadCrumbs from '@components/BreadCrumbs.svelte';
 	import { melscan } from '@utils/common';
 
 	export let load = async (event) => {
@@ -9,8 +9,8 @@
 		let res = (await melscan(fetch, `/raw/blocks/${height}/pools/${left}/${right}`)) as PoolInfo;
 		return {
 			status: 200,
-			props: {...res, params}
-		}
+			props: { ...res, params }
+		};
 	};
 </script>
 
@@ -26,27 +26,23 @@
 	let denom_tooltip = '';
 	let last_item = latest_item;
 
-
 	let { left, right, height } = params;
 	let pool_key: PoolKey = { left, right };
 
+	let breadcrumbs = [BreadCrumb('Melscan', '/')];
 
-	let breadcrumbs = [BreadCrumb("Melscan", "/")]
-	
-
-  // temp start 
+	// temp start
 	let handler = {
 		get: function (target) {
 			return '';
 		}
 	};
 	let tooltips = new Proxy({}, handler);
-  // temp end 
-
+	// temp end
 </script>
 
 <template>
-	<TopNav><BreadCrumbs {breadcrumbs}></BreadCrumbs></TopNav>
+	<TopNav><BreadCrumbs {breadcrumbs} /></TopNav>
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8" style="display: flex">
 			<h3 class="text-2xl font-bold">Pair {pool_key.left}/{pool_key.right}</h3>

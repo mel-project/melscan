@@ -1,36 +1,29 @@
-
-import { browser } from "$app/env";
-import { goto, invalidate } from "$app/navigation";
-import { getStores } from "$app/stores";
-import type {Load, LoadEvent} from "@sveltejs/kit/types"
-import { onDestroy } from "svelte";
-
-
-export interface Assertion<T, K> {
-	field: T,
-	type: K
-}
-
+import { browser } from '$app/env';
+import { goto, invalidate } from '$app/navigation';
+import { getStores } from '$app/stores';
+import type { Load, LoadEvent } from '@sveltejs/kit/types';
+import { onDestroy } from 'svelte';
 
 export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
 
-export type Fetch = (info: RequestInfo, init?: RequestInit)=> Promise<Response>;
+export type Fetch = (info: RequestInfo, init?: RequestInit) => Promise<Response>;
 
 export const melscan = async (fetch: Fetch, endpoint: string): Promise<any> => {
 	const url = backendUrl(endpoint);
 	const response = await fetch(url);
-	console.log(`requesting ${url}`)
+	console.log(`requesting ${url}`);
 	if (!response.ok) {
 		throw `failed to fetch '${url}' data`;
 	}
-	let res = response.json()
+	let res = response.json();
 	return res;
 };
 
+export type EndpointLoader = (loadEvent: LoadEvent) => { [key: string]: string };
 
-export type EndpointLoader =  (loadEvent: LoadEvent) => {[key: string]: string};
-
-export type LoadFunction<T> =  (loadEvent: LoadEvent<Record<string, string>, Record<string, any>>)  => Promise<T>;
+export type LoadFunction<T> = (
+	loadEvent: LoadEvent<Record<string, string>, Record<string, any>>
+) => Promise<T>;
 // export type Loader<T> = (endpoint_loader: EndpointLoader) => LoadFunction<T>
 // export const loader =  (endpoint_loader: EndpointLoader) => async (event: LoadEvent) => {
 // 	let {url, fetch, params} = event;
@@ -71,13 +64,11 @@ export type LoadFunction<T> =  (loadEvent: LoadEvent<Record<string, string>, Rec
 // 	};
 // }
 
-
-
-// temp start 
+// temp start
 let handler = {
 	get: function (target) {
 		return '';
 	}
 };
 export const tooltips = new Proxy({}, handler);
-// temp end 
+// temp end
