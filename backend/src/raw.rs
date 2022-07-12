@@ -32,13 +32,12 @@ pub struct BlockSummary {
     pub transactions: Vec<TransactionSummary>,
     pub header_hash: HashVal,
     pub total_fees: u128,
-    pub fee_multiplier: f64
+    pub fee_multiplier: f64,
 }
 
 impl BlockSummary {
     /// Creates a new block summary from a full block and the reward amount
     pub fn from_block(block: Block, reward_amount: CoinValue) -> Self {
-        
         let transactions: Vec<TransactionSummary> = get_transactions(&block);
         let header = block.header;
         let fee_multiplier = header.fee_multiplier as f64 / 65536.0;
@@ -164,7 +163,6 @@ async fn get_exchange(
     Ok(micro)
 }
 
-
 #[tracing::instrument(skip(client))]
 /// Generates an Overview structure from a client and height.
 pub async fn get_overview(client: ValClient, height: Option<u64>) -> anyhow::Result<Overview> {
@@ -242,8 +240,8 @@ pub async fn get_full_block(client: ValClient, height: u64) -> anyhow::Result<Bl
 pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result<BlockSummary> {
     let older = client.older_snapshot(height).await?;
     let block = older.current_block().await?;
-    let reward_amount = client.get_reward_amount(height).await?;
-    Ok(BlockSummary::from_block(block, reward_amount))
+    let proposer_reward = older.get_proposer_reward().await?;
+    Ok(BlockSummary::from_block(block, proposer_reward))
 }
 
 pub async fn get_pool(
@@ -257,11 +255,11 @@ pub async fn get_pool(
     let pool_state = older
         .get_pool(key)
         .await?
-        .ok_or(anyhow::format_err!("Unable to get pool state"))?;
+        .context("Unable to get pool state")?;
     let latest_item = older
         .as_pool_data_item(key)
         .await?
-        .ok_or(anyhow::format_err!("Unable to get pool data item"))?;
+        .context("Unable to get pool data item")?;
     Ok(Some(PoolInfo {
         pool_state,
         latest_item,

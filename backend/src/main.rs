@@ -1,6 +1,5 @@
 use endpoints::*;
 use rweb::Filter;
-use tracing::info;
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::globals::CMD_ARGS;
@@ -46,8 +45,7 @@ async fn main() -> anyhow::Result<()> {
         .finish()
         .init();
 
-    let port = 13000;
-    println!("Serving on port: {port}");
+    log::info!("listening on {}", CMD_ARGS.listen);
 
     let routes = routes![
         overview,

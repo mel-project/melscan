@@ -1,20 +1,20 @@
+use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
-use std::{collections::HashMap, str::FromStr};
 
 use crate::{globals::CLIENT, raw::*};
 use anyhow::Context;
 use futures_util::Future;
 use rweb::*;
-use rweb::reply::Json;
+
 use serde::ser::SerializeTupleStruct;
-use serde_json;
-use serde::{Deserialize, Serialize};
+
+use serde::Serialize;
 use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::*;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -71,7 +71,7 @@ async fn generic_fallible_json_option<R: Serialize>(
 #[get("/raw/overview")]
 pub async fn overview() -> DynReply {
     generic_fallible_json(async move {
-        let overview =  get_overview(CLIENT.to_owned(), None).await?;
+        let overview = get_overview(CLIENT.to_owned(), None).await?;
         let height = overview.recent_blocks[0].header.height;
         let mut o = overview.clone();
         o.recent_blocks = vec![];
@@ -79,7 +79,8 @@ pub async fn overview() -> DynReply {
         debug!("Found Height: {height}");
         println!("{overview2:?}");
         anyhow::Ok(overview)
-    }).await
+    })
+    .await
 }
 
 #[get("/raw/latest")]
@@ -114,7 +115,7 @@ pub async fn pool(height: u64, left: Denom, right: Denom) -> DynReply {
 #[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
 pub async fn pooldata(
     denom_left: Denom,
-    denom_right:Denom,
+    denom_right: Denom,
     lowerblock: u64,
     upperblock: u64,
 ) -> DynReply {
@@ -129,7 +130,7 @@ pub async fn pooldata(
 }
 
 #[derive(Debug)]
-struct MicroUnit(u128, FriendlyDenom);
+struct MicroUnit(u128, Denom);
 
 impl Display for MicroUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -146,55 +147,31 @@ impl Display for MicroUnit {
 impl Serialize for MicroUnit {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
-            let mut state = serializer.serialize_tuple_struct("MicroUnit", 2)?;
-            let value = &format!(            
-                "{}.{:06}",
-                self.0 / MICRO_CONVERTER,
-                self.0 % MICRO_CONVERTER);
-            state.serialize_field(value)?;
-            state.serialize_field(&self.1)?;
-            state.end()
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_tuple_struct("MicroUnit", 2)?;
+        let value = &format!(
+            "{}.{:06}",
+            self.0 / MICRO_CONVERTER,
+            self.0 % MICRO_CONVERTER
+        );
+        state.serialize_field(value)?;
+        state.serialize_field(&self.1.to_string())?;
+        state.end()
     }
 }
-#[derive(Debug, Clone)]
-struct FriendlyDenom(Denom);
-impl Display for FriendlyDenom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let denom = match self.0 {
-            Denom::Mel => "MEL".into(),
-            Denom::Sym => "SYM".into(),
-            Denom::Erg => "ERG".into(),
-            Denom::Custom(hash) => format!("Custom ({}..)", hex::encode(&hash.0[..5])),
-            Denom::NewCoin => "(new denom)".into(),
-        };
-        write!(
-            f,
-            "{denom}"
-        )
-    }
-}
-
-impl Serialize for FriendlyDenom {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-    S: serde::Serializer {
-        serializer.serialize_str(&format!("{self}"))
-    }
-}
-
 
 type Inputs = Vec<(usize, CoinID, CoinDataHeight, MicroUnit, String, String)>;
 type Outputs = Vec<(usize, CoinData, MicroUnit, String, String)>;
 #[derive(Serialize, Debug)]
-struct TransactionTemplate { 
+struct TransactionTemplate {
     testnet: bool,
     txhash: TxHash,
     txhash_abbr: String,
     height: u64,
     transaction: Transaction,
     kind: String,
-    inputs_with_cdh: Inputs, 
+    inputs_with_cdh: Inputs,
     outputs: Outputs,
     fee: MicroUnit,
     base_fee: MicroUnit,
@@ -203,44 +180,42 @@ struct TransactionTemplate {
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
     weight: u128,
-    
 }
-
-
-
-
 
 #[get("/raw/blocks/{height}/{txhash}")]
 pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
-    
     generic_fallible_json_option(async move {
         let client = CLIENT.to_owned();
         let txhash: TxHash = TxHash(txhash.parse()?);
-        let snap = client.older_snapshot(height.into()).await?;
-        let transaction = snap.get_transaction(txhash).await?.ok_or(anyhow::anyhow!("Error getting snapshot"))?;
+        let snap = client.older_snapshot(height).await?;
+        let transaction = if let Some(tx) = snap.get_transaction(txhash).await? {
+            tx
+        } else {
+            return Ok(None);
+        };
         let tmapping: BTreeMap<CoinID, Task<anyhow::Result<CoinDataHeight>>> = transaction
-        .inputs
-        .iter()
-        .map(|cid| {
-            let cid = *cid;
-            let snap = snap.clone();
-            (
-                cid,
-                smolscale::spawn(async move {
-                   snap
-                        .get_coin_spent_here(cid)
-                        .await?.ok_or(anyhow::anyhow!("Error getting"))
-                }),
-            )
-        })
-        .collect();
+            .inputs
+            .iter()
+            .map(|cid| {
+                let cid = *cid;
+                let snap = snap.clone();
+                (
+                    cid,
+                    smolscale::spawn(async move {
+                        snap.get_coin_spent_here(cid)
+                            .await?
+                            .context("Error getting")
+                    }),
+                )
+            })
+            .collect();
         let mut coin_map: BTreeMap<CoinID, CoinDataHeight> = BTreeMap::new();
         for (i, (cid, task)) in tmapping.into_iter().enumerate() {
             debug!("resolving input {} for {}", i, txhash);
             coin_map.insert(cid, task.await?);
         }
 
-    // now that we have the transaction, we can construct the info.
+        // now that we have the transaction, we can construct the info.
         let denoms: BTreeSet<_> = transaction.outputs.iter().map(|v| v.denom).collect();
         let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
         let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
@@ -260,9 +235,9 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                 }
             }
             // we subtract from the balance
-            for input in transaction.inputs.iter().copied() {
+            for input in transaction.inputs.iter() {
                 debug!("getting input {} of {}", input, transaction.hash_nosigs());
-                let cdh = coin_map[&input].clone();
+                let cdh = coin_map[input].clone();
                 if cdh.coin_data.denom == denom {
                     let new_balance = balance
                         .get(&cdh.coin_data.covhash)
@@ -279,12 +254,12 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                     net_loss
                         .entry(addr.0.to_addr())
                         .or_default()
-                        .push(MicroUnit((-balance) as u128, FriendlyDenom(denom)));
+                        .push(MicroUnit((-balance) as u128, denom));
                 } else if balance > 0 {
                     net_gain
                         .entry(addr.0.to_addr())
                         .or_default()
-                        .push(MicroUnit(balance as u128, FriendlyDenom(denom)));
+                        .push(MicroUnit(balance as u128, denom));
                 }
             }
         }
@@ -309,16 +284,12 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                 index,
                 input,
                 cdh.clone(),
-                MicroUnit(
-                    cdh.coin_data.value.into(),
-                    FriendlyDenom(cdh.coin_data.denom),
-                ),
+                MicroUnit(cdh.coin_data.value.into(), cdh.coin_data.denom),
                 cdh.coin_data.additional_data_hex(),
                 cdh.coin_data.covhash.0.to_addr(),
             ));
         }
-    
-        let MEL = FriendlyDenom(themelio_structs::Denom::Mel);
+
         let body = TransactionTemplate {
             testnet: client.netid() == NetID::Testnet,
             txhash,
@@ -336,26 +307,25 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
                     (
                         i,
                         cd.clone(),
-                        MicroUnit(cd.value.0, FriendlyDenom(cd.denom)),
+                        MicroUnit(cd.value.0, cd.denom),
                         cd.additional_data_hex(),
                         cd.covhash.0.to_addr(),
                     )
                 })
                 .collect(),
-            fee: MicroUnit(fee.0, MEL.clone()),
-            base_fee: MicroUnit(base_fee, MEL.clone()),
-            tips: MicroUnit(tips, MEL),
+            fee: MicroUnit(fee.0, Denom::Mel),
+            base_fee: MicroUnit(base_fee, Denom::Mel),
+            tips: MicroUnit(tips, Denom::Mel),
             gross_gain: transaction
                 .total_outputs()
                 .iter()
-                .map(|(denom, val)| MicroUnit(val.0,FriendlyDenom(*denom)))
+                .map(|(denom, val)| MicroUnit(val.0, *denom))
                 .collect(),
             weight: transaction.weight(themelio_stf::melvm::covenant_weight_from_bytes),
             kind: format!("{}", transaction.kind),
         };
 
         Ok(Some(body))
-        
-
-    }).await
+    })
+    .await
 }
