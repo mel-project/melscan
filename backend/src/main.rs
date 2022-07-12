@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
         pooldata,
         transaction_page
     ];
-    let cors = warp::cors().allow_any_origin(); // URGENT is this safe?
+    let cors = warp::cors().allow_any_origin();
     rweb::serve(routes.with(cors).with(warp::trace(|info| {
         // Create a span using tracing macros
         tracing::info_span!(
