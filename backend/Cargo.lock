@@ -1699,6 +1699,7 @@ dependencies = [
  "env_logger 0.9.0",
  "futures-util",
  "hex",
+ "itertools",
  "lazy_static",
  "log",
  "num-traits",

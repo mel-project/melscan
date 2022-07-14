@@ -52,6 +52,7 @@ parking_lot = "0.12.1"
 stdcode = "0.1.7"
 defmac = "0.2.1"
 env_logger = "0.9.0"
+itertools = "0.10.3"
 
 
 [dependencies.rusqlite]

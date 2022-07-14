@@ -5,6 +5,7 @@ use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 use crate::globals::CMD_ARGS;
 mod endpoints;
 mod globals;
+mod graphs;
 mod raw;
 mod utils;
 

@@ -47,14 +47,6 @@ pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
     transactions
 }
 
-/// Interpolates between two numbers in a cache-friendly fashion
-pub fn interpolate_between(start: u64, end: u64, approx_count: u64) -> impl Iterator<Item = u64> {
-    let interval = ((end - start).max(1) / approx_count).next_power_of_two();
-    (start..=end)
-        .filter(move |i| i % interval == 0)
-        .chain(std::iter::once(end))
-}
-
 pub async fn get_exchange(
     last_snap: &ValClientSnapshot,
     denom1: Denom,
