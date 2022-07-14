@@ -3018,9 +3018,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-nodeprot"
-version = "0.11.4"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0dda44b287fb1d42a29b96daeed4b4f7330987181da8662a8a3336c22eebea0"
+checksum = "4dd16184a79ab22673845b2ee6fdb99d1af4a8ed2e1478102eedae6d91767add"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -3089,9 +3089,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-structs"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86cd48c00eadc69095ad7b9b1b36572e293b12376cacbee9f884a60fdbf2cf41"
+checksum = "28c1a8914aeb9278ab28263c466dbe14cd204c7a36a35212f4f197bdd199a587"
 dependencies = [
  "arbitrary",
  "derivative",

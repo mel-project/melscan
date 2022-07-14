@@ -3,7 +3,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
 
-use crate::{globals::CLIENT, raw::*};
 use anyhow::Context;
 use futures_util::Future;
 use rweb::*;
@@ -15,6 +14,8 @@ use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::*;
 use tracing::{debug, info};
+
+use crate::globals::{BACKEND, CLIENT};
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -71,7 +72,7 @@ async fn generic_fallible_json_option<R: Serialize>(
 #[get("/raw/overview")]
 pub async fn overview() -> DynReply {
     generic_fallible_json(async move {
-        let overview = get_overview(CLIENT.to_owned(), None).await?;
+        let overview = BACKEND.get_overview(None).await?;
         let height = overview.recent_blocks[0].header.height;
         let mut o = overview.clone();
         o.recent_blocks = vec![];
@@ -85,49 +86,50 @@ pub async fn overview() -> DynReply {
 
 #[get("/raw/latest")]
 pub async fn latest() -> DynReply {
-    generic_fallible_json(get_latest_header(CLIENT.to_owned())).await
+    generic_fallible_json(BACKEND.get_latest_header()).await
 }
 
 #[get("/raw/blocks/{height}/transactions/{txhash}")]
-pub async fn transaction(height: u64, txhash: String) -> DynReply {
-    generic_fallible_json_option(get_transaction(&CLIENT.to_owned(), height, txhash)).await
+pub async fn transaction(height: BlockHeight, txhash: TxHash) -> DynReply {
+    generic_fallible_json_option(BACKEND.get_transaction_at_height(height, txhash)).await
 }
 
 #[get("/raw/blocks/{height}/coins/{coinid}")]
-pub async fn coins(height: u64, coinid: String) -> DynReply {
-    generic_fallible_json_option(get_coin(CLIENT.to_owned(), height, coinid)).await
+pub async fn coins(height: BlockHeight, coinid: CoinID) -> DynReply {
+    generic_fallible_json_option(BACKEND.get_coin_at_height(height, coinid)).await
 }
 
 #[get("/raw/blocks/{height}/full")]
-pub async fn block_full(height: u64) -> DynReply {
-    generic_fallible_json(get_full_block(CLIENT.to_owned(), height)).await
+pub async fn block_full(height: BlockHeight) -> DynReply {
+    generic_fallible_json(BACKEND.get_block(height)).await
 }
 
 #[get("/raw/blocks/{height}/summary")]
-pub async fn block_summary(height: u64) -> DynReply {
-    generic_fallible_json(get_block_summary(CLIENT.to_owned(), height)).await
-}
-#[get("/raw/blocks/{height}/pools/{left}/{right}")]
-pub async fn pool(height: u64, left: Denom, right: Denom) -> DynReply {
-    generic_fallible_json_option(get_pool(CLIENT.to_owned(), height, left, right)).await
+pub async fn block_summary(height: BlockHeight) -> DynReply {
+    generic_fallible_json(BACKEND.get_block_summary(height)).await
 }
 
-#[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
-pub async fn pooldata(
-    denom_left: Denom,
-    denom_right: Denom,
-    lowerblock: u64,
-    upperblock: u64,
-) -> DynReply {
-    generic_fallible_json(get_pooldata_range(
-        CLIENT.to_owned(),
-        denom_left,
-        denom_right,
-        lowerblock,
-        upperblock,
-    ))
-    .await
-}
+// #[get("/raw/blocks/{height}/pools/{left}/{right}")]
+// pub async fn pool(height: u64, left: Denom, right: Denom) -> DynReply {
+//     generic_fallible_json_option(BACKEND.get_pool(height, left, right)).await
+// }
+
+// #[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
+// pub async fn pooldata(
+//     denom_left: Denom,
+//     denom_right: Denom,
+//     lowerblock: u64,
+//     upperblock: u64,
+// ) -> DynReply {
+//     generic_fallible_json(get_pooldata_range(
+//         CLIENT.to_owned(),
+//         denom_left,
+//         denom_right,
+//         lowerblock,
+//         upperblock,
+//     ))
+//     .await
+// }
 
 #[derive(Debug)]
 struct MicroUnit(u128, Denom);
@@ -168,7 +170,7 @@ struct TransactionTemplate {
     testnet: bool,
     txhash: TxHash,
     txhash_abbr: String,
-    height: u64,
+    height: BlockHeight,
     transaction: Transaction,
     kind: String,
     inputs_with_cdh: Inputs,
@@ -183,10 +185,9 @@ struct TransactionTemplate {
 }
 
 #[get("/raw/blocks/{height}/{txhash}")]
-pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
+pub async fn transaction_page(height: BlockHeight, txhash: TxHash) -> DynReply {
     generic_fallible_json_option(async move {
         let client = CLIENT.to_owned();
-        let txhash: TxHash = TxHash(txhash.parse()?);
         let snap = client.older_snapshot(height).await?;
         let transaction = if let Some(tx) = snap.get_transaction(txhash).await? {
             tx
@@ -266,7 +267,7 @@ pub async fn transaction_page(height: u64, txhash: String) -> DynReply {
 
         let fee = transaction.fee;
         let fee_mult = snap
-            .get_older((height - 1).into())
+            .get_older((height.0 - 1).into())
             .await?
             .current_header()
             .fee_multiplier;

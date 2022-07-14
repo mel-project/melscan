@@ -5,6 +5,8 @@ use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
 
+use crate::raw::Backend;
+
 #[derive(StructOpt)]
 pub struct Args {
     #[structopt(long)]
@@ -40,3 +42,5 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
     }
     client
 });
+
+pub static BACKEND: Lazy<Backend> = Lazy::new(|| Backend::new(CLIENT.clone()));

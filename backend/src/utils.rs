@@ -1,8 +1,10 @@
 use crate::raw::TransactionSummary;
+use anyhow::Context;
 use futures_util::{stream::FuturesOrdered, Future};
+use num_traits::ToPrimitive;
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;
-use themelio_structs::{Block, CoinID, CoinValue, Denom};
+use themelio_structs::{Block, CoinID, CoinValue, Denom, PoolKey};
 
 pub fn get_old_blocks(
     last_snap: &ValClientSnapshot,
@@ -51,4 +53,18 @@ pub fn interpolate_between(start: u64, end: u64, approx_count: u64) -> impl Iter
     (start..=end)
         .filter(move |i| i % interval == 0)
         .chain(std::iter::once(end))
+}
+
+pub async fn get_exchange(
+    last_snap: &ValClientSnapshot,
+    denom1: Denom,
+    denom2: Denom,
+) -> anyhow::Result<f64> {
+    let pool = last_snap
+        .get_pool(PoolKey::new(denom1, denom2))
+        .await
+        .context(format!("Unable to get exchange for {denom1}/{denom2}"))?
+        .unwrap();
+    let micro = pool.implied_price().to_f64().unwrap_or_default();
+    Ok(micro)
 }

@@ -54,8 +54,8 @@ async fn main() -> anyhow::Result<()> {
         coins,
         block_full,
         block_summary,
-        pool,
-        pooldata,
+        // pool,
+        // pooldata,
         transaction_page
     ];
     let cors = warp::cors().allow_any_origin();
