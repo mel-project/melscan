@@ -57,7 +57,8 @@ async fn main() -> anyhow::Result<()> {
         block_summary,
         // pool,
         // pooldata,
-        transaction_page
+        transaction_page,
+        graph
     ];
     let cors = warp::cors().allow_any_origin();
     rweb::serve(routes.with(cors).with(warp::trace(|info| {

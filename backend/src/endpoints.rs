@@ -4,10 +4,14 @@ use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
 
 use anyhow::Context;
+use chrono::Utc;
+use dashmap::DashMap;
 use futures_util::Future;
+use num_traits::ToPrimitive;
+use once_cell::sync::Lazy;
 use rweb::*;
 
-use serde::ser::SerializeTupleStruct;
+use serde::{ser::SerializeTupleStruct, Deserialize};
 
 use serde::Serialize;
 use smol::Task;
@@ -15,7 +19,10 @@ use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::*;
 use tracing::{debug, info};
 
-use crate::globals::{BACKEND, CLIENT};
+use crate::{
+    globals::{BACKEND, CLIENT},
+    graphs::{datetime_to_height, graph_range},
+};
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -109,27 +116,68 @@ pub async fn block_summary(height: BlockHeight) -> DynReply {
     generic_fallible_json(BACKEND.get_block_summary(height)).await
 }
 
-// #[get("/raw/blocks/{height}/pools/{left}/{right}")]
-// pub async fn pool(height: u64, left: Denom, right: Denom) -> DynReply {
-//     generic_fallible_json_option(BACKEND.get_pool(height, left, right)).await
-// }
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+struct GraphQuery {
+    id: GraphId,
+    start: Option<chrono::DateTime<Utc>>,
+    end: Option<chrono::DateTime<Utc>>,
+}
 
-// #[get("/raw/pooldata/{denom_left}/{denom_right}/{lowerblock}/{upperblock}")]
-// pub async fn pooldata(
-//     denom_left: Denom,
-//     denom_right: Denom,
-//     lowerblock: u64,
-//     upperblock: u64,
-// ) -> DynReply {
-//     generic_fallible_json(get_pooldata_range(
-//         CLIENT.to_owned(),
-//         denom_left,
-//         denom_right,
-//         lowerblock,
-//         upperblock,
-//     ))
-//     .await
-// }
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd, Hash, Eq)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+enum GraphId {
+    PoolPrice {
+        #[serde(with = "serde_with::rust::display_fromstr")]
+        from: Denom,
+        #[serde(with = "serde_with::rust::display_fromstr")]
+        to: Denom,
+    },
+}
+
+#[post("/raw/graph")]
+pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
+    generic_fallible_json_option(async move {
+        let snapshot = CLIENT.snapshot().await?;
+        let start = qs.start.map(datetime_to_height).unwrap_or(BlockHeight(1));
+        let end = qs
+            .end
+            .map(datetime_to_height)
+            .unwrap_or_else(|| snapshot.current_header().height);
+        static GRAPH_CACHE: Lazy<DashMap<(GraphId, BlockHeight), f64>> = Lazy::new(DashMap::new);
+        // figure out *which* graph to draw
+        match qs.id {
+            GraphId::PoolPrice { from, to } => Ok(Some(
+                graph_range(
+                    start,
+                    end,
+                    1000,
+                    move |height| async move {
+                        let snap = CLIENT.older_snapshot(height).await?;
+                        let pool_key = PoolKey::new(from, to);
+                        let pool_info = snap.get_pool(pool_key).await?;
+                        if let Some(pool_info) = pool_info {
+                            let ratio = pool_info.implied_price().to_f64().unwrap_or(f64::NAN);
+                            if pool_key.left == from {
+                                Ok(1.0 / ratio)
+                            } else {
+                                Ok(ratio)
+                            }
+                        } else {
+                            Ok(f64::NAN)
+                        }
+                    },
+                    move |height| GRAPH_CACHE.get(&(qs.id, height)).map(|s| *s),
+                    move |height, res| {
+                        GRAPH_CACHE.insert((qs.id, height), res);
+                    },
+                )
+                .await?,
+            )),
+        }
+    })
+    .await
+}
 
 #[derive(Debug)]
 struct MicroUnit(u128, Denom);
