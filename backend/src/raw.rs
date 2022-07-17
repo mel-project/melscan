@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
+use dashmap::DashMap;
+use melblkidx::{BalanceTracker, Indexer};
 use serde::{Deserialize, Serialize};
-use smol::prelude::*;
+use smol::{lock::Semaphore, prelude::*};
 use themelio_nodeprot::ValClient;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::{
@@ -67,12 +71,19 @@ pub struct Overview {
 #[derive(Clone)]
 pub struct Backend {
     client: ValClient,
+
+    indexer: Option<Arc<Indexer>>,
+    supply_cache: Arc<DashMap<Denom, Arc<BalanceTracker>>>,
 }
 
 impl Backend {
     /// Creates a new Backend that wraps around a given ValClient.
-    pub fn new(client: ValClient) -> Self {
-        Self { client }
+    pub fn new(client: ValClient, indexer: Option<Indexer>) -> Self {
+        Self {
+            client,
+            indexer: indexer.map(Arc::new),
+            supply_cache: Default::default(),
+        }
     }
 
     /// Obtains the latest blockchain header.
@@ -153,6 +164,31 @@ impl Backend {
             snap.get_older(height).await?.current_block().await?,
             proposer_reward,
         )))
+    }
+
+    /// Gets the coin supply of the given denomination, at a given height. Only available if we have an indexer.
+    pub async fn get_coin_supply(
+        &self,
+        height: BlockHeight,
+        denom: Denom,
+    ) -> anyhow::Result<Option<CoinValue>> {
+        static SEMAPHORE: Semaphore = Semaphore::new(4);
+
+        let _guard = SEMAPHORE.acquire().await;
+        if let Some(indexer) = self.indexer.as_ref() {
+            let tracker = self
+                .supply_cache
+                .entry(denom)
+                .or_insert_with(|| indexer.query_coins().denom(denom).balance_tracker().into())
+                .value()
+                .clone();
+            let b = tracker.balance_at(height.0);
+            eprintln!("got {} => {:?}", height, b);
+            smol::future::yield_now().await;
+            Ok(b)
+        } else {
+            Ok(None)
+        }
     }
 }
 

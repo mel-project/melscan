@@ -1,5 +1,6 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
+use melblkidx::Indexer;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
@@ -20,6 +21,10 @@ pub struct Args {
     #[structopt(long)]
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
+
+    #[structopt(long)]
+    /// If set, indexes blocks and saves them to the given location.
+    blkidx_db: Option<PathBuf>,
 }
 
 /// Command-line arguments that were initially passed in.
@@ -43,4 +48,12 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
     client
 });
 
-pub static BACKEND: Lazy<Backend> = Lazy::new(|| Backend::new(CLIENT.clone()));
+pub static BACKEND: Lazy<Backend> = Lazy::new(|| {
+    Backend::new(
+        CLIENT.clone(),
+        CMD_ARGS
+            .blkidx_db
+            .as_ref()
+            .map(|path| Indexer::new(path, CLIENT.clone()).unwrap()),
+    )
+});

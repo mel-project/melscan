@@ -1,5 +1,5 @@
 use endpoints::*;
-use rweb::Filter;
+use rweb::{hyper::Method, Filter};
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::globals::CMD_ARGS;
@@ -60,7 +60,13 @@ async fn main() -> anyhow::Result<()> {
         transaction_page,
         graph
     ];
-    let cors = warp::cors().allow_any_origin();
+    let cors = warp::cors()
+        .allow_any_origin()
+        // .allow_credentials(true)
+        .allow_method(Method::GET)
+        .allow_method(Method::POST)
+        .allow_method(Method::OPTIONS)
+        .allow_header("content-type");
     rweb::serve(routes.with(cors).with(warp::trace(|info| {
         // Create a span using tracing macros
         tracing::info_span!(

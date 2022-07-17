@@ -1,8 +1,6 @@
-import { browser } from '$app/env';
-import { goto, invalidate } from '$app/navigation';
-import { getStores } from '$app/stores';
-import type { Load, LoadEvent } from '@sveltejs/kit/types';
-import { onDestroy } from 'svelte';
+import type { LoadEvent } from '@sveltejs/kit/types';
+
+import type { GraphDatum, GraphQuery } from './page-types';
 
 export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
 
@@ -17,6 +15,24 @@ export const melscan = async (fetch: Fetch, endpoint: string): Promise<any> => {
 	}
 	let res = response.json();
 	return res;
+};
+
+export const queryGraph = async (query: GraphQuery): Promise<GraphDatum[]> => {
+	const url = backendUrl('/raw/graph');
+	let response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		credentials: 'omit',
+		body: JSON.stringify(query)
+	});
+	let data = (await response.json()) as any[];
+	// data now is an array of GraphDatums, except the data field is a string, so we loop over and change
+	return data.map((elem) => {
+		elem.date = new Date(elem.date);
+		return elem as GraphDatum;
+	});
 };
 
 export type EndpointLoader = (loadEvent: LoadEvent) => { [key: string]: string };

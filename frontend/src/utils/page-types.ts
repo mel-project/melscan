@@ -1,4 +1,4 @@
-import type { BlockSummary, bool, f64, PoolDataItem, PoolKey, PoolState, Vec } from './types';
+import type { BlockSummary, bool, f64, PoolDataItem, PoolKey, PoolState, u64, Vec } from './types';
 
 export interface Overview {
 	erg_per_mel: f64;
@@ -29,3 +29,27 @@ export let BreadCrumb: (t: string, h: string) => BreadCrumb = (title, href) => {
 		href
 	};
 };
+
+// A query for a graph
+export interface GraphQuery {
+	id: GraphId;
+	start: Date | null;
+	end: Date | null;
+}
+
+export type GraphId =
+	| {
+			type: 'pool_price';
+			from: string;
+			to: string;
+	  }
+	| {
+			type: 'coin_supply';
+			denom: string;
+	  };
+
+export interface GraphDatum {
+	height: number;
+	date: Date;
+	value: number;
+}

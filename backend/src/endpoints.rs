@@ -133,21 +133,34 @@ enum GraphId {
         #[serde(with = "serde_with::rust::display_fromstr")]
         to: Denom,
     },
+
+    CoinSupply {
+        #[serde(with = "serde_with::rust::display_fromstr")]
+        denom: Denom,
+    },
 }
 
 #[post("/raw/graph")]
 pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
     generic_fallible_json_option(async move {
         let snapshot = CLIENT.snapshot().await?;
-        let start = qs.start.map(datetime_to_height).unwrap_or(BlockHeight(1));
+        let start = qs
+            .start
+            .map(datetime_to_height)
+            .unwrap_or(BlockHeight(1))
+            .max(BlockHeight(1));
         let end = qs
             .end
             .map(datetime_to_height)
             .unwrap_or_else(|| snapshot.current_header().height);
         static GRAPH_CACHE: Lazy<DashMap<(GraphId, BlockHeight), f64>> = Lazy::new(DashMap::new);
         // figure out *which* graph to draw
-        match qs.id {
-            GraphId::PoolPrice { from, to } => Ok(Some(
+        let load_cache = move |height| GRAPH_CACHE.get(&(qs.id, height)).map(|s| *s);
+        let store_cache = move |height, res| {
+            GRAPH_CACHE.insert((qs.id, height), res);
+        };
+        Ok(Some(match qs.id {
+            GraphId::PoolPrice { from, to } => {
                 graph_range(
                     start,
                     end,
@@ -167,14 +180,29 @@ pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
                             Ok(f64::NAN)
                         }
                     },
-                    move |height| GRAPH_CACHE.get(&(qs.id, height)).map(|s| *s),
-                    move |height, res| {
-                        GRAPH_CACHE.insert((qs.id, height), res);
-                    },
+                    load_cache,
+                    store_cache,
                 )
-                .await?,
-            )),
-        }
+                .await?
+            }
+            GraphId::CoinSupply { denom } => {
+                graph_range(
+                    start,
+                    end,
+                    1000,
+                    move |height| async move {
+                        Ok(BACKEND
+                            .get_coin_supply(height, denom)
+                            .await?
+                            .map(|c| (c.0 as f64) / 1_000_000.0)
+                            .unwrap_or(f64::NAN))
+                    },
+                    load_cache,
+                    store_cache,
+                )
+                .await?
+            }
+        }))
     })
     .await
 }
