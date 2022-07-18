@@ -86,6 +86,14 @@ impl Backend {
         }
     }
 
+    /// Obtains the latest indexed height.
+    pub fn indexed_highest(&self) -> BlockHeight {
+        self.indexer
+            .as_ref()
+            .map(|idx| idx.max_height().into())
+            .unwrap_or_default()
+    }
+
     /// Obtains the latest blockchain header.
     pub async fn get_latest_header(&self) -> anyhow::Result<Header> {
         Ok(self.client.snapshot().await?.current_header())
@@ -176,6 +184,7 @@ impl Backend {
 
         let _guard = SEMAPHORE.acquire().await;
         if let Some(indexer) = self.indexer.as_ref() {
+            // get a balance tracker for this denom from the cache, or make a new one and put it into the cache
             let tracker = self
                 .supply_cache
                 .entry(denom)

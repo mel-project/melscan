@@ -1,44 +1,40 @@
-<script context="module" lang='ts'>
-
+<script context="module" lang="ts">
 	import { backendUrl, melscan, type LoadFunction } from '@utils/common';
 	import type { Overview } from '@utils/page-types';
 	interface OverviewPage {
-		status: number,
+		status: number;
 		props: {
-			overview: Overview
-		}
+			overview: Overview;
+		};
 	}
 
-	export let load: LoadFunction<OverviewPage> = async (loadEvent)=>{
+	export let load: LoadFunction<OverviewPage> = async (loadEvent) => {
 		let props = {
-			overview: await melscan(loadEvent.fetch, "/raw/overview") as unknown as Overview,
-		}
+			overview: (await melscan(loadEvent.fetch, '/raw/overview')) as unknown as Overview
+		};
 		return {
 			status: 200,
 			props
-		}
+		};
 	};
 </script>
 
 <script lang="ts">
-import type { BlockHeight, BlockSummary, Transaction } from '@utils/types';
-import { onDestroy } from 'svelte';
+	import type { BlockHeight, BlockSummary, Transaction } from '@utils/types';
+	import { onDestroy } from 'svelte';
 
 	import TopNav from '../components/TopNav.svelte';
 	// export let refresh: (s?: string)=>Promise<JSON>;
 	// export let autorefresh: () => void;
 
 	// autorefresh();
-	
-	export let overview;
-	let {erg_per_mel, sym_per_mel, recent_blocks} = overview;
 
-		
-	
+	export let overview;
+	let { erg_per_mel, sym_per_mel, recent_blocks } = overview;
 
 	let height: BlockHeight;
-	
-	$: height = recent_blocks[0].header.height
+
+	$: height = recent_blocks[0].header.height;
 	$: recentTxx = () => {
 		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
@@ -57,18 +53,18 @@ import { onDestroy } from 'svelte';
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{(erg_per_mel).toFixed(5)} MEL
+				{erg_per_mel.toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href="/blocks/{height}/pools/MEL/ERG">See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
 		</div>
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 SYM =</span>
-				{(sym_per_mel).toFixed(5)} MEL
+				{sym_per_mel.toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href="/blocks/{height}/pools/MEL/SYM">See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
 		</div>
 	</div>
 

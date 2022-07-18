@@ -188,7 +188,7 @@ pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
             GraphId::CoinSupply { denom } => {
                 graph_range(
                     start,
-                    end,
+                    end.min(BACKEND.indexed_highest()),
                     1000,
                     move |height| async move {
                         Ok(BACKEND

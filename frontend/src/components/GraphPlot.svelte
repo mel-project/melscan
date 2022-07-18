@@ -58,7 +58,7 @@
 				let { width, height } = container.getBoundingClientRect();
 				return {
 					width: width,
-					height: height - 70
+					height: height - 50
 				};
 			}
 			let size = getSize();
@@ -144,10 +144,6 @@
 <div id="container" style="height: {height}" class:loading={$loading} bind:this={container} />
 
 <style>
-	#container {
-		margin-top: 2rem;
-		margin-bottom: 2rem;
-	}
 	.loading {
 		opacity: 0.4;
 	}

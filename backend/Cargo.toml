@@ -18,7 +18,7 @@ themelio-stf= "0.11.2"
 tmelcrypt= "0.2.4"
 themelio-nodeprot= "0.11.5"
 #themelio-nodeprot= {path="../../themelio-nodeprot"}
-melblkidx="0.4.3"
+melblkidx="0.4.5"
 structopt= "0.3.26"
 once_cell= "1.13.0"
 hex= "0.4.3"
