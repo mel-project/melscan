@@ -58,17 +58,21 @@
 				let { width, height } = container.getBoundingClientRect();
 				return {
 					width: width,
-					height: height - 50
+					height: height
 				};
 			}
 			let size = getSize();
+
+			let maxDigits = Math.ceil(
+				Math.log10(dataPoints.map((d) => d.value).reduce((a, b) => Math.max(a, b), 0.0))
+			);
 			let opts = {
 				title: title,
 				id: 'chart1',
 				class: 'my-chart',
 				width: size.width,
 				height: size.height,
-				padding: [20, 20, 0, 30],
+				padding: [0, 0, 0, Math.max((maxDigits - 4) * 5, 0)],
 				series: [
 					{},
 					{
@@ -144,7 +148,21 @@
 <div id="container" style="height: {height}" class:loading={$loading} bind:this={container} />
 
 <style>
+	/* #container {
+		border: 1px solid black;
+	} */
+
 	.loading {
 		opacity: 0.4;
+	}
+
+	:global(.uplot) {
+		position: relative;
+	}
+
+	:global(.u-legend) {
+		position: absolute !important;
+		top: 10px !important;
+		left: 15%;
 	}
 </style>
