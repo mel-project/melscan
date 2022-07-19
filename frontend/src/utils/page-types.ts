@@ -44,6 +44,11 @@ export type GraphId =
 			to: string;
 	  }
 	| {
+			type: 'pool_liquidity';
+			from: string;
+			to: string;
+	  }
+	| {
 			type: 'coin_supply';
 			denom: string;
 	  };

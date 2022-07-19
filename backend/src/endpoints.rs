@@ -134,6 +134,13 @@ enum GraphId {
         to: Denom,
     },
 
+    PoolLiquidity {
+        #[serde(with = "serde_with::rust::display_fromstr")]
+        from: Denom,
+        #[serde(with = "serde_with::rust::display_fromstr")]
+        to: Denom,
+    },
+
     CoinSupply {
         #[serde(with = "serde_with::rust::display_fromstr")]
         denom: Denom,
@@ -176,6 +183,26 @@ pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
                             } else {
                                 Ok(ratio)
                             }
+                        } else {
+                            Ok(f64::NAN)
+                        }
+                    },
+                    load_cache,
+                    store_cache,
+                )
+                .await?
+            }
+            GraphId::PoolLiquidity { from, to } => {
+                graph_range(
+                    start,
+                    end,
+                    1000,
+                    move |height| async move {
+                        let snap = CLIENT.older_snapshot(height).await?;
+                        let pool_key = PoolKey::new(from, to);
+                        let pool_info = snap.get_pool(pool_key).await?;
+                        if let Some(pool_info) = pool_info {
+                            Ok((pool_info.liq_constant() as f64).sqrt() / 1_000_000.0)
                         } else {
                             Ok(f64::NAN)
                         }

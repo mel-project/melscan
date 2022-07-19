@@ -36,6 +36,7 @@
 	let tooltips = new Proxy({}, handler);
 	// temp end
 	let price_data: GraphDatum[] = [];
+	let liquidity_data: GraphDatum[] = [];
 	const getPriceData = async (start, end) =>
 		await queryGraph({
 			id: {
@@ -46,11 +47,23 @@
 			start,
 			end
 		});
+	const getLiquidityData = async (start, end) =>
+		await queryGraph({
+			id: {
+				type: 'pool_liquidity',
+				from: right,
+				to: left
+			},
+			start,
+			end
+		});
 	onMount(async () => {
 		price_data = await getPriceData(null, null);
+		liquidity_data = await getLiquidityData(null, null);
 	});
 	$: last_price = price_data.length > 0 ? price_data[price_data.length - 1].value : 0.0;
-	let last_liquidity = 0.0;
+	$: last_liquidity =
+		liquidity_data.length > 0 ? liquidity_data[liquidity_data.length - 1].value : 0.0;
 	$: last_height = price_data.length > 0 ? price_data[price_data.length - 1].height : 0.0;
 </script>
 
