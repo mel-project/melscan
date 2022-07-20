@@ -133,11 +133,8 @@ export interface Transaction {
 	inputs: Vec<CoinID>;
 	outputs: Vec<CoinData>;
 	fee: CoinValue;
-
 	covenants: Vec<Vec<u8>>;
-
 	data: Vec<u8>;
-
 	sigs: Vec<Vec<u8>>;
 }
 

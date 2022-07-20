@@ -16,27 +16,9 @@
 		Vec
 	} from '@utils/types';
 	import { tooltips } from '@utils/common';
-	import { BreadCrumb } from '@utils/page-types';
+	import { BreadCrumb, type TransactionResponse } from '@utils/page-types';
 
-	export interface TransactionResponse {
-		testnet: bool;
-		txhash: TxHash;
-		txhash_abbr: String;
-		height: u64;
-		transaction: Transaction;
-		inputs_with_cdh: Vec<[number, CoinID, CoinDataHeight, MicroUnit, string]>;
-		outputs: Vec<[number, CoinData, MicroUnit]>;
-		fee: MicroUnit;
-		base_fee: MicroUnit;
-		tips: MicroUnit;
-		net_loss: BTreeMap<string, Vec<MicroUnit>>;
-		net_gain: BTreeMap<string, Vec<MicroUnit>>;
-		gross_gain: Vec<MicroUnit>;
-		weight: number;
-		kind: string;
-	}
 
-	declare function assert(value: unknown): asserts value;
 
 	export interface TransactionPage {
 		status: number;
@@ -121,7 +103,6 @@
 		<div class="m-3">
 			<table class="table-fixed w-full text-sm text-left">
 				<td class="text-black text-opacity-50 font-bold w-1/3">Total output</td>
-
 				<td>
 					{#each gross_gain as gain_entry}
 						{gain_entry[0]} {gain_entry[1]} {'  '}

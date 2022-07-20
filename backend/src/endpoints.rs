@@ -2,10 +2,12 @@ use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
+use std::io::Cursor;
 
 use anyhow::Context;
 use chrono::Utc;
 use dashmap::DashMap;
+use ethnum::U256;
 use futures_util::Future;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
@@ -13,7 +15,7 @@ use rweb::*;
 
 use serde::{ser::SerializeTupleStruct, Deserialize};
 
-use serde::Serialize;
+use serde::{Serialize};
 use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::*;
@@ -23,6 +25,7 @@ use crate::{
     globals::{BACKEND, CLIENT},
     graphs::{datetime_to_height, graph_range},
 };
+use themelio_stf::melvm::opcode;
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -266,6 +269,93 @@ impl Serialize for MicroUnit {
     }
 }
 
+#[derive(Serialize, Debug, Clone)]
+#[serde(remote = "U256")]
+pub struct U256Ref(pub [u128; 2]);
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(remote = "opcode::OpCode")]
+pub enum OpCodeRef {
+    #[cfg(feature = "print")]
+    Print,
+
+    Noop,
+    // arithmetic
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Exp(u8),
+    // logic
+    And,
+    Or,
+    Xor,
+    Not,
+    Eql,
+    Lt,
+    Gt,
+    Shl,
+    Shr,
+    // cryptographyy
+    Hash(u16),
+    //SIGE,
+    //SIGQ,
+    SigEOk(u16),
+    //SIGQOK,
+    // "heap" access
+    Store,
+    Load,
+    StoreImm(u16),
+    LoadImm(u16),
+    // vector operations
+    VRef,
+    VAppend,
+    VEmpty,
+    VLength,
+    VSlice,
+    VSet,
+    VPush,
+    VCons,
+    // bytes operations
+    BRef,
+    BAppend,
+    BEmpty,
+    BLength,
+    BSlice,
+    BSet,
+    BPush,
+    BCons,
+
+    // control flow
+    Bez(u16),
+    Bnz(u16),
+    Jmp(u16),
+    // Loop(iterations, instructions)
+    Loop(u16, u16),
+
+    // type conversions
+    ItoB,
+    BtoI,
+    TypeQ,
+    // SERIAL(u16),
+
+    // literals
+    PushB(Vec<u8>),
+
+    #[serde(with = "U256Ref")]
+    PushI(U256),
+    #[serde(with = "U256Ref")]
+    PushIC(U256),
+
+    // duplication
+    Dup,
+}
+
+#[derive(Serialize, Debug)]
+struct OpCode (#[serde(with = "OpCodeRef")] opcode::OpCode);
+
+
 type Inputs = Vec<(usize, CoinID, CoinDataHeight, MicroUnit, String, String)>;
 type Outputs = Vec<(usize, CoinData, MicroUnit, String, String)>;
 #[derive(Serialize, Debug)]
@@ -285,6 +375,16 @@ struct TransactionTemplate {
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
     weight: u128,
+    covenant: Vec<OpCode>,
+}
+
+fn decode_all_ops(ops: Vec<Vec<u8>>) -> anyhow::Result<Vec<OpCode>> {
+    let mut opcode_cursor:Cursor<Vec<u8>> = Cursor::new(ops.into_iter().flatten().collect());
+    let mut ops: Vec<OpCode> = vec![];
+    while !opcode_cursor.has_remaining(){
+        ops.push(OpCode(opcode::OpCode::decode(&mut opcode_cursor)?));
+    }
+    Ok(ops)
 }
 
 #[get("/raw/blocks/{height}/{txhash}")]
@@ -427,6 +527,7 @@ pub async fn transaction_page(height: BlockHeight, txhash: TxHash) -> DynReply {
                 .collect(),
             weight: transaction.weight(themelio_stf::melvm::covenant_weight_from_bytes),
             kind: format!("{}", transaction.kind),
+            covenant: decode_all_ops(transaction.covenants)?
         };
 
         Ok(Some(body))
