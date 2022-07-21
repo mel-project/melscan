@@ -90,15 +90,7 @@ export interface TransactionSummary {
 	weight: u128;
 	mel_moved: u128;
 }
-export interface BlockSummary {
-	header: Header;
-	total_weight: u128;
-	reward_amount: u128;
-	transactions: Vec<TransactionSummary>;
-	total_fees: number;
-	header_hash: HashVal;
-	fee_multiplier: number;
-}
+
 export interface PoolKey {
 	left: Denom;
 	right: Denom;

@@ -20,7 +20,7 @@
 </script>
 
 <script lang="ts">
-	import type { BlockHeight, BlockSummary, Transaction } from '@utils/types';
+	import type { BlockHeight } from '@utils/types';
 	import { onDestroy } from 'svelte';
 
 	import TopNav from '../components/TopNav.svelte';

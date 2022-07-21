@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import type { BlockSummary, bool, f64, PoolDataItem, PoolKey, PoolState, u64, Vec } from './types';
-=======
-import type { BlockSummary, bool, BTreeMap, CoinData, CoinDataHeight, CoinID, f64, MicroUnit, PoolDataItem, PoolKey, PoolState, Transaction, TxHash, u64, Vec } from './types';
->>>>>>> Stashed changes
+import type { bool, BTreeMap, CoinData, CoinDataHeight, CoinID, f64, HashVal, Header, MicroUnit, PoolDataItem, PoolKey, PoolState, Transaction, TransactionSummary, TxHash, u128, u64, Vec } from './types';
 
 export interface Overview {
 	erg_per_mel: f64;
@@ -10,6 +6,15 @@ export interface Overview {
 	recent_blocks: Vec<BlockSummary>;
 }
 
+export interface BlockSummary {
+	header: Header;
+	total_weight: u128;
+	reward_amount: u128;
+	transactions: Vec<TransactionSummary>;
+	total_fees: number;
+	header_hash: HashVal;
+	fee_multiplier: number;
+}
 export interface PoolTemplate {
 	testnet: bool;
 	friendly_denom: String;
@@ -39,6 +44,7 @@ export interface TransactionResponse {
 	gross_gain: Vec<MicroUnit>;
 	weight: number;
 	kind: string;
+	covenants: Vec<Vec<String>>;
 }
 
 export interface BreadCrumb {

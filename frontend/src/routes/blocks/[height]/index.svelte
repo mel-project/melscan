@@ -3,9 +3,9 @@
 	import BreadCrumbs from '@components/BreadCrumbs.svelte';
 	import { backendUrl, melscan } from '@utils/common';
 	import type { LoadEvent } from '@sveltejs/kit';
-	import type { BlockSummary, HashVal, Header, TransactionSummary } from '@utils/types';
+	import type { HashVal, Header, TransactionSummary } from '@utils/types';
 	import { tooltips } from '@utils/common';
-import { BreadCrumb } from '@utils/page-types';
+import { BreadCrumb, type BlockSummary } from '@utils/page-types';
 
 
 	export let load = async (event) => {
@@ -25,12 +25,17 @@ import { BreadCrumb } from '@utils/page-types';
 	export let total_fees: number;
 	export let header_hash: HashVal;
 	export let fee_multiplier: number;
-	let breadcrumbs = [BreadCrumb("Melscan", "/"), BreadCrumb(`Block ${header.height}`, ``)]
+	$: breadcrumbs = [BreadCrumb("Melscan", "/"), BreadCrumb(`Block ${header.height}`, ``)]
 
 </script>
 <template>
 	<div class="container mx-auto max-w-screen-lg">
 		<TopNav><BreadCrumbs {breadcrumbs}></BreadCrumbs></TopNav>
+		<div class="bottom-nav">
+			<span><a href="/blocks/{header.height - 1}">◂ Previous</a></span>
+			<span><a href="/blocks/{header.height + 1}">Next ▸</a></span>
+
+		</div>
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Summary</h3>
 		</div>
@@ -129,6 +134,7 @@ import { BreadCrumb } from '@utils/page-types';
 				{/each}
 			</tbody>
 		</table>
+
 	</div>
 
 
@@ -142,5 +148,16 @@ import { BreadCrumb } from '@utils/page-types';
 	td {
 		overflow: hidden;
 		text-overflow: elipses;
+	}
+	.bottom-nav {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-around;
+		width: 100%;
+		padding: 1em;
+		padding-left: 0;
+	}
+	a:hover{
+			text-decoration: underline;
 	}
 </style>
