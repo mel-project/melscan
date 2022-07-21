@@ -3,10 +3,10 @@ use std::{convert::TryInto, sync::Arc};
 
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
-use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
+use themelio_stf::melvm::covenant_weight_from_bytes;
 
 use smol::{lock::Semaphore, prelude::*};
-use themelio_structs::{BlockHeight, CoinID, Denom, TxHash};
+use themelio_structs::{BlockHeight, CoinID, Denom, PoolKey, TxHash};
 use tide::Body;
 use tmelcrypt::HashVal;
 

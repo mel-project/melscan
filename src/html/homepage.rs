@@ -5,8 +5,8 @@ use crate::State;
 use askama::Template;
 use futures_util::StreamExt;
 use num_traits::{Inv, ToPrimitive};
-use themelio_stf::{melvm::covenant_weight_from_bytes, PoolKey};
-use themelio_structs::{Denom, Header, NetID};
+use themelio_stf::melvm::covenant_weight_from_bytes;
+use themelio_structs::{Denom, Header, NetID, PoolKey};
 use tide::Response;
 
 #[derive(Template)]

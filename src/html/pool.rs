@@ -10,10 +10,9 @@ use askama::Template;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use themelio_nodeprot::ValClientSnapshot;
-use themelio_stf::PoolKey;
 
 use async_trait::async_trait;
-use themelio_structs::{Denom, NetID, MICRO_CONVERTER};
+use themelio_structs::{Denom, NetID, PoolKey, MICRO_CONVERTER};
 
 #[derive(Template)]
 #[template(path = "pool.html", escape = "none")]
