@@ -1,4 +1,23 @@
-import type { bool, BTreeMap, CoinData, CoinDataHeight, CoinID, f64, HashVal, Header, MicroUnit, PoolDataItem, PoolKey, PoolState, Transaction, TransactionSummary, TxHash, u128, u64, Vec } from './types';
+import type {
+	bool,
+	BTreeMap,
+	CoinData,
+	CoinDataHeight,
+	CoinID,
+	f64,
+	HashVal,
+	Header,
+	MicroUnit,
+	PoolDataItem,
+	PoolKey,
+	PoolState,
+	Transaction,
+	TransactionSummary,
+	TxHash,
+	u128,
+	u64,
+	Vec
+} from './types';
 
 export interface Overview {
 	erg_per_mel: f64;
@@ -27,7 +46,6 @@ export interface PoolInfo {
 	latest_item: PoolDataItem;
 }
 
-
 export interface TransactionResponse {
 	testnet: bool;
 	txhash: TxHash;
@@ -44,7 +62,7 @@ export interface TransactionResponse {
 	gross_gain: Vec<MicroUnit>;
 	weight: number;
 	kind: string;
-	covenants: Vec<Vec<String>>;
+	covenants: Vec<[String, Vec<String>]>;
 }
 
 export interface BreadCrumb {

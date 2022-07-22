@@ -19,6 +19,7 @@ use serde::Serialize;
 use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::*;
+use tmelcrypt::Hashable;
 use tracing::{debug, info};
 
 use crate::{
@@ -271,7 +272,6 @@ impl Serialize for MicroUnit {
 
 type OpCodeString = String;
 type Covenant = Vec<OpCodeString>;
-type Covenants = Vec<Covenant>;
 type Inputs = Vec<(usize, CoinID, CoinDataHeight, MicroUnit, String, String)>;
 type Outputs = Vec<(usize, CoinData, MicroUnit, String, String)>;
 #[derive(Serialize, Debug)]
@@ -291,7 +291,7 @@ struct TransactionTemplate {
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
     weight: u128,
-    covenants: Covenants,
+    covenants: Vec<(String, Covenant)>,
 }
 
 fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<Covenant> {
@@ -300,11 +300,10 @@ fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<Covenant> {
     while opcode_cursor.has_remaining() {
         let opcode = opcode::OpCode::decode(&mut opcode_cursor)?;
         let fmt = format!("{opcode:?}")
-        .replace("(", " ")
-        .replace(")", "")
-        .replace(",", " ");
+            .replace("(", " ")
+            .replace(")", "")
+            .replace(",", " ");
         ops.push(fmt);
-
     }
     Ok(ops)
 }
@@ -415,13 +414,13 @@ pub async fn transaction_page(height: BlockHeight, txhash: TxHash) -> DynReply {
                 cdh.coin_data.covhash.0.to_addr(),
             ));
         }
-        let covenants = transaction.clone()
-                .covenants
-                .into_iter()
-                .map(decode_all_ops)
-                .collect::<Result<_,_>>()?;
-        
-            
+        let covenants = transaction
+            .clone()
+            .covenants
+            .into_iter()
+            .map(|cov| anyhow::Ok((Address(cov.hash()).to_string(), decode_all_ops(cov)?)))
+            .collect::<Result<_, _>>()?;
+
         let body = TransactionTemplate {
             testnet: client.netid() == NetID::Testnet,
             txhash,

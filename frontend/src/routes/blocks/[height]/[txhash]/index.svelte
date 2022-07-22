@@ -27,7 +27,7 @@
 		let { height, txhash } = loadEvent.params;
 		let url = `/raw/blocks/${height}/${txhash}`;
 		let res = (await melscan(loadEvent.fetch, url)) as TransactionResponse;
-		
+
 		console.log(res);
 		return {
 			status: 200,
@@ -71,7 +71,7 @@
 	<TopNav>
 		<BreadCrumbs {breadcrumbs} />
 	</TopNav>
-	
+
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Summary</h3>
@@ -135,80 +135,79 @@
 				<table class="table-fixed w-full text-left">
 					<tbody>
 						{#each Object.entries(net_loss) as entry}
-						<tr>
-							<td class="text-ellipsis overflow-hidden">{entry[0]}</td>
-							<td class="font-medium" style="color: #a22041">
-								{entry[1][0][0]} {entry[1][0][1]}</td
+							<tr>
+								<td class="text-ellipsis overflow-hidden">{entry[0]}</td>
+								<td class="font-medium" style="color: #a22041">
+									{entry[1][0][0]} {entry[1][0][1]}</td
 								>
 							</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-				
-				<div class="m-3">
-					<span class="text-black text-opacity-50 font-bold">
-						<span class="name">Net Receivers</span>
-						{tooltips['netReceivers']}
-					</span><br />
-					<table class="table-fixed w-full text-left">
-						<tbody>
-							{#each Object.entries(net_gain) as entry}
+						{/each}
+					</tbody>
+				</table>
+			</div>
+
+			<div class="m-3">
+				<span class="text-black text-opacity-50 font-bold">
+					<span class="name">Net Receivers</span>
+					{tooltips['netReceivers']}
+				</span><br />
+				<table class="table-fixed w-full text-left">
+					<tbody>
+						{#each Object.entries(net_gain) as entry}
 							<tr>
 								<td class="text-ellipsis overflow-hidden">{entry[0]}</td>
 								<td class="font-medium" style="color:#007b43">
 									{entry[1][0][0]} {entry[1][0][1]}</td
-									>
-								</tr>
-								{/each}
-								
-								<tr>
-									<td><i>(Total fees)</i></td>
-									<td class="font-medium" style="color: #007b43">
-										{fee[0]}
-										{fee[1]}
-									</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</div>
-				
-				<div class="container mx-auto max-w-screen-lg">
-					<div class="mb-3 mt-8">
-						<h3 class="text-2xl font-bold">Covenants</h3>
-					</div>
-		
-					<div class="m-3">
-						<table class="table-fixed w-full text-sm text-left">
-							<tbody>
-								{#each covenants as covenant,i}
-									<tr>
-										<td class="text-black text-opacity-50 font-bold">
-											<span class="name">{transaction.outputs[i].covhash}</span>
-										</td>
-										<td class="font-medium">
-										{#each covenant as opcode}
-											{opcode} <br/>
-										{/each}
-										</td>
-										
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				</div>
-				<div class="mb-3 mt-8">
-					<h3 class="text-2xl font-bold">Inputs</h3>
-				</div>
-				
-				<div class="m-3">
-					{#each inputs_with_cdh as [index, input, cdh, value, additional_data, recipient]}
-					<table class="table-fixed w-full text-sm text-left mt-1 mb-1">
-						<tbody>
+								>
+							</tr>
+						{/each}
+
+						<tr>
+							<td><i>(Total fees)</i></td>
+							<td class="font-medium" style="color: #007b43">
+								{fee[0]}
+								{fee[1]}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="container mx-auto max-w-screen-lg">
+			<div class="mb-3 mt-8">
+				<h3 class="text-2xl font-bold">Covenants</h3>
+			</div>
+
+			<div class="m-3">
+				<table class="table-fixed w-full text-sm text-left">
+					<tbody>
+						{#each covenants as [covhash, covenant]}
 							<tr>
-								<td class="text-black text-opacity-50 font-bold w-1/3">Index</td>
+								<td class="text-black text-opacity-50 font-bold">
+									<span class="name">{covhash}</span>
+								</td>
+								<td class="font-medium">
+									{#each covenant as opcode}
+										{opcode} <br />
+									{/each}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Inputs</h3>
+		</div>
+
+		<div class="m-3">
+			{#each inputs_with_cdh as [index, input, cdh, value, additional_data, recipient]}
+				<table class="table-fixed w-full text-sm text-left mt-1 mb-1">
+					<tbody>
+						<tr>
+							<td class="text-black text-opacity-50 font-bold w-1/3">Index</td>
 							<td>{index}</td>
 						</tr>
 						<tr>
