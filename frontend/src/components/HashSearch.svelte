@@ -9,23 +9,31 @@
 	};
 	let error = '';
 	const onKeyUp = async (e) => {
+		value = value.trim();
 		try {
 			if (e.key === 'Enter') {
 				pending = true;
 				try {
 					try {
-						let resp = await melscan(fetch, '/raw/search/transaction/' + value);
-						goto('/blocks/' + resp + '/' + value);
+						try {
+							let resp = await melscan(fetch, '/raw/search/transaction/' + value);
+							goto('/blocks/' + resp + '/' + value);
+						} catch {
+							let resp = await melscan(fetch, '/raw/search/block/' + value);
+							goto('/blocks/' + resp);
+						}
 					} catch {
-						let resp = await melscan(fetch, '/raw/search/block/' + value);
-						goto('/blocks/' + resp);
+						let resp = await melscan(fetch, '/raw/blocks/' + value + '/summary');
+						if (resp) {
+							goto('/blocks/' + value);
+						}
+						throw 'oh no';
 					}
 				} catch {
-					let resp = await melscan(fetch, '/raw/blocks/' + value + '/summary');
-					if (!resp) {
-						throw 'no such block';
+					let resp2 = await melscan(fetch, '/raw/address/' + value);
+					if (resp2) {
+						goto('/address/' + value);
 					}
-					goto('/blocks/' + value);
 				} finally {
 					pending = false;
 				}
