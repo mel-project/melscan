@@ -16,12 +16,13 @@
 	export let height = '20rem';
 	export let stroke = 'black';
 	export let fill = 'rgba(0, 0, 0, 0.1)';
+	export let stepped = false;
 
 	let container: HTMLElement;
 
 	const formatData = (d: GraphDatum[]) => [
 		d.map((dp) => dp.date.getTime() / 1000.0),
-		d.map((dp) => dp.value)
+		d.map((dp) => (isNaN(dp.value) ? 0.0 : dp.value))
 	];
 
 	function clamp(
@@ -68,7 +69,7 @@
 				class: 'my-chart',
 				width: size.width,
 				height: size.height,
-				padding: [20, 20, 0, 30],
+				padding: [0, 0, 0, 0],
 				series: [
 					{},
 					{
@@ -85,7 +86,14 @@
 						stroke: stroke,
 						width: 1,
 						fill: fill,
-						dash: [10, 0]
+						dash: [10, 0],
+
+						paths: stepped
+							? uPlot.paths.stepped({
+									align: 1,
+									alignGaps: 0
+							  })
+							: null
 					}
 				],
 				cursor: {

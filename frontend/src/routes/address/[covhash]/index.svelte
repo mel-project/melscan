@@ -29,6 +29,7 @@
 
 <script lang="ts">
 	import BreadCrumbs from '@components/BreadCrumbs.svelte';
+	import GraphPlot from '@components/GraphPlot.svelte';
 
 	import TopNav from '@components/TopNav.svelte';
 	import { BreadCrumb } from '@utils/page-types';
@@ -45,6 +46,18 @@
 					day: 'numeric'
 			  })
 			: '';
+
+	let balanceHistory = (() => {
+		let accum = 0;
+		return summary.transactions.map((t) => {
+			if ('MEL' in t.deltas) accum += t.deltas['MEL'];
+			return {
+				height: t.height,
+				date: t.date,
+				value: accum
+			};
+		});
+	})();
 </script>
 
 <template>
@@ -63,22 +76,80 @@
 			<table class="table-fixed w-full text-sm text-left">
 				<tbody>
 					<tr>
-						<td class="text-black text-opacity-50 font-bold w-1/3">First seen</td>
+						<td class="text-black text-opacity-50 font-bold w-1/2">First seen</td>
 						<td>
-							<a class="text-blue-600 font-medium" href={`/blocks/${firstHeight}`}>{firstHeight}</a>
+							<a class="text-blue-800 font-medium" href={`/blocks/${firstHeight}`}>{firstHeight}</a>
 							({firstDate})
 						</td>
 					</tr>
 					<tr>
-						<td class="text-black text-opacity-50 font-bold w-1/3">Total balance</td>
+						<td class="text-black text-opacity-50 font-bold w-1/2">Total balance</td>
 						<td>
 							{#each Object.entries(summary.balances) as [denom, balance]}
-								<b class="font-medium">{balance.toFixed(5)}</b>&nbsp;<i>{denom}</i>&nbsp;&nbsp;
+								<b class="font-medium">{balance.toFixed(6)}</b>&nbsp;<i>{denom}</i>&nbsp;&nbsp;
 							{/each}
 						</td>
 					</tr>
 				</tbody>
 			</table>
 		</div>
+
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Balance history (MEL)</h3>
+			<div class="m-3">
+				<GraphPlot
+					stepped
+					unit="MEL"
+					fetchData={async (start, end) =>
+						balanceHistory.filter((t) => (!start || t.date >= start) && (!end || t.date <= end))}
+				/>
+			</div>
+		</div>
+
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Transaction history</h3>
+			<div class="m-3">
+				<table class="table-fixed w-full text-sm text-left">
+					<thead class="text-black text-opacity-50 font-bold">
+						<td class="w-24">Height</td>
+						<td>Hash</td>
+						<td class="w-32">Balance change</td>
+					</thead>
+					<tbody>
+						{#each summary.transactions as txn}
+							<tr class="txn-row">
+								<td
+									><a class="text-blue-800 font-medium" href={`/blocks/${txn.height}`}
+										>{txn.height}</a
+									></td
+								>
+								<td class="overflow-ellipsis overflow-hidden mono">
+									<a class="text-blue-800" href={`/blocks/${txn.height}/${txn.txhash}`}
+										>{txn.txhash}</a
+									></td
+								>
+								<td>
+									{#each Object.entries(txn.deltas) as [denom, change]}
+										{#if change > 0}
+											<span class="text-green-800">+{change.toFixed(6)} {denom}</span><br />
+										{:else}
+											<span class="text-red-800">{change.toFixed(6)} {denom}</span><br />
+										{/if}
+									{/each}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
 	</div>
 </template>
+
+<style>
+	.txn-row td {
+		vertical-align: top;
+		padding-bottom: 1rem;
+		/* border: 1px solid black; */
+	}
+</style>
