@@ -73,7 +73,11 @@
 				class: 'my-chart',
 				width: size.width,
 				height: size.height,
+<<<<<<< HEAD
+				padding: [0, 0, 0, 0],
+=======
 				padding: [0, 0, 0, Math.max((maxDigits - 4) * 5, 0)],
+>>>>>>> 22cdcb087cc92d7413411026f2ebb42b42d8bf48
 				series: [
 					{},
 					{

@@ -4,8 +4,7 @@
 
 	export let load = async (event) => {
 		let { params } = event;
-		console.log(params);
-		let { left, right } = params;
+
 		return {
 			status: 200,
 			props: { params }
@@ -14,7 +13,7 @@
 </script>
 
 <script lang="ts">
-	import type { PoolDataItem, PoolKey, PoolState } from '@utils/types';
+	import type { PoolKey } from '@utils/types';
 	import TopNav from '@components/TopNav.svelte';
 	import { BreadCrumb, type GraphDatum, type PoolInfo } from '@utils/page-types';
 	import { onMount } from 'svelte';
@@ -65,6 +64,10 @@
 	$: last_liquidity =
 		liquidity_data.length > 0 ? liquidity_data[liquidity_data.length - 1].value : 0.0;
 	$: last_height = price_data.length > 0 ? price_data[price_data.length - 1].height : 0.0;
+
+	// Variables controlled by the button
+	let currentGraph: 'liquidity' | 'price' = 'price';
+	let cutoffDate: Date | null = null;
 </script>
 
 <template>
@@ -95,12 +98,20 @@
 			</div>
 
 			<div class="md:col-span-9 col-span-12 md:row-span-3 card">
-				<div class="grid grid-cols-2" id="head" />
-				<GraphPlot
-					fetchData={async (start, end) => await getPriceData(start, end)}
-					unit={left}
-					label={right}
-				/>
+				<div class="grid grid-cols-2 mb-2" id="head">
+					<div class="text-left">
+						<button on:click={() => (currentGraph = 'liquidity')}>Liquidity</button>
+						<button on:click={() => (currentGraph = 'price')}>Price</button>
+					</div>
+				</div>
+				{#key [currentGraph, cutoffDate]}
+					<GraphPlot
+						fetchData={async (start, end) =>
+							await (currentGraph === 'liquidity' ? getLiquidityData : getPriceData)(start, end)}
+						unit={currentGraph === 'liquidity' ? '' : left}
+						label={currentGraph === 'liquidity' ? 'Liquidity' : right + ' price'}
+					/>
+				{/key}
 			</div>
 		</div>
 	</div>
