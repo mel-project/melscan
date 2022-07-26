@@ -58,5 +58,9 @@ pub async fn get_exchange(
         .context(format!("Unable to get exchange for {denom1}/{denom2}"))?
         .unwrap();
     let micro = pool.implied_price().to_f64().unwrap_or_default();
-    Ok(micro)
+    if denom1.to_bytes() < denom2.to_bytes() {
+        Ok(1.0 / micro)
+    } else {
+        Ok(micro)
+    }
 }

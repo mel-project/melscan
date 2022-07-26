@@ -4,30 +4,26 @@
 
 <nav class="mx-auto max-w-screen-lg mt-8 text-xl leading-tight">
 	{#if testnet}
-		<span class="font-bold text-black italic text-opacity-50">Testnet </span>{/if}
+		<span class="font-bold text-black italic text-opacity-50">Testnet </span>
+	{/if}
 	<slot />
-	<span class="text-sm text-blue-600 hover:underline">
+	<div class="text-sm text-blue-600 hover:underline">
 		<b>
 			{#if testnet}
-				<a href="https://scan.themelio.org">Switch to mainnet</a>{:else}<a
-					href="https://scan-testnet.themelio.org">Switch to testnet</a
-				>
+				<a href="https://scan.themelio.org">Switch to mainnet</a>
+			{:else}
+				<a href="https://scan-testnet.themelio.org">Switch to testnet</a>
 			{/if}
 		</b>
-	</span>
+	</div>
 </nav>
 
 <style lang="scss">
-
-	nav{
-	}
-	nav :global(a){
-		
+	nav :global(a) {
 		text-overflow: ellipsis;
-		
-		&:hover{
+
+		&:hover {
 			text-decoration: underline;
 		}
-		
 	}
 </style>

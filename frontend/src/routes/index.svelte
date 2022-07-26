@@ -60,15 +60,15 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{erg_per_mel.toFixed(5)} MEL
+				{(1.0 / erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href="/pools/ERG/MEL">See details →</a></small>
 		</div>
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 SYM =</span>
-				{sym_per_mel.toFixed(5)} MEL
+				{(1.0 / sym_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
