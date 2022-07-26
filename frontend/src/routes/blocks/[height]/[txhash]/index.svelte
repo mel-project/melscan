@@ -3,8 +3,6 @@
 	import TopNav from '@components/TopNav.svelte';
 	import { melscan, type LoadFunction } from '@utils/common';
 	import type {
-		bool,
-		BTreeMap,
 		CoinData,
 		CoinDataHeight,
 		CoinID,
@@ -12,7 +10,6 @@
 		Obj,
 		Transaction,
 		TxHash,
-		u64,
 		Vec
 	} from '@utils/types';
 	import { tooltips } from '@utils/common';
@@ -59,7 +56,7 @@
 	$: breadcrumbs = [
 		BreadCrumb('Melscan', '/'),
 		BreadCrumb(`Block ${height}`, `.`),
-		BreadCrumb(`Transaction ${txhash}`, '')
+		BreadCrumb(`Transaction ${txhash.substring(0, 10)}..`, '')
 	];
 
 	function print_coin(coin: MicroUnit) {
@@ -95,7 +92,7 @@
 						<td class="text-black text-opacity-50 font-bold">
 							<span class="name">Hash</span>
 						</td>
-						<td class="font-medium mono">{txhash}</td>
+						<td class="font-medium mono overflow-ellipsis overflow-hidden">{txhash}</td>
 					</tr>
 
 					<td class="text-black text-opacity-50 font-bold w-1/3">Total output</td>
@@ -136,7 +133,7 @@
 					<tbody>
 						{#each Object.entries(net_loss) as entry}
 							<tr>
-								<td class="text-ellipsis overflow-hidden">
+								<td class="overflow-ellipsis overflow-hidden">
 									<a class="text-blue-800" href={`/address/${entry[0]}`}>{entry[0]}</a>
 								</td>
 								<td class="font-medium" style="color: #a22041">
@@ -157,7 +154,7 @@
 					<tbody>
 						{#each Object.entries(net_gain) as entry}
 							<tr>
-								<td class="text-ellipsis overflow-hidden">
+								<td class="overflow-ellipsis overflow-hidden">
 									<a class="text-blue-800" href={`/address/${entry[0]}`}>{entry[0]}</a>
 								</td>
 								<td class="font-medium" style="color:#007b43">
@@ -188,7 +185,7 @@
 					<tbody>
 						{#each covenants as [covhash, covenant]}
 							<tr>
-								<td class="text-black text-opacity-50 font-bold">
+								<td class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden">
 									<span class="name">{covhash}</span>
 								</td>
 								<td class="font-medium">
@@ -215,9 +212,9 @@
 							<td>{index}</td>
 						</tr>
 						<tr>
-							<td class="text-black text-opacity-50 font-bold">Spent CoinID</td>
-							<td
-								><a class="text-blue-800 mono" href="/blocks/{cdh.height}/{input.txhash}"
+							<td class="text-black text-opacity-50 font-bold ">Spent CoinID</td>
+							<td class="overflow-ellipsis overflow-hidden"
+								><a class="text-blue-800 mono " href="/blocks/{cdh.height}/{input.txhash}"
 									>{input.txhash}</a
 								>-{input.index}</td
 							>
@@ -227,8 +224,8 @@
 							<td>{value[0]} {value[1]}</td>
 						</tr>
 						<tr>
-							<td class="text-black text-opacity-50 font-bold">Recipient</td>
-							<td>{recipient}</td>
+							<td class="text-black text-opacity-50 font-bold ">Recipient</td>
+							<td class="overflow-ellipsis overflow-hidden">{recipient}</td>
 						</tr>
 						<tr>
 							<td class="text-black text-opacity-50 font-bold">Additional data</td>
@@ -257,7 +254,7 @@
 						</tr>
 						<tr>
 							<td class="text-black text-opacity-50 font-bold">Recipient</td>
-							<td>{recipient}</td>
+							<td class="overflow-ellipsis overflow-hidden">{recipient}</td>
 						</tr>
 						<tr>
 							<td class="text-black text-opacity-50 font-bold">Additional data</td>

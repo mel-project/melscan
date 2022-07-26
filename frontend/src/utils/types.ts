@@ -16,41 +16,7 @@ export type CoinValue = u128;
 export type Obj<T> = { [key: string]: T };
 export type BTreeMap<T extends string | number | symbol, K> = Record<T, K>;
 
-// [u8; 32]
-export type HashVal = [
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8,
-	u8
-];
+export type HashVal = String;
 
 export enum NetID {
 	Testnet = 0x01,

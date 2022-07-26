@@ -19,11 +19,8 @@
 </nav>
 
 <style lang="scss">
-	nav :global(a) {
+	nav {
 		text-overflow: ellipsis;
-
-		&:hover {
-			text-decoration: underline;
-		}
+		overflow-x: hidden;
 	}
 </style>
