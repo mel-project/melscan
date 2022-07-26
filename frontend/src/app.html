@@ -3,14 +3,15 @@
 
 <head>
 	<meta charset="utf-8" />
-	<link rel="icon" href="%svelte.assets%/favicon.png" />
+	<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
+	<link href="https://cdn.jsdelivr.net/npm/uplot@1.6.22/dist/uPlot.min.css" rel="stylesheet" />
 	<style>
-		@import "https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900";
+		@import "https://themelio.org/iosevka-aile/iosevka-aile.css";
 
 		* {
-			font-family: 'Public Sans', sans-serif;
+			font-family: 'Iosevka Aile Web', sans-serif;
 		}
 
 		html {
@@ -18,23 +19,22 @@
 			background-color: #f8fbf8;
 		}
 
-
 		.link {
 			fill: none;
 			stroke: #000;
-			stroke-opacity: .2;
+			stroke-opacity: 0.2;
 		}
 
 		.link:hover {
-			stroke-opacity: .5;
+			stroke-opacity: 0.5;
 		}
 
 	</style>
-	%svelte.head%
+	%sveltekit.head%
 </head>
 
 <body>
-	%svelte.body%
+	%sveltekit.body%
 </body>
 
 </html>

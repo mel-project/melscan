@@ -1,8 +1,10 @@
-use crate::html::{MicroUnit, TransactionSummary};
+use crate::backend::TransactionSummary;
+use anyhow::Context;
 use futures_util::{stream::FuturesOrdered, Future};
+use num_traits::ToPrimitive;
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;
-use themelio_structs::{Block, CoinID, CoinValue, Denom};
+use themelio_structs::{Block, CoinID, CoinValue, Denom, PoolKey};
 
 pub fn get_old_blocks(
     last_snap: &ValClientSnapshot,
@@ -32,26 +34,29 @@ pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
             hash: hex::encode(&transaction.hash_nosigs().0),
             shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
             height: block.header.height.0,
-            _weight: transaction.weight(covenant_weight_from_bytes),
-            mel_moved: MicroUnit(
-                transaction
-                    .outputs
-                    .iter()
-                    .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
-                    .sum::<u128>()
-                    + transaction.fee.0,
-                "MEL".into(),
-            ),
+            weight: transaction.weight(covenant_weight_from_bytes),
+            mel_moved: transaction
+                .outputs
+                .iter()
+                .map(|v| if v.denom == Denom::Mel { v.value.0 } else { 0 })
+                .sum::<u128>()
+                + transaction.fee.0,
         })
     }
     transactions.sort_unstable();
     transactions
 }
 
-/// Interpolates between two numbers in a cache-friendly fashion
-pub fn interpolate_between(start: u64, end: u64, approx_count: u64) -> impl Iterator<Item = u64> {
-    let interval = ((end - start).max(1) / approx_count).next_power_of_two();
-    (start..=end)
-        .filter(move |i| i % interval == 0)
-        .chain(std::iter::once(end))
+pub async fn get_exchange(
+    last_snap: &ValClientSnapshot,
+    denom1: Denom,
+    denom2: Denom,
+) -> anyhow::Result<f64> {
+    let pool = last_snap
+        .get_pool(PoolKey::new(denom1, denom2))
+        .await
+        .context(format!("Unable to get exchange for {denom1}/{denom2}"))?
+        .unwrap();
+    let micro = pool.implied_price().to_f64().unwrap_or_default();
+    Ok(micro)
 }

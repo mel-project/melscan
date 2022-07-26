@@ -1,37 +1,43 @@
-<script context="module">
-	import { backendUrl } from '../common';
-
-	const getOverviewData = async (fetch) => {
-		const url = `${backendUrl()}/raw/overview`;
-		const response = await fetch(url);
-		if (!response.ok) {
-			throw 'failed to fetch overview data';
-		}
-		return await response.json();
-	};
-
-	export async function load({ params, fetch, session, stuff }) {
-			return {
-			status: 200,
-				props: {
-				overviewData: await getOverviewData(fetch)
-			}
+<script context="module" lang="ts">
+	import { backendUrl, melscan, type LoadFunction } from '@utils/common';
+	import type { Overview } from '@utils/page-types';
+	interface OverviewPage {
+		status: number;
+		props: {
+			overview: Overview;
 		};
 	}
+
+	export let load: LoadFunction<OverviewPage> = async (loadEvent) => {
+		let props = {
+			overview: (await melscan(loadEvent.fetch, '/raw/overview')) as unknown as Overview
+		};
+		return {
+			status: 200,
+			props
+		};
+	};
 </script>
 
-<script>
+<script lang="ts">
+	import HashSearch from '@components/HashSearch.svelte';
+	import type { BlockHeight } from '@utils/types';
+	import { onDestroy } from 'svelte';
+
 	import TopNav from '../components/TopNav.svelte';
+	// export let refresh: (s?: string)=>Promise<JSON>;
+	// export let autorefresh: () => void;
 
-	export let overviewData;
+	// autorefresh();
 
-	setInterval(async () => {
-		let v = await getOverviewData(fetch);
-		overviewData = v;
-	}, 5000);
+	export let overview;
+	let { erg_per_mel, sym_per_mel, recent_blocks } = overview;
 
+	let height: BlockHeight;
+
+	$: height = recent_blocks[0].header.height;
 	$: recentTxx = () => {
-		let x = overviewData.recent_blocks.map((b) => b.transactions).flat();
+		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
 			x.length = 50;
 		}
@@ -39,9 +45,14 @@
 	};
 </script>
 
-<TopNav>Melscan</TopNav>
-
+<TopNav><a href="/">Melscan</a></TopNav>
 <div class="container mx-auto max-w-screen-lg">
+	<div class="grid mt-8">
+		<div class="col-span-full">
+			<HashSearch />
+		</div>
+	</div>
+
 	<div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
 		<div class="col-span-2 mb-3">
 			<h3 class="text-2xl font-bold">Melmint/Melswap</h3>
@@ -49,7 +60,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{(1 / overviewData.erg_per_mel).toFixed(5)} MEL
+				{erg_per_mel.toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
@@ -57,10 +68,10 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 SYM =</span>
-				{(1 / overviewData.sym_per_mel).toFixed(5)} MEL
+				{sym_per_mel.toFixed(5)} MEL
 			</span>
 			<br />
-			<small class="text-blue-600 font-bold"><a href="/pools/MEL/ERG">See details →</a></small>
+			<small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
 		</div>
 	</div>
 
@@ -88,7 +99,7 @@
 					</tr>
 				</thead>
 				<tbody id="block-rows" class="leading-loose text-sm">
-					{#each overviewData.recent_blocks as block}
+					{#each recent_blocks as block}
 						<tr>
 							<td class="font-medium"
 								><a href="/blocks/{block.header.height}" class="text-blue-600"
