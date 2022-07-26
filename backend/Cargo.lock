@@ -1282,9 +1282,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "melblkidx"
-version = "0.4.5"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719c801fd71a5f840ce7c33236b05efe1c104bafc4aa760dac5b4bcb60ad3997"
+checksum = "7f00fdba033a5bdeaec78f2ef777ce5e881ea12dd9fd06c93173e40779323ddf"
 dependencies = [
  "anyhow",
  "concurrent-queue",
@@ -1377,6 +1377,7 @@ dependencies = [
  "smolscale",
  "stdcode",
  "structopt",
+ "tap",
  "themelio-bootstrap",
  "themelio-nodeprot",
  "themelio-stf",

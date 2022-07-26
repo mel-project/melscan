@@ -6,7 +6,7 @@ use structopt::StructOpt;
 use themelio_nodeprot::ValClient;
 use themelio_structs::NetID;
 
-use crate::raw::Backend;
+use crate::backend::Backend;
 
 #[derive(StructOpt)]
 pub struct Args {

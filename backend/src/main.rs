@@ -3,10 +3,10 @@ use rweb::{hyper::Method, Filter};
 use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::globals::CMD_ARGS;
+mod backend;
 mod endpoints;
 mod globals;
 mod graphs;
-mod raw;
 mod utils;
 
 #[macro_export]
@@ -55,8 +55,9 @@ async fn main() -> anyhow::Result<()> {
         coins,
         block_full,
         block_summary,
-        // pool,
-        // pooldata,
+        address_summary,
+        search_transaction,
+        search_block,
         transaction_page,
         graph
     ];

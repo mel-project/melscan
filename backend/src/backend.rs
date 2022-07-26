@@ -1,18 +1,22 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
+use anyhow::Context;
+use chrono::Utc;
 use dashmap::DashMap;
+use itertools::Itertools;
 use melblkidx::{BalanceTracker, Indexer};
 use serde::{Deserialize, Serialize};
 use smol::{lock::Semaphore, prelude::*};
+use tap::Tap;
 use themelio_nodeprot::ValClient;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::{
-    Block, BlockHeight, CoinDataHeight, CoinID, CoinValue, Denom, Header, PoolKey, Transaction,
-    TxHash,
+    Address, Block, BlockHeight, CoinDataHeight, CoinID, CoinValue, Denom, Header, PoolKey,
+    Transaction, TxHash,
 };
 use tmelcrypt::HashVal;
 
-use crate::utils::*;
+use crate::{graphs::height_to_datetime, utils::*};
 #[derive(PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PoolInfoKey(PoolKey, BlockHeight);
 
@@ -67,6 +71,21 @@ pub struct Overview {
     pub recent_blocks: Vec<BlockSummary>,
 }
 
+/// A summary of a particular address.
+#[derive(serde::Serialize, Clone, PartialEq, PartialOrd, Debug)]
+pub struct AddressSummary {
+    pub balances: BTreeMap<String, f64>,
+    pub transactions: Vec<AddressTransactionSummary>,
+}
+
+#[derive(serde::Serialize, Clone, PartialEq, PartialOrd, Debug)]
+pub struct AddressTransactionSummary {
+    pub height: BlockHeight,
+    pub date: chrono::DateTime<Utc>,
+    pub txhash: TxHash,
+    pub deltas: BTreeMap<String, f64>,
+}
+
 /// A Backend encapsulates the current state of a blockchain and exposes methods that are convenient to call from JSON-returning APIs.
 #[derive(Clone)]
 pub struct Backend {
@@ -90,13 +109,29 @@ impl Backend {
     pub fn indexed_highest(&self) -> BlockHeight {
         self.indexer
             .as_ref()
-            .map(|idx| idx.max_height().into())
+            .map(|idx| idx.max_height())
             .unwrap_or_default()
     }
 
     /// Obtains the latest blockchain header.
     pub async fn get_latest_header(&self) -> anyhow::Result<Header> {
         Ok(self.client.snapshot().await?.current_header())
+    }
+
+    /// Searches for the transaction matching a given hash.
+    pub async fn search_transaction(&self, txhash: TxHash) -> anyhow::Result<Option<BlockHeight>> {
+        Ok(self
+            .indexer
+            .as_ref()
+            .and_then(|i| i.txhash_to_height(txhash)))
+    }
+
+    /// Searches for the block matching a given hash.
+    pub async fn search_block(&self, blkhash: HashVal) -> anyhow::Result<Option<BlockHeight>> {
+        Ok(self
+            .indexer
+            .as_ref()
+            .and_then(|i| i.blkhash_to_height(blkhash)))
     }
 
     /// Get "overview" information at either the latest height or a given height.
@@ -199,140 +234,49 @@ impl Backend {
             Ok(None)
         }
     }
+
+    /// Gets the total summary of some address. Only available if we have an indexer.
+    pub async fn get_address_summary(&self, address: Address) -> anyhow::Result<AddressSummary> {
+        let indexer = self.indexer.as_ref().context("no indexer")?.clone();
+        let current_coins = indexer.query_coins().covhash(address).unspent();
+        let mut balances: BTreeMap<String, f64> = BTreeMap::new();
+        for coin in current_coins.iter() {
+            *balances
+                .entry(coin.coin_data.denom.to_string())
+                .or_default() += coin.coin_data.value.0 as f64 / 1_000_000.0;
+        }
+        // TODO more efficient way of doing this
+        let mut transactions: BTreeMap<(TxHash, BlockHeight), BTreeMap<String, f64>> =
+            BTreeMap::new();
+        for coin in indexer.query_coins().covhash(address).iter() {
+            let mapping = transactions
+                .entry((coin.create_txhash, coin.create_height))
+                .or_default();
+            // we credit the transaction that produced the coin
+            *mapping.entry(coin.coin_data.denom.to_string()).or_default() +=
+                coin.coin_data.value.0 as f64 / 1_000_000.0;
+            // and debit the transaction that spent the coin
+            if let Some(s) = coin.spend_info {
+                let mapping = transactions
+                    .entry((s.spend_txhash, s.spend_height))
+                    .or_default();
+                // we credit the transaction that produced the coin
+                *mapping.entry(coin.coin_data.denom.to_string()).or_default() -=
+                    coin.coin_data.value.0 as f64 / 1_000_000.0;
+            }
+        }
+        Ok(AddressSummary {
+            balances,
+            transactions: transactions
+                .into_iter()
+                .map(|(k, v)| AddressTransactionSummary {
+                    height: k.1,
+                    date: height_to_datetime(k.1),
+                    deltas: v,
+                    txhash: k.0,
+                })
+                .collect_vec()
+                .tap_mut(|v| v.sort_unstable_by_key(|v| v.height)),
+        })
+    }
 }
-
-// /// Gets the latest blockchain header.
-// pub async fn get_latest_header(client: ValClient) -> anyhow::Result<Header> {
-//     let last_snap = client.snapshot().await?;
-//     Ok(last_snap.current_header())
-// }
-
-// /// Gets a particular transaction at a height
-// pub async fn get_transaction(
-//     client: &ValClient,
-//     height: u64,
-//     txhash: String,
-// ) -> anyhow::Result<Option<Transaction>> {
-//     let txhash: TxHash = TxHash(txhash.parse()?);
-//     let last_snap = client.snapshot().await?;
-//     let older = last_snap.get_older(height.into()).await?;
-//     Ok(older.get_transaction(txhash).await?)
-// }
-
-// /// Gets a particular coin at a height
-// pub async fn get_coin(
-//     client: ValClient,
-//     height: u64,
-//     coinid_string: String,
-// ) -> anyhow::Result<Option<CoinDataHeight>> {
-//     let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
-//     if coinid_exploded.len() != 2 {
-//         return Err(anyhow::format_err!("bad coinid"));
-//     }
-//     let txhash: Vec<u8> = hex::decode(&coinid_exploded[0])?;
-//     let txhash: TxHash = HashVal(
-//         txhash
-//             .try_into()
-//             .map_err(|_| anyhow::anyhow!("not the right length"))?,
-//     )
-//     .into();
-//     let index: u8 = coinid_exploded[1].parse()?;
-//     let older = client.older_snapshot(height).await?;
-//     Ok(older.get_coin(CoinID { txhash, index }).await?)
-// }
-
-// /// Get a particular block
-// pub async fn get_full_block(client: ValClient, height: u64) -> anyhow::Result<Block> {
-//     let older = client.older_snapshot(height).await?;
-//     let block = older.current_block().await?;
-//     Ok(block)
-// }
-
-// /// Get block summary
-// pub async fn get_block_summary(client: ValClient, height: u64) -> anyhow::Result<BlockSummary> {
-//     let older = client.older_snapshot(height).await?;
-//     let block = older.current_block().await?;
-//     let proposer_reward = older.get_proposer_reward().await?;
-//     Ok(BlockSummary::from_block(block, proposer_reward))
-// }
-
-// pub async fn get_pool(
-//     client: ValClient,
-//     height: u64,
-//     left: Denom,
-//     right: Denom,
-// ) -> anyhow::Result<Option<PoolInfo>> {
-//     let older = client.older_snapshot(height).await?;
-//     let key = PoolKey { left, right };
-//     let pool_state = older
-//         .get_pool(key)
-//         .await?
-//         .context("Unable to get pool state")?;
-//     let latest_item = older
-//         .as_pool_data_item(key)
-//         .await?
-//         .context("Unable to get pool data item")?;
-//     Ok(Some(PoolInfo {
-//         pool_state,
-//         latest_item,
-//     }))
-// }
-
-// /// Obtains some pooldatas for the given range
-// pub async fn get_pooldata_range(
-//     client: ValClient,
-//     left: Denom,
-//     right: Denom,
-//     lower_block: u64,
-//     upper_block: u64,
-// ) -> anyhow::Result<Vec<PoolDataItem>> {
-//     static CACHE: Lazy<AsyncCache> = Lazy::new(|| AsyncCache::new(1_000_000));
-
-//     let pool_key = PoolKey { left, right };
-//     let snapshot = &client.snapshot().await?;
-
-//     let blockheight_interval = {
-//         if lower_block == upper_block {
-//             vec![lower_block]
-//         } else {
-//             interpolate_between(lower_block, upper_block, 1000)
-//                 .filter(|x| *x > 0)
-//                 .collect()
-//         }
-//     };
-
-//     let semaphore = Arc::new(Semaphore::new(128));
-//     let mut item_futs = FuturesUnordered::new();
-//     for height in &blockheight_interval {
-//         let semaphore = semaphore.clone();
-//         item_futs.push(async move {
-//             let _guard = semaphore.acquire().await;
-//             let cache_key = PoolInfoKey(pool_key, BlockHeight(*height));
-//             CACHE
-//                 .get_or_try_fill(&cache_key, async {
-//                     snapshot
-//                         .get_older_pool_data_item(pool_key, *height)
-//                         .await
-//                         .map_err(|err| {
-//                             anyhow::anyhow!("failed to get pool data item at {height}: {err}")
-//                         })
-//                 })
-//                 .await
-//         });
-//     }
-//     // Gather the stuff
-//     let mut output = vec![];
-//     while let Some(res) = item_futs.next().await {
-//         log::debug!(
-//             "loading pooldata {}/{}",
-//             output.len() + 1,
-//             blockheight_interval.len()
-//         );
-//         if let Some(res) = res? {
-//             output.push(res);
-//         }
-//     }
-//     output.sort_unstable_by_key(|v| v.block_height());
-
-//     Ok(output)
-// }

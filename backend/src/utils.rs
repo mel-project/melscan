@@ -1,4 +1,4 @@
-use crate::raw::TransactionSummary;
+use crate::backend::TransactionSummary;
 use anyhow::Context;
 use futures_util::{stream::FuturesOrdered, Future};
 use num_traits::ToPrimitive;

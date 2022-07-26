@@ -20,6 +20,7 @@
 </script>
 
 <script lang="ts">
+	import HashSearch from '@components/HashSearch.svelte';
 	import type { BlockHeight } from '@utils/types';
 	import { onDestroy } from 'svelte';
 
@@ -46,6 +47,12 @@
 
 <TopNav><a href="/">Melscan</a></TopNav>
 <div class="container mx-auto max-w-screen-lg">
+	<div class="grid mt-8">
+		<div class="col-span-full">
+			<HashSearch />
+		</div>
+	</div>
+
 	<div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
 		<div class="col-span-2 mb-3">
 			<h3 class="text-2xl font-bold">Melmint/Melswap</h3>

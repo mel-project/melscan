@@ -7,7 +7,7 @@ use std::io::Cursor;
 use anyhow::Context;
 use chrono::Utc;
 use dashmap::DashMap;
-use ethnum::U256;
+
 use futures_util::Future;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
@@ -19,7 +19,7 @@ use serde::Serialize;
 use smol::Task;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::*;
-use tmelcrypt::Hashable;
+use tmelcrypt::{HashVal, Hashable};
 use tracing::{debug, info};
 
 use crate::{
@@ -100,6 +100,16 @@ pub async fn latest() -> DynReply {
     generic_fallible_json(BACKEND.get_latest_header()).await
 }
 
+#[get("/raw/search/transaction/{txhash}")]
+pub async fn search_transaction(txhash: TxHash) -> DynReply {
+    generic_fallible_json_option(BACKEND.search_transaction(txhash)).await
+}
+
+#[get("/raw/search/block/{blkhash}")]
+pub async fn search_block(blkhash: HashVal) -> DynReply {
+    generic_fallible_json_option(BACKEND.search_block(blkhash)).await
+}
+
 #[get("/raw/blocks/{height}/transactions/{txhash}")]
 pub async fn transaction(height: BlockHeight, txhash: TxHash) -> DynReply {
     generic_fallible_json_option(BACKEND.get_transaction_at_height(height, txhash)).await
@@ -118,6 +128,11 @@ pub async fn block_full(height: BlockHeight) -> DynReply {
 #[get("/raw/blocks/{height}/summary")]
 pub async fn block_summary(height: BlockHeight) -> DynReply {
     generic_fallible_json(BACKEND.get_block_summary(height)).await
+}
+
+#[get("/raw/address/{address}")]
+pub async fn address_summary(address: Address) -> DynReply {
+    generic_fallible_json(BACKEND.get_address_summary(address)).await
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
@@ -271,7 +286,7 @@ impl Serialize for MicroUnit {
 }
 
 type OpCodeString = String;
-type Covenant = Vec<OpCodeString>;
+type OpCodeStrings = Vec<OpCodeString>;
 type Inputs = Vec<(usize, CoinID, CoinDataHeight, MicroUnit, String, String)>;
 type Outputs = Vec<(usize, CoinData, MicroUnit, String, String)>;
 #[derive(Serialize, Debug)]
@@ -291,18 +306,18 @@ struct TransactionTemplate {
     net_gain: BTreeMap<String, Vec<MicroUnit>>,
     gross_gain: Vec<MicroUnit>,
     weight: u128,
-    covenants: Vec<(String, Covenant)>,
+    covenants: Vec<(String, OpCodeStrings)>,
 }
 
-fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<Covenant> {
-    let mut opcode_cursor: Cursor<Vec<u8>> = Cursor::new(covenant.clone());
+fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<OpCodeStrings> {
+    let mut opcode_cursor: Cursor<Vec<u8>> = Cursor::new(covenant);
     let mut ops: Vec<OpCodeString> = vec![];
     while opcode_cursor.has_remaining() {
         let opcode = opcode::OpCode::decode(&mut opcode_cursor)?;
         let fmt = format!("{opcode:?}")
-            .replace("(", " ")
-            .replace(")", "")
-            .replace(",", " ");
+            .replace('(', " ")
+            .replace(')', "")
+            .replace(',', " ");
         ops.push(fmt);
     }
     Ok(ops)
