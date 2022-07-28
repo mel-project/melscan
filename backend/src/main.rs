@@ -59,7 +59,9 @@ async fn main() -> anyhow::Result<()> {
         search_transaction,
         search_block,
         transaction_page,
-        graph
+        graph,
+        transaction_spenders,
+        debug_spent_coin,
     ];
     let cors = warp::cors()
         .allow_any_origin()

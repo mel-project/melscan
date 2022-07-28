@@ -4,7 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
 use std::io::Cursor;
+use std::num::ParseIntError;
 use std::ops::Range;
+use std::str::FromStr;
 
 use anyhow::Context;
 use chrono::Utc;
@@ -123,14 +125,33 @@ pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
         .get_coin_at_height(BlockHeight(height), *coinid)
         .await?;
 
-    Ok(coin.is_some())
+    Ok(!coin.is_some())
 }
 
 
+#[get("/debug/{height}/{txhash}/{index}")]
+pub async fn debug_spent_coin(height: BlockHeight, txhash: TxHash, index: u8) -> DynReply {
+    let closure = async move {
+        let coinid = CoinID {
+            txhash,
+            index,
+        };
+        let coin = BACKEND.get_coin_at_height(
+            height,
+            coinid,
+        ).await?.context("No coin with this shape")?;
+        
+
+        Ok(Some(is_spent(height.0, &coinid).await?))
+    };
+    generic_fallible_json_option(closure).await
+
+}
+
 #[get("/raw/blocks/{height}/{txhash}/spenders")]
 pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
-    println!("here I am");
     let closure = async move {
+       
         let tx = BACKEND
             .get_transaction_at_height(height, txhash)
             .await?
@@ -144,22 +165,38 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
             return Ok(None);
         }
 
-        let mut max_index = height_range.last().unwrap().to_owned(); // will never be None since the range is not empty
-        let mut min_index = height_range.first().unwrap().to_owned();
-
+      
         let spent_coin = CoinID { txhash, index: 0 };
-        while max_index != min_index {
-            let check_index = (max_index - min_index) / 2 + min_index;
-            let spent = is_spent(check_index, &spent_coin).await?;
-            match spent {
-                true => max_index = check_index,
-                false => min_index = check_index,
-            }
-        }
 
-        let spend_height = BlockHeight(max_index);
+        let index = {
+            let mut max_index = height_range.last().unwrap().to_owned(); // will never be None since the range is not empty
+            let mut min_index = height_range.first().unwrap().to_owned();
+            while max_index != min_index {
+                println!("Bounding heights: {} {}", min_index, max_index);
+
+                let check_index = (max_index - min_index) / 2 + min_index;
+                let spent = is_spent(check_index, &spent_coin).await?;
+
+                println!("Checking: {} Spent: {}", check_index, spent);
+
+                match spent {
+                    true => max_index = check_index,
+                    false => {
+                        if min_index == check_index{
+                            min_index = max_index
+                        }
+                        else { 
+                            min_index = check_index
+                        }
+                    }
+                }
+            }
+            max_index
+        };
+
+        let spend_height = BlockHeight(index);
         let spend_snapshot = BACKEND.client.older_snapshot(spend_height).await?;
-        let spend_coin_data = spend_snapshot.get_coin_spent_here(spent_coin).await?;
+        let spend_coin_data = BACKEND.get_coin_at_height(spend_height, spent_coin).await?;
 
         Ok(spend_coin_data)
     };
@@ -372,6 +409,12 @@ fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<OpCodeStrings> {
         ops.push(fmt);
     }
     Ok(ops)
+}
+pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect()
 }
 
 #[get("/raw/blocks/{height}/{txhash}")]
