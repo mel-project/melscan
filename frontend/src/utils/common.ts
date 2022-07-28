@@ -2,7 +2,11 @@ import type { LoadEvent } from '@sveltejs/kit/types';
 
 import type { GraphDatum, GraphQuery } from './page-types';
 
-export const backendUrl = (endpoint) => 'http://127.0.0.1:13000' + endpoint;
+const baseUrl = import.meta.env.VITE_BASE_URL
+	? import.meta.env.VITE_BASE_URL
+	: 'https://scan.themelio.org';
+
+export const backendUrl = (endpoint) => baseUrl + endpoint;
 
 export type Fetch = (info: RequestInfo, init?: RequestInit) => Promise<Response>;
 

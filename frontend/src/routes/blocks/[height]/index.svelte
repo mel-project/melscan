@@ -33,7 +33,7 @@
 		<TopNav><BreadCrumbs {breadcrumbs} /></TopNav>
 		<div class="bottom-nav">
 			<span><a href="/blocks/{header.height - 1}">◂ Previous</a></span>
-			<span><a href="/blocks/{header.height + 1}">Next ▸</a></span>
+			<span><a href="/blocks/{header.height + 1}" rel=external>Next ▸</a></span>
 		</div>
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Summary</h3>
