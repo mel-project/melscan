@@ -89,7 +89,7 @@ pub struct AddressTransactionSummary {
 /// A Backend encapsulates the current state of a blockchain and exposes methods that are convenient to call from JSON-returning APIs.
 #[derive(Clone)]
 pub struct Backend {
-    client: ValClient,
+    pub client: ValClient,
 
     indexer: Option<Arc<Indexer>>,
     supply_cache: Arc<DashMap<Denom, Arc<BalanceTracker>>>,

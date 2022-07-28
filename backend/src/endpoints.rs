@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
 use std::io::Cursor;
+use std::ops::Range;
 
 use anyhow::Context;
 use chrono::Utc;
@@ -113,6 +115,55 @@ pub async fn search_block(blkhash: HashVal) -> DynReply {
 #[get("/raw/blocks/{height}/transactions/{txhash}")]
 pub async fn transaction(height: BlockHeight, txhash: TxHash) -> DynReply {
     generic_fallible_json_option(BACKEND.get_transaction_at_height(height, txhash)).await
+}
+
+// if the coin is found at the current height it is not spent
+pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
+    let coin = BACKEND
+        .get_coin_at_height(BlockHeight(height), *coinid)
+        .await?;
+
+    Ok(coin.is_some())
+}
+
+
+#[get("/raw/blocks/{height}/{txhash}/spenders")]
+pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
+    println!("here I am");
+    let closure = async move {
+        let tx = BACKEND
+            .get_transaction_at_height(height, txhash)
+            .await?
+            .context("No transaction found")?;
+        let chain_height: u64 = BACKEND.get_latest_header().await?.height.into();
+
+        let output_range = 0..tx.outputs.len();
+        let height_range: Vec<u64> = (height.into()..chain_height).collect();
+
+        if height_range.is_empty() {
+            return Ok(None);
+        }
+
+        let mut max_index = height_range.last().unwrap().to_owned(); // will never be None since the range is not empty
+        let mut min_index = height_range.first().unwrap().to_owned();
+
+        let spent_coin = CoinID { txhash, index: 0 };
+        while max_index != min_index {
+            let check_index = (max_index - min_index) / 2 + min_index;
+            let spent = is_spent(check_index, &spent_coin).await?;
+            match spent {
+                true => max_index = check_index,
+                false => min_index = check_index,
+            }
+        }
+
+        let spend_height = BlockHeight(max_index);
+        let spend_snapshot = BACKEND.client.older_snapshot(spend_height).await?;
+        let spend_coin_data = spend_snapshot.get_coin_spent_here(spent_coin).await?;
+
+        Ok(spend_coin_data)
+    };
+    generic_fallible_json_option(closure).await
 }
 
 #[get("/raw/blocks/{height}/coins/{coinid}")]
