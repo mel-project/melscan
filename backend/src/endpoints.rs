@@ -151,7 +151,7 @@ pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
 }
 
 
-pub async fn find_spend(coin: CoinID, height_range: Range<u64>) -> anyhow::Result<Option<CoinDataHeight>> {
+pub async fn find_spend_height(coin: CoinID, height_range: Range<u64>) -> anyhow::Result<Option<BlockHeight>> {
         let height_range: Vec<u64> = height_range.collect();
 
         if height_range.is_empty() {
@@ -162,7 +162,7 @@ pub async fn find_spend(coin: CoinID, height_range: Range<u64>) -> anyhow::Resul
         let index = {
             let mut max_index = height_range.last().unwrap().to_owned(); // will never be None since the range is not empty
             let mut min_index = height_range.first().unwrap().to_owned();
-            while max_index != min_index {
+            while max_index - min_index > 1 {
                 println!("Bounding heights: {} {}", min_index, max_index);
 
                 let check_index = (max_index - min_index) / 2 + min_index;
@@ -172,24 +172,33 @@ pub async fn find_spend(coin: CoinID, height_range: Range<u64>) -> anyhow::Resul
 
                 match spent {
                     true => max_index = check_index,
-                    false => {
-                        if min_index == check_index{
-                            min_index = max_index
-                        }
-                        else {  
-                            min_index = check_index
-                        }
-                    }
+                    false => min_index = check_index
                 }
             }
             max_index
         };
 
-        let spend_height = BlockHeight(index);
-        let spend_snapshot = BACKEND.client.older_snapshot(spend_height).await?;
-        let spend_coin_data = BACKEND.get_coin_at_height(spend_height, coin).await?;
+        let spend_edge_result: anyhow::Result<Vec<Option<BlockHeight>>> = join_all([index-1, index].map(|index|{
+            async move {
+                let spend_height = BlockHeight(index);
+                // let spend_snapshot = BACKEND.client.older_snapshot(spend_height).await?;
+                let spend_coin_data = BACKEND.get_coin_at_height(spend_height, coin).await?;
+                println!("Spent here? {} {:?}", spend_height, spend_coin_data);
+                anyhow::Ok(match spend_coin_data{
+                    Some(_) => None,
+                    None => Some(spend_height),
+                })
+            }
+        })).await.into_iter().collect();
 
-        Ok(spend_coin_data)
+        let spend_edge: Vec<BlockHeight> = spend_edge_result?.into_iter().flatten().collect();
+
+        match spend_edge.len() {
+            1 =>  Ok(Some(spend_edge[0])),
+            len if len > 1 => Err(anyhow::anyhow!("Failure searching for spender")),
+            _ => Ok(None)
+        }
+
 }
 
 
@@ -204,12 +213,13 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
         let chain_height = BACKEND.get_latest_header().await?.height;
         
         let output_len = tx.outputs.len() as u8;
+        // let outputs_range: Range<u8> = 0..1;
         let outputs_range: Range<u8> = 0..output_len;
         let height_range = height.0..chain_height.0;
 
-        let coin_spends_result: anyhow::Result<Vec<Option<CoinDataHeight>>> = join_all(outputs_range.map(|index| {
+        let coin_spends_result: anyhow::Result<Vec<Option<BlockHeight>>> = join_all(outputs_range.map(|index| {
             let coin = CoinID{txhash, index};
-            find_spend(coin, height_range.clone())
+            find_spend_height(coin, height_range.clone())
         })).await.into_iter().collect();
 
         let coin_spends = coin_spends_result?;
