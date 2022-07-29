@@ -1,10 +1,11 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use anyhow::Context;
 use chrono::Utc;
 use dashmap::DashMap;
 use itertools::Itertools;
 use melblkidx::{BalanceTracker, Indexer};
+use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
 use smol::{lock::Semaphore, prelude::*};
 use tap::Tap;
@@ -93,6 +94,8 @@ pub struct Backend {
 
     indexer: Option<Arc<Indexer>>,
     supply_cache: Arc<DashMap<Denom, Arc<BalanceTracker>>>,
+
+    address_summary_cache: Arc<Cache<Address, AddressSummary>>,
 }
 
 impl Backend {
@@ -102,6 +105,13 @@ impl Backend {
             client,
             indexer: indexer.map(Arc::new),
             supply_cache: Default::default(),
+
+            address_summary_cache: Arc::new(
+                Cache::builder()
+                    .max_capacity(10000)
+                    .time_to_live(Duration::from_secs(30))
+                    .build(),
+            ),
         }
     }
 
@@ -218,65 +228,89 @@ impl Backend {
         static SEMAPHORE: Semaphore = Semaphore::new(4);
 
         let _guard = SEMAPHORE.acquire().await;
-        if let Some(indexer) = self.indexer.as_ref() {
-            // get a balance tracker for this denom from the cache, or make a new one and put it into the cache
-            let tracker = self
-                .supply_cache
-                .entry(denom)
-                .or_insert_with(|| indexer.query_coins().denom(denom).balance_tracker().into())
-                .value()
-                .clone();
-            let b = tracker.balance_at(height.0);
-            eprintln!("got {} => {:?}", height, b);
-            smol::future::yield_now().await;
-            Ok(b)
-        } else {
-            Ok(None)
-        }
+        let this = self.clone();
+        smol::unblock(move || {
+            if let Some(indexer) = this.indexer.as_ref() {
+                // get a balance tracker for this denom from the cache, or make a new one and put it into the cache
+                let tracker = this
+                    .supply_cache
+                    .entry(denom)
+                    .or_insert_with(|| indexer.query_coins().denom(denom).balance_tracker().into())
+                    .value()
+                    .clone();
+                let b = tracker.balance_at(height.0);
+                eprintln!("got {} => {:?}", height, b);
+                Ok(b)
+            } else {
+                Ok(None)
+            }
+        })
+        .await
     }
 
     /// Gets the total summary of some address. Only available if we have an indexer.
     pub async fn get_address_summary(&self, address: Address) -> anyhow::Result<AddressSummary> {
-        let indexer = self.indexer.as_ref().context("no indexer")?.clone();
-        let current_coins = indexer.query_coins().covhash(address).unspent();
-        let mut balances: BTreeMap<String, f64> = BTreeMap::new();
-        for coin in current_coins.iter() {
-            *balances
-                .entry(coin.coin_data.denom.to_string())
-                .or_default() += coin.coin_data.value.0 as f64 / 1_000_000.0;
-        }
-        // TODO more efficient way of doing this
-        let mut transactions: BTreeMap<(TxHash, BlockHeight), BTreeMap<String, f64>> =
-            BTreeMap::new();
-        for coin in indexer.query_coins().covhash(address).iter() {
-            let mapping = transactions
-                .entry((coin.create_txhash, coin.create_height))
-                .or_default();
-            // we credit the transaction that produced the coin
-            *mapping.entry(coin.coin_data.denom.to_string()).or_default() +=
-                coin.coin_data.value.0 as f64 / 1_000_000.0;
-            // and debit the transaction that spent the coin
-            if let Some(s) = coin.spend_info {
-                let mapping = transactions
-                    .entry((s.spend_txhash, s.spend_height))
-                    .or_default();
-                // we credit the transaction that produced the coin
-                *mapping.entry(coin.coin_data.denom.to_string()).or_default() -=
-                    coin.coin_data.value.0 as f64 / 1_000_000.0;
-            }
-        }
-        Ok(AddressSummary {
-            balances,
-            transactions: transactions
-                .into_iter()
-                .map(|(k, v)| AddressTransactionSummary {
-                    height: k.1,
-                    date: height_to_datetime(k.1),
-                    deltas: v,
-                    txhash: k.0,
+        let this = self.clone();
+        smol::unblock(move || {
+            this.address_summary_cache
+                .try_get_with(address, || {
+                    let indexer = this.indexer.as_ref().context("no indexer")?.clone();
+                    let current_coins = indexer.query_coins().covhash(address).unspent();
+                    let mut balances: BTreeMap<String, f64> = BTreeMap::new();
+                    for coin in current_coins.iter() {
+                        *balances
+                            .entry(coin.coin_data.denom.to_string())
+                            .or_default() += coin.coin_data.value.0 as f64 / 1_000_000.0;
+                    }
+                    // TODO more efficient way of doing this
+                    let mut transactions: BTreeMap<(TxHash, BlockHeight), BTreeMap<String, f64>> =
+                        BTreeMap::new();
+                    for coin in indexer.query_coins().covhash(address).iter() {
+                        let mapping = transactions
+                            .entry((coin.create_txhash, coin.create_height))
+                            .or_default();
+                        // we credit the transaction that produced the coin
+                        *mapping.entry(coin.coin_data.denom.to_string()).or_default() +=
+                            coin.coin_data.value.0 as f64 / 1_000_000.0;
+                        // and debit the transaction that spent the coin
+                        if let Some(s) = coin.spend_info {
+                            let mapping = transactions
+                                .entry((s.spend_txhash, s.spend_height))
+                                .or_default();
+                            // we credit the transaction that produced the coin
+                            *mapping.entry(coin.coin_data.denom.to_string()).or_default() -=
+                                coin.coin_data.value.0 as f64 / 1_000_000.0;
+                        }
+                    }
+                    anyhow::Ok(AddressSummary {
+                        balances,
+                        transactions: transactions
+                            .into_iter()
+                            .map(|(k, v)| AddressTransactionSummary {
+                                height: k.1,
+                                date: height_to_datetime(k.1),
+                                deltas: v,
+                                txhash: k.0,
+                            })
+                            .collect_vec()
+                            .tap_mut(|v| v.sort_unstable_by_key(|v| v.height)),
+                    })
                 })
-                .collect_vec()
-                .tap_mut(|v| v.sort_unstable_by_key(|v| v.height)),
+                .map_err(|e| anyhow::anyhow!("{:?}", e))
         })
+        .await
+    }
+
+    /// Gets the leaderboard for a particular denomination.
+    pub async fn get_leaderboard(&self, denom: Denom) -> anyhow::Result<BTreeMap<String, f64>> {
+        let indexer = self.indexer.as_ref().context("no indexer")?;
+        Ok(indexer.query_coins().unspent().denom(denom).iter().fold(
+            BTreeMap::new(),
+            |mut map, cinfo| {
+                *map.entry(cinfo.coin_data.covhash.to_string()).or_default() +=
+                    cinfo.coin_data.value.0 as f64 / 1_000_000.0;
+                map
+            },
+        ))
     }
 }

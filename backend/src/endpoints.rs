@@ -231,6 +231,11 @@ pub async fn address_summary(address: Address) -> DynReply {
     generic_fallible_json(BACKEND.get_address_summary(address)).await
 }
 
+#[get("/raw/leaderboard/{denom}")]
+pub async fn leaderboard(denom: Denom) -> DynReply {
+    generic_fallible_json(BACKEND.get_leaderboard(denom)).await
+}
+
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 struct GraphQuery {
     id: GraphId,
@@ -331,13 +336,14 @@ pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
                 graph_range(
                     start,
                     end.min(BACKEND.indexed_highest()),
-                    1000,
+                    300,
                     move |height| async move {
-                        Ok(BACKEND
+                        let v = BACKEND
                             .get_coin_supply(height, denom)
                             .await?
                             .map(|c| (c.0 as f64) / 1_000_000.0)
-                            .unwrap_or(f64::NAN))
+                            .unwrap_or(f64::NAN);
+                        Ok(v)
                     },
                     load_cache,
                     store_cache,

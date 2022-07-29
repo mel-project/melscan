@@ -58,6 +58,10 @@
 			};
 		});
 	})();
+
+	let transactionCount = 50;
+
+	$: truncatedTransactions = summary.transactions.slice().reverse().slice(0, transactionCount);
 </script>
 
 <template>
@@ -116,7 +120,7 @@
 						<td class="w-32">Balance change</td>
 					</thead>
 					<tbody>
-						{#each summary.transactions as txn}
+						{#each truncatedTransactions as txn}
 							<tr class="txn-row">
 								<td
 									><a class="text-blue-800 font-medium" href={`/blocks/${txn.height}`}
@@ -141,6 +145,9 @@
 						{/each}
 					</tbody>
 				</table>
+				{#if truncatedTransactions.length != summary.transactions.length}
+					<button class="text-blue-800" on:click={() => (transactionCount += 50)}>Load more</button>
+				{/if}
 			</div>
 		</div>
 	</div>

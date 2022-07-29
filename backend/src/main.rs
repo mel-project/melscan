@@ -58,6 +58,7 @@ async fn main() -> anyhow::Result<()> {
         address_summary,
         search_transaction,
         search_block,
+        leaderboard,
         transaction_page,
         graph,
         transaction_spenders,

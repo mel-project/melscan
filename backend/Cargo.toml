@@ -46,7 +46,7 @@ lazy_static = "1.4.0"
 # cached = "0.25.1"
 async-trait = "0.1.56"
 dashmap = "5.3.4"
-themelio-structs = "0.2.6"
+themelio-structs = "0.2.8"
 smolscale = "0.3.29"
 parking_lot = "0.12.1"
 stdcode = "0.1.7"
@@ -55,7 +55,7 @@ env_logger = "0.9.0"
 itertools = "0.10.3"
 serde_with = "1.14.0"
 ethnum = "1.2.1"
-
+moka="0.9"
 
 [dependencies.rusqlite]
 version = "0.27.0"
