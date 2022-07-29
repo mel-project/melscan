@@ -175,7 +175,6 @@ pub async fn find_spend_height(
     let spend_edge: Vec<BlockHeight> = join_all([index - 1, index].map(|index| {
         async move {
             let spend_height = BlockHeight(index);
-            // let spend_snapshot = BACKEND.client.older_snapshot(spend_height).await?;
             let spend_coin_data = BACKEND.get_coin_at_height(spend_height, coin).await?; // would be nice to replace with a more lightweight function
 
             // println!("Spent here? {} {:?}", spend_height, spend_coin_data);
@@ -200,6 +199,13 @@ pub async fn find_spend_height(
     }
 }
 
+
+#[derive(Clone, Debug, Serialize)]
+struct CoinLocation {
+    coinid: CoinID, 
+    txhash: TxHash, 
+    height: BlockHeight,
+}
 #[get("/raw/blocks/{height}/{txhash}/spends")]
 pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
     let closure = async move {
@@ -214,16 +220,29 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
         let outputs_range: Range<u8> = 0..output_len;
         let height_range = height.0..chain_height.0;
 
-        let coin_spends_result: anyhow::Result<Vec<Option<BlockHeight>>> =
+        let coin_spends_result =
             join_all(outputs_range.map(|index| {
-                let coin = CoinID { txhash, index };
-                find_spend_height(coin, height_range.clone())
+                let range = height_range.clone();
+                async move {
+                    let coin = CoinID { txhash, index };
+                    let spend_height = find_spend_height(coin, range).await?;
+
+                    match spend_height {
+                        Some(spend) => anyhow::Ok(Some((coin, spend))),
+                        None => Ok(None)
+                    }
+                }
             }))
             .await
             .into_iter()
-            .collect();
+            .flatten()
+            .flatten();
 
-        let coin_spends = coin_spends_result?;
+        let coin_spends: Vec<Option<CoinLocation>> = coin_spends_result.map(|coin_spend| {
+            let (coinid, spend_height) = coin_spend;
+            println!("{coinid}{spend_height}");
+            None
+        }).collect();
 
         Ok(Some(coin_spends))
     };
