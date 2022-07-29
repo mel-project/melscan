@@ -13,6 +13,7 @@ use chrono::Utc;
 use dashmap::DashMap;
 
 use futures_util::Future;
+use futures_util::future::join_all;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
 use rweb::*;
@@ -140,13 +141,13 @@ pub async fn debug_spent_coin(height: BlockHeight, txhash: TxHash, index: u8) ->
 
 }
 
-// if the coin is found at the current height it is not spent
+// if the coin is found at the current height it is not spent; assumes coin existed 
 pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
     let coin = BACKEND
         .get_coin_at_height(BlockHeight(height), *coinid)
         .await?;
 
-    Ok(!coin.is_some())
+    Ok(coin.is_none())
 }
 
 
@@ -191,7 +192,8 @@ pub async fn find_spend(coin: CoinID, height_range: Range<u64>) -> anyhow::Resul
         Ok(spend_coin_data)
 }
 
-#[get("/raw/blocks/{height}/{txhash}/spenders")]
+
+#[get("/raw/blocks/{height}/{txhash}/spends")]
 pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
     let closure = async move {
        
@@ -199,14 +201,21 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
             .get_transaction_at_height(height, txhash)
             .await?
             .context("No transaction found")?;
-        let chain_height: u64 = BACKEND.get_latest_header().await?.height.into();
+        let chain_height = BACKEND.get_latest_header().await?.height;
+        
+        let output_len = tx.outputs.len() as u8;
+        let outputs_range: Range<u8> = 0..output_len;
+        let height_range = height.0..chain_height.0;
 
-        let outputs_range = 0..tx.outputs.len();
-        let height_range: Range<u64> = height.into()..chain_height.into();
-        let coin = CoinID{txhash, index: 0};
-        let spend_coin_data = find_spend(coin, height_range).await?;
+        let coin_spends_result: anyhow::Result<Vec<Option<CoinDataHeight>>> = join_all(outputs_range.map(|index| {
+            let coin = CoinID{txhash, index};
+            find_spend(coin, height_range.clone())
+        })).await.into_iter().collect();
 
-        Ok(spend_coin_data)
+        let coin_spends = coin_spends_result?;
+
+
+        Ok(Some(coin_spends))
     };
     generic_fallible_json_option(closure).await
 }
