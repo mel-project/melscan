@@ -119,14 +119,6 @@ pub async fn transaction(height: BlockHeight, txhash: TxHash) -> DynReply {
     generic_fallible_json_option(BACKEND.get_transaction_at_height(height, txhash)).await
 }
 
-// if the coin is found at the current height it is not spent
-pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
-    let coin = BACKEND
-        .get_coin_at_height(BlockHeight(height), *coinid)
-        .await?;
-
-    Ok(!coin.is_some())
-}
 
 
 #[get("/debug/{height}/{txhash}/{index}")]
@@ -148,25 +140,23 @@ pub async fn debug_spent_coin(height: BlockHeight, txhash: TxHash, index: u8) ->
 
 }
 
-#[get("/raw/blocks/{height}/{txhash}/spenders")]
-pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
-    let closure = async move {
-       
-        let tx = BACKEND
-            .get_transaction_at_height(height, txhash)
-            .await?
-            .context("No transaction found")?;
-        let chain_height: u64 = BACKEND.get_latest_header().await?.height.into();
+// if the coin is found at the current height it is not spent
+pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
+    let coin = BACKEND
+        .get_coin_at_height(BlockHeight(height), *coinid)
+        .await?;
 
-        let output_range = 0..tx.outputs.len();
-        let height_range: Vec<u64> = (height.into()..chain_height).collect();
+    Ok(!coin.is_some())
+}
+
+
+pub async fn find_spend(coin: CoinID, height_range: Range<u64>) -> anyhow::Result<Option<CoinDataHeight>> {
+        let height_range: Vec<u64> = height_range.collect();
 
         if height_range.is_empty() {
             return Ok(None);
         }
 
-      
-        let spent_coin = CoinID { txhash, index: 0 };
 
         let index = {
             let mut max_index = height_range.last().unwrap().to_owned(); // will never be None since the range is not empty
@@ -175,7 +165,7 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
                 println!("Bounding heights: {} {}", min_index, max_index);
 
                 let check_index = (max_index - min_index) / 2 + min_index;
-                let spent = is_spent(check_index, &spent_coin).await?;
+                let spent = is_spent(check_index, &coin).await?;
 
                 println!("Checking: {} Spent: {}", check_index, spent);
 
@@ -185,7 +175,7 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
                         if min_index == check_index{
                             min_index = max_index
                         }
-                        else { 
+                        else {  
                             min_index = check_index
                         }
                     }
@@ -196,7 +186,25 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
 
         let spend_height = BlockHeight(index);
         let spend_snapshot = BACKEND.client.older_snapshot(spend_height).await?;
-        let spend_coin_data = BACKEND.get_coin_at_height(spend_height, spent_coin).await?;
+        let spend_coin_data = BACKEND.get_coin_at_height(spend_height, coin).await?;
+
+        Ok(spend_coin_data)
+}
+
+#[get("/raw/blocks/{height}/{txhash}/spenders")]
+pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
+    let closure = async move {
+       
+        let tx = BACKEND
+            .get_transaction_at_height(height, txhash)
+            .await?
+            .context("No transaction found")?;
+        let chain_height: u64 = BACKEND.get_latest_header().await?.height.into();
+
+        let outputs_range = 0..tx.outputs.len();
+        let height_range: Range<u64> = height.into()..chain_height.into();
+        let coin = CoinID{txhash, index: 0};
+        let spend_coin_data = find_spend(coin, height_range).await?;
 
         Ok(spend_coin_data)
     };

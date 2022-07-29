@@ -61,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
         transaction_page,
         graph,
         transaction_spenders,
-        debug_spent_coin,
+        debug_spent_coin
     ];
     let cors = warp::cors()
         .allow_any_origin()
