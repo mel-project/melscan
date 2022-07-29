@@ -214,6 +214,27 @@ struct CoinLocation {
     height: BlockHeight,
 }
 
+pub async fn find_spend_within_range(coinid: CoinID, height_range: Range<u64>) -> anyhow::Result<Option<CoinLocation>>{
+
+      
+    let range = height_range;
+    let spend_height = match find_spending_height(coinid, range).await? {
+        Some(spend) => spend,
+        None => return Ok(None)
+    };
+            
+        
+    let snapshot = BACKEND.client.older_snapshot(spend_height).await?;
+    let block = snapshot.current_block().await?;
+
+    let spend_tx = find_spending_transaction(block, coinid).await?;
+    let spend_txhash = spend_tx.context("Unexpected Failure: couldn't find spending transaction in spending block")?.hash_nosigs();
+    println!("{coinid}{spend_height}");
+    
+    Ok(Some(CoinLocation { coinid, txhash: spend_txhash, height: spend_height}))
+        
+
+}
 #[get("/raw/blocks/{height}/{txhash}/spends")]
 pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
     let closure = async move {
@@ -222,47 +243,16 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
             .await?
             .context("No transaction found")?;
         let chain_height = BACKEND.get_latest_header().await?.height;
+        let height_range =  height.0..chain_height.0;
 
         let output_len = tx.outputs.len() as u8;
         // let outputs_range: Range<u8> = 0..1;
         let outputs_range: Range<u8> = 0..output_len;
-        let height_range = height.0..chain_height.0;
-
-        let coin_spends_result =
-            join_all(outputs_range.map(|index| {
-                let range = height_range.clone();
-                async move {
-                    let coin = CoinID { txhash, index };
-                    let spend_height = find_spend_height(coin, range).await?;
-
-                    match spend_height {
-                        Some(spend) => anyhow::Ok(Some((coin, spend))),
-                        None => Ok(None)
-                    }
-                }
-            }))
-            .await
-            .into_iter()
-            .flatten()
-            .flatten();
         
-        
-        let coin_spends: anyhow::Result<Vec<CoinLocation>> = join_all(coin_spends_result.map(|coin_spend| {
-            async move { 
-                let (coinid, spend_height) = coin_spend;
-
-                let snapshot = BACKEND.client.older_snapshot(spend_height).await?;
-                let block = snapshot.current_block().await?;
-
-                let spend_tx = find_spend_transaction(block, coinid).await?;
-                let spend_txhash = spend_tx.context("Unexpected Failure: couldn't find spending transaction in spending block")?.hash_nosigs();
-                println!("{coinid}{spend_height}");
-                
-                Ok(CoinLocation { coinid, txhash: spend_txhash, height: spend_height})
-            }
-        })).await.into_iter().collect();
-
-        Ok(Some(coin_spends?))
+        let coin_spends: Vec<Option<CoinLocation>> = join_all(outputs_range.map(|index| CoinID {txhash, index}).map(
+            |coinid| find_spend_within_range(coinid, height_range.clone())
+        )).await.into_iter().flatten().collect();
+        Ok(Some(coin_spends))
     };
     generic_fallible_json_option(closure).await
 }
