@@ -143,7 +143,7 @@ pub async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
     Ok(coin.is_none())
 }
 
-pub async fn find_spend_height(
+pub async fn find_spending_height(
     coin: CoinID,
     height_range: Range<u64>,
 ) -> anyhow::Result<Option<BlockHeight>> {
@@ -199,13 +199,21 @@ pub async fn find_spend_height(
     }
 }
 
-
+pub async fn find_spending_transaction(block: Block, coinid: CoinID) -> anyhow::Result<Option<Transaction>>{
+    let tx = block.transactions.iter().find(|&tx|{
+        tx.inputs.clone().into_iter().any(|input|{
+            coinid == input
+        })
+    }).cloned();
+    Ok(tx)
+}
 #[derive(Clone, Debug, Serialize)]
 struct CoinLocation {
     coinid: CoinID, 
     txhash: TxHash, 
     height: BlockHeight,
 }
+
 #[get("/raw/blocks/{height}/{txhash}/spends")]
 pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
     let closure = async move {
@@ -237,14 +245,24 @@ pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynRep
             .into_iter()
             .flatten()
             .flatten();
+        
+        
+        let coin_spends: anyhow::Result<Vec<CoinLocation>> = join_all(coin_spends_result.map(|coin_spend| {
+            async move { 
+                let (coinid, spend_height) = coin_spend;
 
-        let coin_spends: Vec<Option<CoinLocation>> = coin_spends_result.map(|coin_spend| {
-            let (coinid, spend_height) = coin_spend;
-            println!("{coinid}{spend_height}");
-            None
-        }).collect();
+                let snapshot = BACKEND.client.older_snapshot(spend_height).await?;
+                let block = snapshot.current_block().await?;
 
-        Ok(Some(coin_spends))
+                let spend_tx = find_spend_transaction(block, coinid).await?;
+                let spend_txhash = spend_tx.context("Unexpected Failure: couldn't find spending transaction in spending block")?.hash_nosigs();
+                println!("{coinid}{spend_height}");
+                
+                Ok(CoinLocation { coinid, txhash: spend_txhash, height: spend_height})
+            }
+        })).await.into_iter().collect();
+
+        Ok(Some(coin_spends?))
     };
     generic_fallible_json_option(closure).await
 }
