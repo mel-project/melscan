@@ -19,6 +19,7 @@
 	onMount(async () => {
 		try {
 			let node_set = new Set();
+			console.log('LINKS BEFORE!!!!', links);
 			console.log(transaction.inputs);
 			res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
 			transaction.inputs.forEach((input) => {
@@ -30,17 +31,19 @@
 					value: 1,
 				})
 				node_set.add(id);
-				return node;
 			});
 			res.forEach((location: CoinSpend) => {
 				let id = `${location.coinid.txhash}-${location.coinid.index}`;
 				nodes.push({ id });
 				node_set.add(location.txhash);
+				nodes.push({ id: location.txhash });
+				console.log('location.txhash', location.txhash);
 				links.push({
 					source: id,
 					target: location.txhash,
 					value: 1
 				});
+				console.log('LINKS!!!!', links);
 			});
 
 			let node_array = Array.from(node_set).map((id)=>({id}))
@@ -49,16 +52,16 @@
 			nodes = nodes.concat(node_array as any);
 
 			data = { nodes, links }
+
+			console.log('LINKS FINAL!!!!', links);
 		} catch (e) {}
 	});
-
-	
 </script>
 
 <div class="chart-container">
 	<div class="data1">
 		{#if Object.keys(links).length > 0}
-			<LayerCake {data}>
+			<LayerCake data={JSON.parse(JSON.stringify(data))}>
 				<Svg>
 					<Sankey colorNodes={(d) => '#00bbff'} colorLinks={(d) => '#00bbff35'} />
 				</Svg>
@@ -95,13 +98,13 @@
 				<div class="info">{node.id}</div>
 			{/each}
 		</div>
-		
-		<!-- Links
+
+		Links
 		<div class="data">
 			{#each links as l}
 				<div class="info">{JSON.stringify(l)}</div>
 			{/each}
-		</div> -->
+		</div>
 	</div>
 </div>
 
