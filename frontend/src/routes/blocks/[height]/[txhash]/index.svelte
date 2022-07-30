@@ -14,7 +14,7 @@
 	} from '@utils/types';
 	import { tooltips } from '@utils/common';
 	import { BreadCrumb, type TransactionResponse } from '@utils/page-types';
-import CoinSankey from '@components/CoinSankey.svelte';
+	import CoinSankey from '@components/CoinSankey.svelte';
 
 	export interface TransactionPage {
 		status: number;
@@ -64,12 +64,7 @@ import CoinSankey from '@components/CoinSankey.svelte';
 </script>
 
 <template>
-	<CoinSankey
-	{height}
-	{txhash}
-	{transaction}
-	{fetch}
-></CoinSankey>
+	<CoinSankey {height} {txhash} {transaction} {fetch} />
 
 	<TopNav>
 		<BreadCrumbs {breadcrumbs} />
