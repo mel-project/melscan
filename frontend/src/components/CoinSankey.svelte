@@ -12,41 +12,37 @@
 	let node_id = (txhash, index) => `${txhash}-${index}`;
 
 	const getDataAndRes: () => Promise<[any, CoinSpend[]]> = async () => {
-		try {
-			let nodes = [{ id: txhash }];
-			let links = [];
-			console.log('LINKS BEFORE!!!!', links);
-			console.log(transaction.inputs);
-			let res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
-			let input_nodes = transaction.inputs.map((input) => {
-				let node = {
-					id: node_id(input.txhash, input.index)
-				};
-				nodes.push(node);
-				return node;
+		let nodes = [{ id: txhash }];
+		let links = [];
+		console.log('LINKS BEFORE!!!!', links);
+		console.log(transaction.inputs);
+		let res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
+		let input_nodes = transaction.inputs.map((input) => {
+			let node = {
+				id: node_id(input.txhash, input.index)
+			};
+			nodes.push(node);
+			return node;
+		});
+		res.forEach((location: CoinSpend) => {
+			let id = `${location.coinid.txhash}-${location.coinid.index}`;
+			nodes.push({ id });
+			nodes.push({ id: location.txhash });
+			console.log('location.txhash', location.txhash);
+			links.push({
+				source: id,
+				target: location.txhash,
+				value: 1
 			});
-			res.forEach((location: CoinSpend) => {
-				let id = `${location.coinid.txhash}-${location.coinid.index}`;
-				nodes.push({ id });
-				nodes.push({ id: location.txhash });
-				console.log('location.txhash', location.txhash);
-				links.push({
-					source: id,
-					target: location.txhash,
-					value: 1
-				});
-				console.log('LINKS!!!!', links);
-			});
+			console.log('LINKS!!!!', links);
+		});
 
-			return [{ nodes, links }, res];
-		} catch (e) {}
+		return [{ nodes, links }, res];
 	};
-
-	let dataAndRes = getDataAndRes();
 </script>
 
 <div class="chart-container">
-	{#await dataAndRes}
+	{#await getDataAndRes()}
 		<i>loading...</i>
 	{:then [data, res]}
 		<div class="data1">
