@@ -9,18 +9,15 @@
 	export let transaction: Transaction;
 	export let fetch;
 
-	let res: Vec<CoinSpend> = [];
-	let locations: CoinSpend[] = [];
-	let nodes = [{ id: txhash }];
-	let links = [];
-	let data;
 	let node_id = (txhash, index) => `${txhash}-${index}`;
 
-	onMount(async () => {
+	const getDataAndRes: () => Promise<[any, CoinSpend[]]> = async () => {
 		try {
+			let nodes = [{ id: txhash }];
+			let links = [];
 			console.log('LINKS BEFORE!!!!', links);
 			console.log(transaction.inputs);
-			res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
+			let res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
 			let input_nodes = transaction.inputs.map((input) => {
 				let node = {
 					id: node_id(input.txhash, input.index)
@@ -41,65 +38,67 @@
 				console.log('LINKS!!!!', links);
 			});
 
-			//done to update nodes and links in the dom
-			links = links.concat([]);
-			nodes = nodes.concat([]);
-
-			data = { nodes, links };
-
-			console.log('LINKS FINAL!!!!', links);
+			return [{ nodes, links }, res];
 		} catch (e) {}
-	});
+	};
+
+	let dataAndRes = getDataAndRes();
 </script>
 
 <div class="chart-container">
-	<div class="data1">
-		{#if Object.keys(links).length > 0}
-			<LayerCake data={JSON.parse(JSON.stringify(data))}>
-				<Svg>
-					<Sankey colorNodes={(d) => '#00bbff'} colorLinks={(d) => '#00bbff35'} />
-				</Svg>
-			</LayerCake>
-		{/if}
-	</div>
-	<div class="data-container">
-		Server Response
-		<div class="data">
-			{#each res as location}
-				<div class="info">
-					<div>{JSON.stringify(location.coinid)}</div>
-					<div>
-						Spent: <a href="/blocks/{location.height}/{location.txhash}"
-							>{location.height}/{location.txhash}</a
-						>
+	{#await dataAndRes}
+		<i>loading...</i>
+	{:then [data, res]}
+		<div class="data1">
+			{#if Object.keys(data.links).length > 0}
+				<LayerCake data={JSON.parse(JSON.stringify(data))}>
+					<Svg>
+						<Sankey colorNodes={(d) => '#00bbff'} colorLinks={(d) => '#00bbff35'} />
+					</Svg>
+				</LayerCake>
+			{/if}
+		</div>
+		<div class="data-container">
+			Server Response
+			<div class="data">
+				{#each res as location}
+					<div class="info">
+						<div>{JSON.stringify(location.coinid)}</div>
+						<div>
+							Spent: <a href="/blocks/{location.height}/{location.txhash}"
+								>{location.height}/{location.txhash}</a
+							>
+						</div>
 					</div>
-				</div>
-			{/each}
-		</div>
+				{/each}
+			</div>
 
-		Transaction Inputs
-		<div class="data">
-			{#each transaction.inputs as input}
-				<div class="info">
-					<div>{JSON.stringify(input)}</div>
-				</div>
-			{/each}
-		</div>
+			Transaction Inputs
+			<div class="data">
+				{#each transaction.inputs as input}
+					<div class="info">
+						<div>{JSON.stringify(input)}</div>
+					</div>
+				{/each}
+			</div>
 
-		Nodes
-		<div class="data">
-			{#each nodes as node}
-				<div class="info">{node.id}</div>
-			{/each}
-		</div>
+			Nodes
+			<div class="data">
+				{#each data.nodes as node}
+					<div class="info">{node.id}</div>
+				{/each}
+			</div>
 
-		Links
-		<div class="data">
-			{#each links as l}
-				<div class="info">{JSON.stringify(l)}</div>
-			{/each}
+			Links
+			<div class="data">
+				{#each data.links as l}
+					<div class="info">{JSON.stringify(l)}</div>
+				{/each}
+			</div>
 		</div>
-	</div>
+	{:catch error}
+		<i>{error}</i>
+	{/await}
 </div>
 
 <style>
