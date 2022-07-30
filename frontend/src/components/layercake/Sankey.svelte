@@ -79,7 +79,7 @@
 				style="fill: {colorText(d)};
 							font-size: {fontSize}px;
 							text-anchor: {d.x0 < $width / 4 ? 'start' : 'end'};">
-				{d.id}, {d.value}
+				{d.id.slice(0,6)}...{d.id.slice(d.id.length-6)}
 			</text>
 		{/each}
 	</g>

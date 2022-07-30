@@ -64,8 +64,9 @@
 </script>
 
 <template>
-	<CoinSankey {height} {txhash} {transaction} {fetch} />
-
+	{#key height}
+		<CoinSankey {height} {txhash} {transaction} {fetch} />
+	{/key}
 	<TopNav>
 		<BreadCrumbs {breadcrumbs} />
 	</TopNav>

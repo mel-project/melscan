@@ -9,103 +9,108 @@
 	export let transaction: Transaction;
 	export let fetch;
 
-	let res: Vec<CoinSpend> = [];
-	let locations: CoinSpend[] = [];
-	let nodes = [{ id: txhash }];
-	let links = [];
-	let data;
 	let node_id = (txhash, index) => `${txhash}-${index}`;
 
-	onMount(async () => {
-		try {
-			let node_set = new Set();
-			console.log('LINKS BEFORE!!!!', links);
-			console.log(transaction.inputs);
-			res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
-			transaction.inputs.forEach((input) => {
-				let id =  node_id(input.txhash, input.index);
+	const getDataAndRes: () => Promise<[any, CoinSpend[]]> = async () => {
+		let nodes_set = new Set()
+		let nodes = [{id: txhash}]
+		let links = [];
+		console.log(transaction.inputs);
+		let dirty_res: (null | CoinSpend)[] = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
+		let res = dirty_res.filter((i: null | CoinSpend)=>i);
 
-				links.push({
-					source: id,
-					target: txhash,
-					value: 1,
-				})
-				node_set.add(id);
+
+		res.forEach((location: CoinSpend) => {
+			let id = `${location.coinid.txhash}-${location.coinid.index}`;
+			nodes.push({ id });
+			nodes.push({ id: location.txhash });
+			console.log('location.txhash', location.txhash);
+			links.push({
+				source: txhash,
+				target: id,
+				value: 1
 			});
-			res.forEach((location: CoinSpend) => {
-				let id = `${location.coinid.txhash}-${location.coinid.index}`;
-				nodes.push({ id });
-				node_set.add(location.txhash);
-				nodes.push({ id: location.txhash });
-				console.log('location.txhash', location.txhash);
-				links.push({
-					source: id,
-					target: location.txhash,
-					value: 1
-				});
-				console.log('LINKS!!!!', links);
+			links.push({
+				source: id,
+				target: location.txhash,
+				value: 1
 			});
+		});
 
-			let node_array = Array.from(node_set).map((id)=>({id}))
-			//done to update nodes and links in the dom
-			links = links.concat();
-			nodes = nodes.concat(node_array as any);
 
-			data = { nodes, links }
+		transaction.inputs.forEach((input) => {
+			let id = node_id(input.txhash, input.index);
+			let node = { id };
+			if (nodes_set.has(id))return;
+			nodes_set.add(id);
+			nodes.push(node)
+			links.push({
+				source: id,
+				target: txhash,
+				value: 1,
+			})
+			return node;
+		});
 
-			console.log('LINKS FINAL!!!!', links);
-		} catch (e) {}
-	});
+
+		return [{ nodes, links }, res];
+	};
 </script>
 
 <div class="chart-container">
-	<div class="data1">
-		{#if Object.keys(links).length > 0}
-			<LayerCake data={JSON.parse(JSON.stringify(data))}>
-				<Svg>
-					<Sankey colorNodes={(d) => '#00bbff'} colorLinks={(d) => '#00bbff35'} />
-				</Svg>
-			</LayerCake>
-		{/if}
-	</div>
-	<div class="data-container">
-		Server Response
-		<div class="data">
-			{#each res as location}
-				<div class="info">
-					<div>{JSON.stringify(location.coinid)}</div>
-					<div>
-						Spent: <a href="/blocks/{location.height}/{location.txhash}"
-							>{location.height}/{location.txhash}</a
-						>
+	{#await getDataAndRes()}
+		<i>loading...</i>
+	{:then [data, res]}
+		<div class="data1">
+			{#if Object.keys(data.links).length > 0}
+				<LayerCake data={JSON.parse(JSON.stringify(data))}>
+					<Svg>
+						<Sankey colorNodes={(d) => '#00bbff'} colorLinks={(d) => '#00bbff35'} />
+					</Svg>
+				</LayerCake>
+			{/if}
+		</div>
+		<div class="data-container">
+			Server Response
+			<div class="data">
+				{#each res as location}
+					<div class="info">
+						<div>{JSON.stringify(location.coinid)}</div>
+						<div>
+							Spent: <a href="/blocks/{location.height}/{location.txhash}"
+								>{location.height}/{location.txhash}</a
+							>
+						</div>
 					</div>
-				</div>
-			{/each}
-		</div>
+				{/each}
+			</div>
 
-		Transaction Inputs
-		<div class="data">
-			{#each transaction.inputs as input}
-				<div class="info">
-					<div>{JSON.stringify(input)}</div>
-				</div>
-			{/each}
-		</div>
+			Transaction Inputs
+			<div class="data">
+				{#each transaction.inputs as input}
+					<div class="info">
+						<div>{JSON.stringify(input)}</div>
+					</div>
+				{/each}
+			</div>
 
-		Nodes
-		<div class="data">
-			{#each nodes as node}
-				<div class="info">{node.id}</div>
-			{/each}
-		</div>
+			Nodes
+			<div class="data">
+				{#each data.nodes as node}
+					<div class="info">{node.id}</div>
+				{/each}
+			</div>
 
-		Links
-		<div class="data">
-			{#each links as l}
-				<div class="info">{JSON.stringify(l)}</div>
-			{/each}
+			Links
+			<div class="data">
+				{#each data.links as l}
+					<div class="info">{JSON.stringify(l)}</div>
+				{/each}
+			</div>
 		</div>
-	</div>
+	{:catch error}
+		<i>{error}</i>
+	{/await}
 </div>
 
 <style>
@@ -123,7 +128,8 @@
 		gap: 2em;
 	}
 	.data1 {
-		width: 75%;
+		width: 45%;
+		height: 80%;
 	}
 	.data-container {
 		display: flex;
@@ -143,5 +149,6 @@
 
 	.info {
 		border-bottom: 1px solid red;
+		
 	}
 </style>
