@@ -8,6 +8,7 @@
 		}
 	},
 	"target": "es2017",
+	"module": "commonjs",
 	"lib": ["es2020"],
 	"transform": "typescript-is/lib/transform-inline/transformer"
 }

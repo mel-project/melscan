@@ -11,6 +11,9 @@ const config = {
 			'@components': path.resolve('./src/components')
 		}
 	}
+	// optimizeDeps: {
+	// 	entries: []
+	// }
 };
 
 export default config;

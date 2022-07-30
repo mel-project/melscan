@@ -96,6 +96,7 @@ pub struct Backend {
     supply_cache: Arc<DashMap<Denom, Arc<BalanceTracker>>>,
 
     address_summary_cache: Arc<Cache<Address, AddressSummary>>,
+    leaderboard_cache: Arc<Cache<Denom, BTreeMap<String, f64>>>,
 }
 
 impl Backend {
@@ -110,6 +111,13 @@ impl Backend {
                 Cache::builder()
                     .max_capacity(10000)
                     .time_to_live(Duration::from_secs(30))
+                    .build(),
+            ),
+
+            leaderboard_cache: Arc::new(
+                Cache::builder()
+                    .max_capacity(10000)
+                    .time_to_live(Duration::from_secs(1800))
                     .build(),
             ),
         }
@@ -303,14 +311,21 @@ impl Backend {
 
     /// Gets the leaderboard for a particular denomination.
     pub async fn get_leaderboard(&self, denom: Denom) -> anyhow::Result<BTreeMap<String, f64>> {
-        let indexer = self.indexer.as_ref().context("no indexer")?;
-        Ok(indexer.query_coins().unspent().denom(denom).iter().fold(
-            BTreeMap::new(),
-            |mut map, cinfo| {
-                *map.entry(cinfo.coin_data.covhash.to_string()).or_default() +=
-                    cinfo.coin_data.value.0 as f64 / 1_000_000.0;
-                map
-            },
-        ))
+        let this = self.clone();
+        smol::unblock(move || {
+            this.leaderboard_cache.try_get_with(denom, || {
+                let indexer = this.indexer.as_ref().context("no indexer")?;
+                anyhow::Ok(indexer.query_coins().unspent().denom(denom).iter().fold(
+                    BTreeMap::new(),
+                    |mut map, cinfo| {
+                        *map.entry(cinfo.coin_data.covhash.to_string()).or_default() +=
+                            cinfo.coin_data.value.0 as f64 / 1_000_000.0;
+                        map
+                    },
+                ))
+            })
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("{:?}", e))
     }
 }
