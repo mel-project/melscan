@@ -64,9 +64,6 @@
 </script>
 
 <template>
-	{#key height}
-		<CoinSankey {height} {txhash} {transaction} {fetch} />
-	{/key}
 	<TopNav>
 		<BreadCrumbs {breadcrumbs} />
 	</TopNav>
@@ -176,30 +173,37 @@
 			</div>
 		</div>
 
-		<div class="container mx-auto max-w-screen-lg">
-			<div class="mb-3 mt-8">
-				<h3 class="text-2xl font-bold">Covenants</h3>
-			</div>
-
-			<div class="m-3">
-				<table class="table-fixed w-full text-sm text-left">
-					<tbody>
-						{#each covenants as [covhash, covenant]}
-							<tr>
-								<td class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden">
-									<span class="name">{covhash}</span>
-								</td>
-								<td class="font-medium">
-									{#each covenant as opcode}
-										{opcode} <br />
-									{/each}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Covenants</h3>
 		</div>
+
+		<div class="m-3">
+			<table class="table-fixed w-full text-sm text-left">
+				<tbody>
+					{#each covenants as [covhash, covenant]}
+						<tr>
+							<td class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden">
+								<span class="name">{covhash}</span>
+							</td>
+							<td class="font-medium">
+								{#each covenant as opcode}
+									{opcode} <br />
+								{/each}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Flow summary</h3>
+		</div>
+
+		<div class="mb-3 mt-8">
+			<CoinSankey {height} {txhash} {transaction} {fetch} />
+		</div>
+
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Inputs</h3>
 		</div>

@@ -12,35 +12,32 @@
 	let node_id = (txhash, index) => `${txhash}-${index}`;
 
 	const getDataAndRes: () => Promise<[any, CoinSpend[]]> = async () => {
-
 		console.log(transaction.inputs);
-		let dirty_res: (null | CoinSpend)[] = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
-		let res = dirty_res.filter((i: null | CoinSpend)=>i);
+		let dirty_res: (null | CoinSpend)[] = await melscan(
+			fetch,
+			`/raw/blocks/${height}/${txhash}/spends`
+		);
+		let res = dirty_res.filter((i: null | CoinSpend) => i);
 
-
-
-		let input_locations = transaction.inputs.map((input) => (
-			{
-				coinid: {
-					txhash: input.txhash,
-					index: input.index,
-				},
-				txhash,
-				height
-			}));
+		let input_locations = transaction.inputs.map((input) => ({
+			coinid: {
+				txhash: input.txhash,
+				index: input.index
+			},
+			txhash,
+			height
+		}));
 
 		let locations = res.concat(input_locations);
 
-
-		let nodes_set = new Set()
+		let nodes_set = new Set();
 		locations.forEach((location: CoinSpend) => {
-			nodes_set.add(location.txhash)
-			nodes_set.add(location.coinid.txhash )
+			nodes_set.add(location.txhash);
+			nodes_set.add(location.coinid.txhash);
 		});
 
-
-		let nodes = Array.from(nodes_set).map(id=>({id}));
-		console.log("nodes", nodes)
+		let nodes = Array.from(nodes_set).map((id) => ({ id }));
+		console.log('nodes', nodes);
 
 		let links = [];
 		locations.forEach((location: CoinSpend) => {
@@ -63,9 +60,6 @@
 			});
 		});
 
-
-
-
 		return [{ nodes, links }, res];
 	};
 </script>
@@ -83,7 +77,7 @@
 				</LayerCake>
 			{/if}
 		</div>
-		<div class="data-container">
+		<!-- <div class="data-container">
 			Server Response
 			<div class="data">
 				{#each res as location}
@@ -120,7 +114,7 @@
 					<div class="info">{JSON.stringify(l)}</div>
 				{/each}
 			</div>
-		</div>
+		</div> -->
 	{:catch error}
 		<i>{error}</i>
 	{/await}
@@ -134,17 +128,17 @@
 	  expand to fill it.
 	*/
 	.chart-container {
-		width: 90vw;
-		height: 90vh;
+		width: 100%;
+		height: 20rem;
 		display: flex;
 		flex-direction: row;
 		gap: 2em;
 	}
 	.data1 {
-		width: 45%;
+		width: 100%;
 		height: 80%;
 	}
-	.data-container {
+	/* .data-container {
 		display: flex;
 		flex-direction: column;
 		gap: 1em;
@@ -162,6 +156,5 @@
 
 	.info {
 		border-bottom: 1px solid red;
-		
-	}
+	} */
 </style>

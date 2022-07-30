@@ -242,6 +242,7 @@ pub async fn find_spend_within_range(
         height: spend_height,
     }))
 }
+
 #[get("/raw/blocks/{height}/{txhash}/spends")]
 pub async fn transaction_spenders(height: BlockHeight, txhash: TxHash) -> DynReply {
     let closure = async move {
