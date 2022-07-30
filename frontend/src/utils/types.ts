@@ -122,3 +122,10 @@ export interface CoinDataHeight {
 	coin_data: CoinData;
 	height: BlockHeight;
 }
+
+
+export interface CoinSpend {
+    coinid: CoinID, 
+    txhash: TxHash, 
+    height: BlockHeight,
+}

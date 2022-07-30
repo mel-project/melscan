@@ -12,13 +12,19 @@ export type Fetch = (info: RequestInfo, init?: RequestInit) => Promise<Response>
 
 export const melscan = async (fetch: Fetch, endpoint: string): Promise<any> => {
 	const url = backendUrl(endpoint);
-	const response = await fetch(url);
-	console.log(`requesting ${url}`);
-	if (!response.ok) {
-		throw `failed to fetch '${url}' data`;
+
+	try{
+		const response = await fetch(url);
+		console.log(`requesting ${url}`);
+		if (!response.ok) {
+			console.error( `failed to fetch '${url}' data`);
+		}
+		let res = response.json();
+		return res;
 	}
-	let res = response.json();
-	return res;
+	catch {
+	}
+	
 };
 
 export const queryGraph = async (query: GraphQuery): Promise<GraphDatum[]> => {
