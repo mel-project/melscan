@@ -12,24 +12,50 @@
 	let node_id = (txhash, index) => `${txhash}-${index}`;
 
 	const getDataAndRes: () => Promise<[any, CoinSpend[]]> = async () => {
-		let nodes_set = new Set()
-		let nodes = [{id: txhash}]
-		let links = [];
+
 		console.log(transaction.inputs);
 		let dirty_res: (null | CoinSpend)[] = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
 		let res = dirty_res.filter((i: null | CoinSpend)=>i);
 
 
-		res.forEach((location: CoinSpend) => {
+
+		let input_locations = transaction.inputs.map((input) => (
+			{
+				coinid: {
+					txhash: input.txhash,
+					index: input.index,
+				},
+				txhash,
+				height
+			}));
+
+		let locations = res.concat(input_locations);
+
+
+		let nodes_set = new Set()
+		locations.forEach((location: CoinSpend) => {
+			nodes_set.add(location.txhash)
+			nodes_set.add(location.coinid.txhash )
+		});
+
+
+		let nodes = Array.from(nodes_set).map(id=>({id}));
+		console.log("nodes", nodes)
+
+		let links = [];
+		locations.forEach((location: CoinSpend) => {
 			let id = `${location.coinid.txhash}-${location.coinid.index}`;
 			nodes.push({ id });
-			nodes.push({ id: location.txhash });
 			console.log('location.txhash', location.txhash);
+
+			// outputs go from this transaction to the this coin
 			links.push({
-				source: txhash,
+				source: location.coinid.txhash,
 				target: id,
 				value: 1
 			});
+
+			// this utxo was spent at location.txhash
 			links.push({
 				source: id,
 				target: location.txhash,
@@ -38,19 +64,6 @@
 		});
 
 
-		transaction.inputs.forEach((input) => {
-			let id = node_id(input.txhash, input.index);
-			let node = { id };
-			if (nodes_set.has(id))return;
-			nodes_set.add(id);
-			nodes.push(node)
-			links.push({
-				source: id,
-				target: txhash,
-				value: 1,
-			})
-			return node;
-		});
 
 
 		return [{ nodes, links }, res];
