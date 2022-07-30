@@ -18,19 +18,24 @@
 
 	onMount(async () => {
 		try {
+			let node_set = new Set();
 			console.log(transaction.inputs);
 			res = await melscan(fetch, `/raw/blocks/${height}/${txhash}/spends`);
-			let input_nodes = transaction.inputs.map((input) => {
-				let node = {
-					id: node_id(input.txhash, input.index)
-				};
-				nodes.push(node);
+			transaction.inputs.forEach((input) => {
+				let id =  node_id(input.txhash, input.index);
+
+				links.push({
+					source: id,
+					target: txhash,
+					value: 1,
+				})
+				node_set.add(id);
 				return node;
 			});
 			res.forEach((location: CoinSpend) => {
 				let id = `${location.coinid.txhash}-${location.coinid.index}`;
 				nodes.push({ id });
-				nodes.push({ id: location.txhash });
+				node_set.add(location.txhash);
 				links.push({
 					source: id,
 					target: location.txhash,
@@ -38,10 +43,11 @@
 				});
 			});
 
+			let node_array = Array.from(node_set).map((id)=>({id}))
 			//done to update nodes and links in the dom
-			links = links.concat([]);
-			nodes = nodes.concat([]);
-			
+			links = links.concat();
+			nodes = nodes.concat(node_array as any);
+
 			data = { nodes, links }
 		} catch (e) {}
 	});
