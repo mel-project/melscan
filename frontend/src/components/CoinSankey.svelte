@@ -2,11 +2,22 @@
 	import { LayerCake, Svg } from 'layercake';
 	import Sankey from './layercake/Sankey.svelte';
 	import { melscan } from '@utils/common';
-	import type { BlockHeight, TxHash, Transaction, CoinCrawl } from '@utils/types';
+	import {
+		type BlockHeight,
+		type TxHash,
+		type Transaction,
+		type CoinCrawl,
+		Denom
+	} from '@utils/types';
+	import { identity } from 'svelte/internal';
 	export let height: BlockHeight;
 	export let txhash: TxHash;
 	export let transaction: Transaction;
 	export let fetch;
+
+	const abbrString = (s, len) => {
+		return s.substring(0, len) + '...' + s.substring(s.length - len, s.length);
+	};
 
 	const getDataAndRes: () => Promise<[any, CoinCrawl]> = async () => {
 		console.log(transaction.inputs);
@@ -17,32 +28,60 @@
 
 		let nodes_set = new Set();
 		Object.keys(crawl.coin_contents).forEach((coinid_str) => {
-			nodes_set.add(coinid_str);
-			nodes_set.add(coinid_str.split('-')[0]);
+			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
+				nodes_set.add(coinid_str);
+				nodes_set.add(coinid_str.split('-')[0]);
+			}
 		});
-		Object.values(crawl.coin_spenders).forEach((txhash) => {
-			nodes_set.add(txhash);
+		Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
+			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
+				nodes_set.add(txhash);
+			}
 		});
 
+		nodes_set.add('Fees');
+
 		let links_set = new Set();
+		links_set.add({
+			source: txhash,
+			target: 'Fees',
+			value: transaction.fee
+		});
 		// coin creation
 		Object.keys(crawl.coin_contents).forEach((coinid_str) => {
-			links_set.add({
-				source: coinid_str.split('-')[0],
-				target: coinid_str,
-				value: crawl.coin_contents[coinid_str].value
-			});
+			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
+				links_set.add({
+					source: coinid_str.split('-')[0],
+					target: coinid_str,
+					value: crawl.coin_contents[coinid_str].value
+				});
+			}
 		});
 		// coin spend
 		Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
-			links_set.add({
-				source: coinid_str,
-				target: txhash,
-				value: crawl.coin_contents[coinid_str].value
-			});
+			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
+				links_set.add({
+					source: coinid_str,
+					target: txhash,
+					value: crawl.coin_contents[coinid_str].value
+				});
+			}
 		});
 
-		let nodes = Array.from(nodes_set).map((id) => ({ id }));
+		let nodes = Array.from(nodes_set).map((id: string) => {
+			if (id === 'Fees') {
+				return { id };
+			}
+			if (id.includes('-')) {
+				return {
+					id: id,
+					label: `${id.split('-')[1]} [${(crawl.coin_contents[id].value / 1_000_000).toFixed(
+						6
+					)} MEL => ${abbrString(crawl.coin_contents[id].covhash, 4)}]`
+				};
+			}
+			return { id, label: abbrString(id, 10) };
+		});
 		console.log('nodes', nodes);
 
 		let links = Array.from(links_set);
@@ -59,7 +98,23 @@
 			{#if Object.keys(data.links).length > 0}
 				<LayerCake data={JSON.parse(JSON.stringify(data))}>
 					<Svg>
-						<Sankey colorNodes={(d) => '#00bbff'} colorLinks={(d) => '#00bbff35'} />
+						<Sankey
+							nodePadding={50}
+							colorNodes={(d) => {
+								if (d.id === 'Fees') {
+									return '#ff0000';
+								}
+								if (!d.id.includes('-')) {
+									return '#00bbff';
+								}
+								if (!res.coin_spenders[d.id]) {
+									return '#ffbb00';
+								} else {
+									return '#ccc';
+								}
+							}}
+							colorLinks={(d) => '#ccc'}
+						/>
 					</Svg>
 				</LayerCake>
 			{/if}
@@ -116,7 +171,7 @@
 	*/
 	.chart-container {
 		width: 100%;
-		height: 50rem;
+		height: 20rem;
 		display: flex;
 		flex-direction: row;
 		gap: 2em;

@@ -18,7 +18,7 @@
 	export let colorText = (d) => '#263238';
 
 	/** @type {Number} [nodeWidth=5] – The width of each node, in pixels, passed to [`sankey.nodeWidth`](https://github.com/d3/d3-sankey#sankey_nodeWidth). */
-	export let nodeWidth = 5;
+	export let nodeWidth = 20;
 
 	/** @type {Number} [nodePadding=10] – The padding between nodes, passed to [`sankey.nodePadding`](https://github.com/d3/d3-sankey#sankey_nodePadding). */
 	export let nodePadding = 10;
@@ -44,7 +44,21 @@
 
 	$: link = Sankey.sankeyLinkHorizontal();
 
-	$: fontSize = $width <= 320 ? 8 : 12;
+	$: fontSize = 11;
+
+	// https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
+	const cyrb53 = function (str, seed = 0) {
+		let h1 = 0xdeadbeef ^ seed,
+			h2 = 0x41c6ce57 ^ seed;
+		for (let i = 0, ch; i < str.length; i++) {
+			ch = str.charCodeAt(i);
+			h1 = Math.imul(h1 ^ ch, 2654435761);
+			h2 = Math.imul(h2 ^ ch, 1597334677);
+		}
+		h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+		h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+		return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+	};
 </script>
 
 <g class="sankey-layer">
@@ -65,16 +79,12 @@
 			<text
 				x={d.x0 < $width / 4 ? d.x1 + 6 : d.x0 - 6}
 				y={(d.y1 + d.y0) / 2}
-				dy={fontSize / 2 - 2}
+				dy={fontSize / 2 - 2 + (cyrb53(d.id) % 80) - 40}
 				style="fill: {colorText(d)};
 							font-size: {fontSize}px;
 							text-anchor: {d.x0 < $width / 4 ? 'start' : 'end'};"
 			>
-				{#if d.id.includes('-')}
-					{d.id.split('-')[1]}
-				{:else}
-					{d.id.slice(0, 10)}...
-				{/if}
+				{'label' in d ? d.label : d.id}
 			</text>
 		{/each}
 	</g>

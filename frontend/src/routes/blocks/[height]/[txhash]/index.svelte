@@ -198,6 +198,7 @@
 
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Flow summary</h3>
+			<p>(MEL only)</p>
 		</div>
 
 		<div class="mb-3 mt-8">
