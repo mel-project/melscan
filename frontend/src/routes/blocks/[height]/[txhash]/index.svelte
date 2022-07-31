@@ -201,7 +201,7 @@
 		</div>
 
 		<div class="mb-3 mt-8">
-			{#key height}
+			{#key txhash}
 				<CoinSankey {height} {txhash} {transaction} {fetch} />
 			{/key}
 		</div>
