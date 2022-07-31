@@ -36,29 +36,42 @@
 			nodes_set.add(location.coinid.txhash);
 		});
 
-		let nodes = Array.from(nodes_set).map((id) => ({ id }));
-		console.log('nodes', nodes);
-
-		let links = [];
-		locations.forEach((location: CoinSpend) => {
-			let id = `${location.coinid.txhash}-${location.coinid.index}`;
-			nodes.push({ id });
-			console.log('location.txhash', location.txhash);
-
+		let links_set = new Set();
+		transaction.outputs.forEach((coinData, index) => {
+			let id = `${txhash}-${index}`;
+			nodes_set.add(id);
 			// outputs go from this transaction to the this coin
-			links.push({
-				source: location.coinid.txhash,
+			links_set.add({
+				source: txhash,
 				target: id,
 				value: 1
 			});
+		});
+
+		locations.forEach((location: CoinSpend) => {
+			let id = `${location.coinid.txhash}-${location.coinid.index}`;
+			nodes_set.add(id);
+
+			if (location.coinid.txhash !== txhash) {
+				links_set.add({
+					source: location.coinid.txhash,
+					target: id,
+					value: 1
+				});
+			}
 
 			// this utxo was spent at location.txhash
-			links.push({
+			links_set.add({
 				source: id,
 				target: location.txhash,
 				value: 1
 			});
 		});
+
+		let nodes = Array.from(nodes_set).map((id) => ({ id }));
+		console.log('nodes', nodes);
+
+		let links = Array.from(links_set);
 
 		return [{ nodes, links }, res];
 	};

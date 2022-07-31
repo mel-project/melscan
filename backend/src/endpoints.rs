@@ -215,6 +215,7 @@ struct CoinLocation {
     coinid: CoinID,
     txhash: TxHash,
     height: BlockHeight,
+    data: CoinData,
 }
 
 pub async fn find_spend_within_range(
@@ -240,6 +241,11 @@ pub async fn find_spend_within_range(
         coinid,
         txhash: spend_txhash,
         height: spend_height,
+        data: snapshot
+            .get_coin_spent_here(coinid)
+            .await?
+            .context("this should not happen")?
+            .coin_data,
     }))
 }
 
