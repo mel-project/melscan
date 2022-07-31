@@ -2,69 +2,43 @@
 	import { LayerCake, Svg } from 'layercake';
 	import Sankey from './layercake/Sankey.svelte';
 	import { melscan } from '@utils/common';
-	import type { BlockHeight, Vec, TxHash, Transaction, CoinSpend, CoinID } from '@utils/types';
-	import { onMount } from 'svelte';
+	import type { BlockHeight, TxHash, Transaction, CoinCrawl } from '@utils/types';
 	export let height: BlockHeight;
 	export let txhash: TxHash;
 	export let transaction: Transaction;
 	export let fetch;
 
-	let node_id = (txhash, index) => `${txhash}-${index}`;
-
-	const getDataAndRes: () => Promise<[any, CoinSpend[]]> = async () => {
+	const getDataAndRes: () => Promise<[any, CoinCrawl]> = async () => {
 		console.log(transaction.inputs);
-		let dirty_res: (null | CoinSpend)[] = await melscan(
+		let crawl = (await melscan(
 			fetch,
-			`/raw/blocks/${height}/${txhash}/spends`
-		);
-		let res = dirty_res.filter((i: null | CoinSpend) => i);
-
-		let input_locations = transaction.inputs.map((input) => ({
-			coinid: {
-				txhash: input.txhash,
-				index: input.index
-			},
-			txhash,
-			height
-		}));
-
-		let locations = res.concat(input_locations);
+			`/raw/blocks/${height}/transactions/${txhash}/crawl`
+		)) as CoinCrawl;
 
 		let nodes_set = new Set();
-		locations.forEach((location: CoinSpend) => {
-			nodes_set.add(location.txhash);
-			nodes_set.add(location.coinid.txhash);
+		Object.keys(crawl.coin_contents).forEach((coinid_str) => {
+			nodes_set.add(coinid_str);
+			nodes_set.add(coinid_str.split('-')[0]);
+		});
+		Object.values(crawl.coin_spenders).forEach((txhash) => {
+			nodes_set.add(txhash);
 		});
 
 		let links_set = new Set();
-		transaction.outputs.forEach((coinData, index) => {
-			let id = `${txhash}-${index}`;
-			nodes_set.add(id);
-			// outputs go from this transaction to the this coin
+		// coin creation
+		Object.keys(crawl.coin_contents).forEach((coinid_str) => {
 			links_set.add({
-				source: txhash,
-				target: id,
-				value: 1
+				source: coinid_str.split('-')[0],
+				target: coinid_str,
+				value: crawl.coin_contents[coinid_str].value
 			});
 		});
-
-		locations.forEach((location: CoinSpend) => {
-			let id = `${location.coinid.txhash}-${location.coinid.index}`;
-			nodes_set.add(id);
-
-			if (location.coinid.txhash !== txhash) {
-				links_set.add({
-					source: location.coinid.txhash,
-					target: id,
-					value: 1
-				});
-			}
-
-			// this utxo was spent at location.txhash
+		// coin spend
+		Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
 			links_set.add({
-				source: id,
-				target: location.txhash,
-				value: 1
+				source: coinid_str,
+				target: txhash,
+				value: crawl.coin_contents[coinid_str].value
 			});
 		});
 
@@ -73,7 +47,7 @@
 
 		let links = Array.from(links_set);
 
-		return [{ nodes, links }, res];
+		return [{ nodes, links }, crawl];
 	};
 </script>
 
@@ -142,7 +116,7 @@
 	*/
 	.chart-container {
 		width: 100%;
-		height: 20rem;
+		height: 50rem;
 		display: flex;
 		flex-direction: row;
 		gap: 2em;

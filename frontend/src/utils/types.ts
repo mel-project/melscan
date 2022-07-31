@@ -127,5 +127,9 @@ export interface CoinSpend {
 	coinid: CoinID;
 	txhash: TxHash;
 	height: BlockHeight;
-	coindata: CoinData;
+}
+
+export interface CoinCrawl {
+	coin_contents: { [key: string]: CoinData };
+	coin_spenders: { [key: string]: string };
 }
