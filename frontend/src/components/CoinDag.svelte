@@ -30,13 +30,16 @@
 				shape: 'diamond',
 				size: 10,
 				// mass: 200,
-				color: `hsl(${coin_hue}, 50%, 50%)`
+				color: `hsl(${coin_hue}, 50%, 50%)`,
+				title: 'Title'
 			});
 			try {
 				nodes.add({
 					id: coinid_str.split('-')[0],
 					label: abbrString(coinid_str.split('-')[0], 10),
-					shape: 'box'
+					shape: 'box',
+					size: 20,
+					title: 'Title'
 				});
 			} catch {}
 			edges.add({ from: coinid_str.split('-')[0], to: coinid_str, color: { inherit: 'to' } });
@@ -48,7 +51,8 @@
 				nodes.add({
 					id: txhash,
 					label: abbrString(txhash, 10),
-					shape: 'box'
+					shape: 'box',
+					title: 'Title'
 				});
 			} catch {}
 			edges.add({ from: coinid_str, to: txhash, color: { inherit: 'from' } });
@@ -74,17 +78,26 @@
 			edges: {
 				arrows: 'to'
 			},
+			interaction: {
+				hover: true
+			},
 			physics: {
 				hierarchicalRepulsion: {
 					avoidOverlap: 1,
-					damping: 0.1,
+					damping: 0.4,
 					springLength: 1
-				}
+				},
+				maxVelocity: 100
 			}
 		};
 
 		// initialize your network!
 		const network = new vis.Network(container, data, options);
+		network.on('selectNode', (obj) => {
+			obj.nodes.forEach((id) => {
+				console.log('clicked', id);
+			});
+		});
 	});
 </script>
 
