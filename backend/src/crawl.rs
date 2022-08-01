@@ -30,10 +30,8 @@ impl CoinCrawl {
             .context("transaction not found at this snap")?;
 
 
-        let inputs = transaction.inputs;
-        let outputs = transaction.outputs;
         // first, we know that the given transaction spent all of its inputs
-        let crawls = join_all(inputs.into_iter().map(|coinid| {
+        let crawls = join_all(transaction.inputs.clone().into_iter().map(|coinid| {
             let coindata_fut = snap.get_coin_spent_here(coinid);
             async move {
                 let coindata = coindata_fut.await?.context("must be spent here")?.coin_data;
@@ -54,10 +52,10 @@ impl CoinCrawl {
         let chain_height = CLIENT.snapshot().await?.current_header().height;
         let height_range = height.0..chain_height.0;
 
-        let output_range = 0..outputs.len();
+        let output_range = 0..transaction.outputs.len();
         let outputs = output_range
-            .map(|i| transaction.output_coinid(i as u8))
-            .zip(outputs.iter());
+            .map(|i| transaction.output_coinid(i as u8).to_owned())
+            .zip(transaction.outputs.iter()).collect::<Vec<_>>();
         // {
         //     coin_contents.push((output_coinid, output_coindata.clone()));
         //     let spend = find_spend_within_range(output_coinid, height_range.clone()).await?;
