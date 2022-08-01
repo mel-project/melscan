@@ -11,40 +11,42 @@ use crate::globals::{BACKEND, CLIENT};
 /// A "crawl" of coin activity around a particular transaction. Coins are represented as string CoinIDs.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CoinCrawl {
-    pub coin_contents: Vec<(CoinID, CoinData)>,
-    pub coin_spenders: BTreeMap<String, TxHash>,
+    pub coins: Vec<CrawlItem>,
 }
 
+pub struct CrawlItem {
+    coinid: CoinID,
+    coindata: CoinData,
+    spend: Option<(BlockHeight, TxHash)>,
+}
 impl CoinCrawl {
     /// Create a coin crawl surrounding the given TxHash and height.
     pub async fn crawl(height: BlockHeight, txhash: TxHash) -> anyhow::Result<Self> {
-        
         let snap = CLIENT.older_snapshot(height).await?;
         let transaction = snap
             .get_transaction(txhash)
             .await?
             .context("transaction not found at this snap")?;
-        
-        
-            let mut coin_contents: Vec<(CoinID, CoinData)> = vec![];
+
+        let mut coin_contents: Vec<(CoinID, CoinData)> = vec![];
         let mut coin_spenders = BTreeMap::new();
-        
-        
+
         // first, we know that the given transaction spent all of its inputs
-    for input in transaction.inputs.iter() {
+        for input in transaction.inputs.iter() {
             coin_spenders.insert(input.to_string(), transaction.hash_nosigs());
 
-            let coindata = snap.get_coin_spent_here(*input)
-            .await?
-            .context("must be spent here")?
-            .coin_data;
+            let coindata = snap
+                .get_coin_spent_here(*input)
+                .await?
+                .context("must be spent here")?
+                .coin_data;
             // also get the content
-            coin_contents.push(
-                ( *input,             // What happens in a dereference ?
-                 coindata )
-            );
+            coin_contents.push((
+                *input, // What happens in a dereference ?
+                coindata,
+            ));
         }
-        
+
         // but we want to know exactly who spent all the other things too.
         let chain_height = CLIENT.snapshot().await?.current_header().height;
         let height_range = height.0..chain_height.0;
@@ -58,7 +60,6 @@ impl CoinCrawl {
                 coin_spenders.insert(output_coinid.to_string(), spend.txhash);
             }
         }
-
 
         Ok(Self {
             coin_contents,
