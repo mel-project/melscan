@@ -11,7 +11,7 @@ use crate::globals::{BACKEND, CLIENT};
 /// A "crawl" of coin activity around a particular transaction. Coins are represented as string CoinIDs.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CoinCrawl {
-    pub coins: Vec<CrawlItem>,
+    pub crawls: Vec<CrawlItem>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -20,6 +20,8 @@ pub struct CrawlItem {
     coindata: CoinData,
     spender: Option<(BlockHeight, TxHash)>,
 }
+
+
 impl CoinCrawl {
     /// Create a coin crawl surrounding the given TxHash and height.
     pub async fn crawl(height: BlockHeight, txhash: TxHash) -> anyhow::Result<Self> {
@@ -29,9 +31,8 @@ impl CoinCrawl {
             .await?
             .context("transaction not found at this snap")?;
 
-
         // first, we know that the given transaction spent all of its inputs
-        let crawls = join_all(transaction.inputs.clone().into_iter().map(|coinid| {
+        let input_crawls = join_all(transaction.inputs.clone().into_iter().map(|coinid| {
             let coindata_fut = snap.get_coin_spent_here(coinid);
             async move {
                 let coindata = coindata_fut.await?.context("must be spent here")?.coin_data;
@@ -39,43 +40,47 @@ impl CoinCrawl {
                 anyhow::Ok(CrawlItem {
                     coinid,
                     coindata,
-                    spender: None,
+                    spender: Some((height, txhash)),
                 })
             }
         }))
         .await
         .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
+        .flatten();
 
         // but we want to know exactly who spent all the other things too.
         let chain_height = CLIENT.snapshot().await?.current_header().height;
         let height_range = height.0..chain_height.0;
-
         let output_range = 0..transaction.outputs.len();
-        let outputs = output_range
-            .map(|i| transaction.output_coinid(i as u8).to_owned())
-            .zip(transaction.outputs.iter()).collect::<Vec<_>>();
-        // {
-        //     coin_contents.push((output_coinid, output_coindata.clone()));
-        //     let spend = find_spend_within_range(output_coinid, height_range.clone()).await?;
-        //     if let Some(spend) = spend {
-        //         coin_spenders.insert(output_coinid.to_string(), spend.txhash);
-        //     }
-        // }
+        let output_crawls = join_all(output_range
+            .map(|i| {
+                let coinid = transaction.output_coinid(i as u8).to_owned();
+                let coindata = transaction.outputs[i].clone();
+                let spender_fut = find_spend_within_range(coinid, height_range.clone());
+                async move {
+                    let spender = spender_fut.await?;
+                    anyhow::Ok(CrawlItem{
+                        coinid,
+                        coindata,
+                        spender, // None if unspent
+                    })
+                }
+            })).await.into_iter().flatten();
+            
 
-        // Ok(Self {
-        //     coin_contents,
-        //     coin_spenders,
-        // })
-        Ok(Self { coins: vec![] })
+        let crawls = input_crawls.chain(output_crawls).collect::<Vec<_>>();
+
+        Ok(Self {
+            crawls
+        })
+       
     }
 }
 
 async fn find_spend_within_range(
     coinid: CoinID,
     height_range: Range<u64>,
-) -> anyhow::Result<Option<CoinLocation>> {
+) -> anyhow::Result<Option<(BlockHeight, TxHash)>> {
     let range = height_range;
     let spend_height = match find_spending_height(coinid, range).await? {
         Some(spend) => spend,
@@ -91,16 +96,10 @@ async fn find_spend_within_range(
         .hash_nosigs();
     println!("{coinid}{spend_height}");
 
-    Ok(Some(CoinLocation {
-        coinid,
-        txhash: spend_txhash,
-        height: spend_height,
-        data: snapshot
-            .get_coin_spent_here(coinid)
-            .await?
-            .context("this should not happen")?
-            .coin_data,
-    }))
+    Ok(Some((
+        spend_height,
+        spend_txhash
+    )))
 }
 
 async fn find_spending_height(
@@ -170,14 +169,6 @@ async fn find_spending_transaction(
         .cloned();
     Ok(tx)
 }
-#[derive(Clone, Debug, Serialize)]
-struct CoinLocation {
-    coinid: CoinID,
-    txhash: TxHash,
-    height: BlockHeight,
-    data: CoinData,
-}
-
 // if the coin is found at the current height it is not spent; assumes coin existed
 async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
     let coin = BACKEND
