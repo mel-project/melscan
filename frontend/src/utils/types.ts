@@ -8,6 +8,8 @@ export type u8 = number;
 export type f64 = number;
 export type f32 = number;
 
+export type Option<T> = T | null
+export type Result<T,W> = T | W
 export type Vec<T> = T[];
 
 export type BlockHeight = u64;
@@ -129,7 +131,12 @@ export interface CoinSpend {
 	height: BlockHeight;
 }
 
-export interface CoinCrawl {
-	coin_contents:  [CoinID, CoinData];
-	coin_spenders: { [key: string]: string };
+export interface CrawlItem {
+	coinid: CoinID,
+	coindata: CoinData,
+	spender: Option<[BlockHeight, TxHash]>
 }
+export interface CoinCrawl {
+	crawls: Vec<CrawlItem>
+}
+

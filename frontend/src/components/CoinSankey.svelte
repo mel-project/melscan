@@ -47,44 +47,44 @@
 			target: 'Fees',
 			value: transaction.fee
 		});
-		// coin creation
-		Object.keys(crawl.coin_contents).forEach((coinid_str) => {
-			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
-				links_set.add({
-					source: coinid_str.split('-')[0],
-					target: coinid_str,
-					value: crawl.coin_contents[coinid_str].value
-				});
-			}
-		});
-		// coin spend
-		Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
-			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
-				links_set.add({
-					source: coinid_str,
-					target: txhash,
-					value: crawl.coin_contents[coinid_str].value
-				});
-			}
-		});
+		// // coin creation
+		// Object.keys(crawl.coin_contents).forEach((coinid_str) => {
+		// 	if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
+		// 		links_set.add({
+		// 			source: coinid_str.split('-')[0],
+		// 			target: coinid_str,
+		// 			value: crawl.coin_contents[coinid_str].value
+		// 		});
+		// 	}
+		// });
+		// // coin spend
+		// Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
+		// 	if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
+		// 		links_set.add({
+		// 			source: coinid_str,
+		// 			target: txhash,
+		// 			value: crawl.coin_contents[coinid_str].value
+		// 		});
+		// 	}
+		// });
 
-		let nodes = Array.from(nodes_set).map((id: string) => {
-			if (id === 'Fees') {
-				return { id };
-			}
-			if (id.includes('-')) {
-				return {
-					id: id,
-					label: `${id.split('-')[1]} [${(crawl.coin_contents[id].value / 1_000_000).toFixed(
-						6
-					)} MEL => ${abbrString(crawl.coin_contents[id].covhash, 4)}]`
-				};
-			}
-			return { id, label: abbrString(id, 10) };
-		});
-		console.log('nodes', nodes);
+		// let nodes = Array.from(nodes_set).map((id: string) => {
+		// 	if (id === 'Fees') {
+		// 		return { id };
+		// 	}
+		// 	if (id.includes('-')) {
+		// 		return {
+		// 			id: id,
+		// 			label: `${id.split('-')[1]} [${(crawl.coin_contents[id].value / 1_000_000).toFixed(
+		// 				6
+		// 			)} MEL => ${abbrString(crawl.coin_contents[id].covhash, 4)}]`
+		// 		};
+		// 	}
+		// 	return { id, label: abbrString(id, 10) };
+		// });
+		// console.log('nodes', nodes);
 
-		let links = Array.from(links_set);
+		// let links = Array.from(links_set);
 
 		return [{ nodes, links }, crawl];
 	};
