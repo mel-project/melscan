@@ -4,6 +4,7 @@ use tracing_subscriber::{util::SubscriberInitExt, EnvFilter};
 
 use crate::globals::CMD_ARGS;
 mod backend;
+mod crawl;
 mod endpoints;
 mod globals;
 mod graphs;
@@ -60,7 +61,8 @@ async fn main() -> anyhow::Result<()> {
         search_block,
         leaderboard,
         transaction_page,
-        graph
+        graph,
+        transaction_crawl
     ];
     let cors = warp::cors()
         .allow_any_origin()

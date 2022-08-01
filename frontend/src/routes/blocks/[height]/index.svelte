@@ -6,10 +6,15 @@
 	import type { HashVal, Header, TransactionSummary } from '@utils/types';
 	import { tooltips } from '@utils/common';
 	import { BreadCrumb, type BlockSummary } from '@utils/page-types';
+	import { invalidate } from '$app/navigation';
 
 	export let load = async (event) => {
 		let { params, fetch, url } = event;
 		let res = (await melscan(fetch, '/raw' + url.pathname + '/summary')) as BlockSummary;
+		if(res == null) {
+			invalidate(url)
+			return
+		}
 		return {
 			status: 200,
 			props: res

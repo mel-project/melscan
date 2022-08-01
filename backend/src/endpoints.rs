@@ -1,13 +1,18 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
 use std::io::Cursor;
+use std::num::ParseIntError;
+use std::ops::Range;
+use std::str::FromStr;
 
 use anyhow::Context;
 use chrono::Utc;
 use dashmap::DashMap;
 
+use futures_util::future::join_all;
 use futures_util::Future;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
@@ -23,6 +28,7 @@ use tmelcrypt::{HashVal, Hashable};
 use tracing::{debug, info};
 
 use crate::{
+    crawl::CoinCrawl,
     globals::{BACKEND, CLIENT},
     graphs::{datetime_to_height, graph_range},
 };
@@ -113,6 +119,11 @@ pub async fn search_block(blkhash: HashVal) -> DynReply {
 #[get("/raw/blocks/{height}/transactions/{txhash}")]
 pub async fn transaction(height: BlockHeight, txhash: TxHash) -> DynReply {
     generic_fallible_json_option(BACKEND.get_transaction_at_height(height, txhash)).await
+}
+
+#[get("/raw/blocks/{height}/transactions/{txhash}/crawl")]
+pub async fn transaction_crawl(height: BlockHeight, txhash: TxHash) -> DynReply {
+    generic_fallible_json(CoinCrawl::crawl(height, txhash)).await
 }
 
 #[get("/raw/blocks/{height}/coins/{coinid}")]
@@ -327,6 +338,12 @@ fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<OpCodeStrings> {
         ops.push(fmt);
     }
     Ok(ops)
+}
+pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect()
 }
 
 #[get("/raw/blocks/{height}/{txhash}")]

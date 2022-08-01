@@ -31,9 +31,9 @@ export enum NetID {
 }
 
 export enum Denom {
-	MEL,
-	SYM,
-	ERG
+	MEL = 'MEL',
+	SYM = 'SYM',
+	ERG = 'ERG'
 }
 
 export interface Header {
@@ -121,4 +121,15 @@ export type MicroUnit = [number, string];
 export interface CoinDataHeight {
 	coin_data: CoinData;
 	height: BlockHeight;
+}
+
+export interface CoinSpend {
+	coinid: CoinID;
+	txhash: TxHash;
+	height: BlockHeight;
+}
+
+export interface CoinCrawl {
+	coin_contents: { [key: string]: CoinData };
+	coin_spenders: { [key: string]: string };
 }

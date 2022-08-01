@@ -14,6 +14,7 @@
 	} from '@utils/types';
 	import { tooltips } from '@utils/common';
 	import { BreadCrumb, type TransactionResponse } from '@utils/page-types';
+	import CoinSankey from '@components/CoinSankey.svelte';
 
 	export interface TransactionPage {
 		status: number;
@@ -24,8 +25,6 @@
 		let { height, txhash } = loadEvent.params;
 		let url = `/raw/blocks/${height}/${txhash}`;
 		let res = (await melscan(loadEvent.fetch, url)) as TransactionResponse;
-
-		console.log(res);
 		return {
 			status: 200,
 			props: res
@@ -68,7 +67,6 @@
 	<TopNav>
 		<BreadCrumbs {breadcrumbs} />
 	</TopNav>
-
 	<div class="container mx-auto max-w-screen-lg">
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Summary</h3>
@@ -175,30 +173,40 @@
 			</div>
 		</div>
 
-		<div class="container mx-auto max-w-screen-lg">
-			<div class="mb-3 mt-8">
-				<h3 class="text-2xl font-bold">Covenants</h3>
-			</div>
-
-			<div class="m-3">
-				<table class="table-fixed w-full text-sm text-left">
-					<tbody>
-						{#each covenants as [covhash, covenant]}
-							<tr>
-								<td class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden">
-									<span class="name">{covhash}</span>
-								</td>
-								<td class="font-medium">
-									{#each covenant as opcode}
-										{opcode} <br />
-									{/each}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Covenants</h3>
 		</div>
+
+		<div class="m-3">
+			<table class="table-fixed w-full text-sm text-left">
+				<tbody>
+					{#each covenants as [covhash, covenant]}
+						<tr>
+							<td class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden">
+								<span class="name">{covhash}</span>
+							</td>
+							<td class="font-medium">
+								{#each covenant as opcode}
+									{opcode} <br />
+								{/each}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Flow summary</h3>
+			<p>(MEL only)</p>
+		</div>
+
+		<div class="mb-3 mt-8">
+			{#key txhash}
+				<CoinSankey {height} {txhash} {transaction} {fetch} />
+			{/key}
+		</div>
+
 		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Inputs</h3>
 		</div>

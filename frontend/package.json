@@ -38,6 +38,8 @@
 		"chart.js": "^3.8.0",
 		"chartjs-adapter-luxon": "^1.1.0",
 		"chartjs-plugin-zoom": "^1.2.1",
+		"d3-sankey": "^0.12.3",
+		"layercake": "^7.0.0",
 		"lodash": "^4.17.21",
 		"luxon": "^2.4.0",
 		"node-sass": "^7.0.1",
