@@ -33,6 +33,8 @@
 </script>
 
 <script lang="ts">
+	import CoinDag from '@components/CoinDag.svelte';
+
 	export let testnet: boolean;
 	export let txhash: TxHash;
 	export let txhash_abbr: String;
@@ -203,7 +205,8 @@
 
 		<div class="mb-3 mt-8">
 			{#key txhash}
-				<CoinSankey {height} {txhash} {transaction} {fetch} />
+				<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
+				<CoinDag {height} {txhash} />
 			{/key}
 		</div>
 
