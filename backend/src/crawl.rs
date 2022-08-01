@@ -14,10 +14,11 @@ pub struct CoinCrawl {
     pub coins: Vec<CrawlItem>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CrawlItem {
     coinid: CoinID,
     coindata: CoinData,
-    spend: Option<(BlockHeight, TxHash)>,
+    spender: Option<(BlockHeight, TxHash)>,
 }
 impl CoinCrawl {
     /// Create a coin crawl surrounding the given TxHash and height.
@@ -28,43 +29,48 @@ impl CoinCrawl {
             .await?
             .context("transaction not found at this snap")?;
 
-        let mut coin_contents: Vec<(CoinID, CoinData)> = vec![];
-        let mut coin_spenders = BTreeMap::new();
 
+        let inputs = transaction.inputs;
+        let outputs = transaction.outputs;
         // first, we know that the given transaction spent all of its inputs
-        for input in transaction.inputs.iter() {
-            coin_spenders.insert(input.to_string(), transaction.hash_nosigs());
-
-            let coindata = snap
-                .get_coin_spent_here(*input)
-                .await?
-                .context("must be spent here")?
-                .coin_data;
-            // also get the content
-            coin_contents.push((
-                *input, // What happens in a dereference ?
-                coindata,
-            ));
-        }
+        let crawls = join_all(inputs.into_iter().map(|coinid| {
+            let coindata_fut = snap.get_coin_spent_here(coinid);
+            async move {
+                let coindata = coindata_fut.await?.context("must be spent here")?.coin_data;
+                // also get the content
+                anyhow::Ok(CrawlItem {
+                    coinid,
+                    coindata,
+                    spender: None,
+                })
+            }
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
 
         // but we want to know exactly who spent all the other things too.
         let chain_height = CLIENT.snapshot().await?.current_header().height;
         let height_range = height.0..chain_height.0;
-        for (output_coinid, output_coindata) in (0..transaction.outputs.len())
-            .map(|i| transaction.output_coinid(i as u8))
-            .zip(transaction.outputs.iter())
-        {
-            coin_contents.push((output_coinid, output_coindata.clone()));
-            let spend = find_spend_within_range(output_coinid, height_range.clone()).await?;
-            if let Some(spend) = spend {
-                coin_spenders.insert(output_coinid.to_string(), spend.txhash);
-            }
-        }
 
-        Ok(Self {
-            coin_contents,
-            coin_spenders,
-        })
+        let output_range = 0..outputs.len();
+        let outputs = output_range
+            .map(|i| transaction.output_coinid(i as u8))
+            .zip(outputs.iter());
+        // {
+        //     coin_contents.push((output_coinid, output_coindata.clone()));
+        //     let spend = find_spend_within_range(output_coinid, height_range.clone()).await?;
+        //     if let Some(spend) = spend {
+        //         coin_spenders.insert(output_coinid.to_string(), spend.txhash);
+        //     }
+        // }
+
+        // Ok(Self {
+        //     coin_contents,
+        //     coin_spenders,
+        // })
+        Ok(Self { coins: vec![] })
     }
 }
 
