@@ -29,7 +29,6 @@ impl CoinCrawl {
             .await?
             .context("transaction not found at this snap")?;
 
-
         let inputs = transaction.inputs;
         let outputs = transaction.outputs;
         // first, we know that the given transaction spent all of its inputs
