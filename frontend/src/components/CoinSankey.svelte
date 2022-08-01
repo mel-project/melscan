@@ -7,7 +7,8 @@
 		type TxHash,
 		type Transaction,
 		type CoinCrawl,
-		Denom
+		Denom,
+type CoinID
 	} from '@utils/types';
 	import { identity } from 'svelte/internal';
 	export let height: BlockHeight;
@@ -18,7 +19,7 @@
 	const abbrString = (s, len) => {
 		return s.substring(0, len) + '...' + s.substring(s.length - len, s.length);
 	};
-
+	const coinid_str = (coinid: CoinID) => coinid.txhash + "-" + coinid.index
 	const getDataAndRes: () => Promise<[any, CoinCrawl]> = async () => {
 		console.log(transaction.inputs);
 		let crawl = (await melscan(
@@ -27,46 +28,31 @@
 		)) as CoinCrawl;
 
 		let nodes_set = new Set();
-		Object.keys(crawl.coin_contents).forEach((coinid_str) => {
-			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
-				nodes_set.add(coinid_str);
-				nodes_set.add(coinid_str.split('-')[0]);
+
+		crawl.coins.forEach(({coinid, coindata, spender}) => {
+			// add the transactions to the nodeset
+			if (coindata.denom === Denom.MEL) {
+				nodes_set.add(coinid_str(coinid));
+				nodes_set.add(coinid.txhash);
 			}
-		});
-		Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
-			if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
-				nodes_set.add(txhash);
+			// if spent, add spending txhash to nodeset
+			if(spender){
+				let [height, txhash] = spender;
+				nodes_set.add(txhash)
 			}
 		});
 
-		nodes_set.add('Fees');
 
-		let links_set = new Set();
-		links_set.add({
+		let links = crawl.coins.map(({coinid, coindata, spender})=>{
+			
+		});
+		links.push({
 			source: txhash,
 			target: 'Fees',
 			value: transaction.fee
 		});
-		// // coin creation
-		// Object.keys(crawl.coin_contents).forEach((coinid_str) => {
-		// 	if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
-		// 		links_set.add({
-		// 			source: coinid_str.split('-')[0],
-		// 			target: coinid_str,
-		// 			value: crawl.coin_contents[coinid_str].value
-		// 		});
-		// 	}
-		// });
-		// // coin spend
-		// Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
-		// 	if (crawl.coin_contents[coinid_str].denom === Denom.MEL) {
-		// 		links_set.add({
-		// 			source: coinid_str,
-		// 			target: txhash,
-		// 			value: crawl.coin_contents[coinid_str].value
-		// 		});
-		// 	}
-		// });
+		
+		
 
 		// let nodes = Array.from(nodes_set).map((id: string) => {
 		// 	if (id === 'Fees') {

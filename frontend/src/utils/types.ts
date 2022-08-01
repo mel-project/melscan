@@ -137,6 +137,76 @@ export interface CrawlItem {
 	spender: Option<[BlockHeight, TxHash]>
 }
 export interface CoinCrawl {
-	crawls: Vec<CrawlItem>
+	coins: Vec<CrawlItem>
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// let res = dirty_res.filter((i: null | CoinSpend) => i);
+
+// 		let input_locations = transaction.inputs.map((input) => ({
+// 			coinid: {
+// 				txhash: input.txhash,
+// 				index: input.index
+// 			},
+// 			txhash,
+// 			height
+// 		}));
+
+// 		let locations = res.concat(input_locations);
+
+// 		let nodes_set = new Set();
+// 		locations.forEach((location: CoinSpend) => {
+// 			nodes_set.add(location.txhash);
+// 			nodes_set.add(location.coinid.txhash);
+// 		});
+
+// 		let links_set = new Set();
+// 		transaction.outputs.forEach((coinData, index) => {
+// 			let id = `${txhash}-${index}`;
+// 			nodes_set.add(id);
+// 			// outputs go from this transaction to the this coin
+// 			links_set.add({
+// 				source: txhash,
+// 				target: id,
+// 				value: 1
+// 			});
+// 		});
+
+// 		locations.forEach((location: CoinSpend) => {
+// 			let id = `${location.coinid.txhash}-${location.coinid.index}`;
+// 			nodes_set.add(id);
+
+// 			if (location.coinid.txhash !== txhash) {
+// 				links_set.add({
+// 					source: location.coinid.txhash,
+// 					target: id,
+// 					value: 1
+// 				});
+// 			}
+
+// 			// this utxo was spent at location.txhash
+// 			links_set.add({
+// 				source: id,
+// 				target: location.txhash,
+// 				value: 1
+// 			});
+// 		});
+
+// 		let nodes = Array.from(nodes_set).map((id) => ({ id }));
+// 		console.log('nodes', nodes);
+
+// 		let links = Array.from(links_set);
