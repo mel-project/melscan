@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { melscan } from '@utils/common';
+	import { melscan, cyrb53 } from '@utils/common';
 	import * as vis from 'vis-network';
 	import * as visd from 'vis-data';
 	export let height;
@@ -21,13 +21,16 @@
 		let nodes = new visd.DataSet([]);
 		let edges = new visd.DataSet([]);
 		Object.entries(crawl.coin_contents).forEach(([coinid_str, coin_data]) => {
+			let coin_hue = cyrb53(coin_data.covhash) % 360;
 			nodes.add({
 				id: coinid_str,
 				label: `Output ${coinid_str.split('-')[1]}\n${(coin_data.value / 1_000_000).toFixed(6)} ${
 					coin_data.denom
 				}\n${abbrString(coin_data.covhash, 6)}`,
 				shape: 'diamond',
-				size: 10
+				size: 10,
+				// mass: 200,
+				color: `hsl(${coin_hue}, 50%, 50%)`
 			});
 			try {
 				nodes.add({
@@ -36,7 +39,7 @@
 					shape: 'box'
 				});
 			} catch {}
-			edges.add({ from: coinid_str.split('-')[0], to: coinid_str });
+			edges.add({ from: coinid_str.split('-')[0], to: coinid_str, color: { inherit: 'to' } });
 		});
 
 		// create an array with edges
@@ -48,7 +51,7 @@
 					shape: 'box'
 				});
 			} catch {}
-			edges.add({ from: coinid_str, to: txhash });
+			edges.add({ from: coinid_str, to: txhash, color: { inherit: 'from' } });
 		});
 
 		// create a network
@@ -62,13 +65,21 @@
 			layout: {
 				hierarchical: {
 					enabled: true,
-					direction: 'LR',
-					sortMethod: 'directed'
+					direction: 'UD',
+					sortMethod: 'directed',
+					shakeTowards: 'roots'
 				}
 			},
 			nodes: {},
 			edges: {
 				arrows: 'to'
+			},
+			physics: {
+				hierarchicalRepulsion: {
+					avoidOverlap: 1,
+					damping: 0.1,
+					springLength: 1
+				}
 			}
 		};
 
@@ -83,7 +94,7 @@
 
 <style>
 	.root {
-		height: 40rem;
+		height: 100%;
 		border: 1px solid #aaa;
 		background-color: white;
 	}

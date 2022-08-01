@@ -171,7 +171,7 @@
 	*/
 	.chart-container {
 		width: 100%;
-		height: 60rem;
+		height: 100%;
 		display: flex;
 		flex-direction: row;
 		gap: 2em;

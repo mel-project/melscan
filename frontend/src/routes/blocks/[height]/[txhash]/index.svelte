@@ -204,10 +204,12 @@
 		</div>
 
 		<div class="mb-3 mt-8">
-			{#key txhash}
-				<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
-				<CoinDag {height} {txhash} />
-			{/key}
+			<div class="dag">
+				{#key txhash}
+					<CoinSankey {height} {txhash} {transaction} {fetch} />
+					<!-- <CoinDag {height} {txhash} /> -->
+				{/key}
+			</div>
 		</div>
 
 		<div class="mb-3 mt-8">
@@ -281,5 +283,13 @@
 <style>
 	td {
 		vertical-align: top;
+	}
+
+	.dag {
+		height: 20rem;
+	}
+
+	.dag-expand {
+		height: 80vh;
 	}
 </style>
