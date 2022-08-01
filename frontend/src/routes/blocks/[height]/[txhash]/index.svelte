@@ -61,6 +61,10 @@
 	function print_coin(coin: MicroUnit) {
 		return `${coin[0]} ${coin[1]}`;
 	}
+	let links = []
+	$: {
+
+	}
 </script>
 
 <template>
@@ -203,7 +207,7 @@
 
 		<div class="mb-3 mt-8">
 			{#key txhash}
-				<CoinSankey {height} {txhash} {transaction} {fetch} />
+				<CoinSankey bind:links={links} {height} {txhash} {transaction} {fetch} />
 			{/key}
 		</div>
 
