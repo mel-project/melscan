@@ -2,6 +2,8 @@ use std::ops::Range;
 
 use anyhow::Context;
 use futures_util::future::join_all;
+use moka::sync::Cache;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use themelio_structs::{Block, BlockHeight, CoinData, CoinID, Transaction, TxHash};
 
@@ -24,55 +26,65 @@ pub struct CrawlItem {
 impl CoinCrawl {
     /// Create a coin crawl surrounding the given TxHash and height.
     pub async fn crawl(height: BlockHeight, txhash: TxHash) -> anyhow::Result<Self> {
-        let snap = CLIENT.older_snapshot(height).await?;
-        let transaction = snap
-            .get_transaction(txhash)
-            .await?
-            .context("transaction not found at this snap")?;
+        static CACHE: Lazy<Cache<TxHash, CoinCrawl>> = Lazy::new(|| Cache::new(10000));
+        if let Some(res) = CACHE.get(&txhash) {
+            Ok(res)
+        } else {
+            let snap = CLIENT.older_snapshot(height).await?;
+            let transaction = snap
+                .get_transaction(txhash)
+                .await?
+                .context("transaction not found at this snap")?;
 
-        // first, we know that the given transaction spent all of its inputs
-        let input_crawls = join_all(transaction.inputs.clone().into_iter().map(|coinid| {
-            let coindata_fut = snap.get_coin_spent_here(coinid);
-            async move {
-                let coindata = coindata_fut.await?.context("must be spent here")?;
-                // also get the content
-                anyhow::Ok(CrawlItem {
-                    coinid,
-                    coindata: coindata.coin_data,
-                    coinheight: coindata.height,
-                    spender: Some((height, txhash)),
-                })
+            // first, we know that the given transaction spent all of its inputs
+            let input_crawls = join_all(transaction.inputs.clone().into_iter().map(|coinid| {
+                let coindata_fut = snap.get_coin_spent_here(coinid);
+                async move {
+                    let coindata = coindata_fut.await?.context("must be spent here")?;
+                    // also get the content
+                    anyhow::Ok(CrawlItem {
+                        coinid,
+                        coindata: coindata.coin_data,
+                        coinheight: coindata.height,
+                        spender: Some((height, txhash)),
+                    })
+                }
+            }))
+            .await
+            .into_iter()
+            .flatten();
+
+            // but we want to know exactly who spent all the other things too.
+            let chain_height = CLIENT.snapshot().await?.current_header().height;
+            let height_range = height.0..chain_height.0;
+            let output_range = 0..transaction.outputs.len();
+            let output_crawls = join_all(output_range.map(|i| {
+                let coinid = transaction.output_coinid(i as u8).to_owned();
+                let coindata = transaction.outputs[i].clone();
+                let spender_fut = find_spend_within_range(coinid, height_range.clone());
+                async move {
+                    let spender = spender_fut.await?;
+                    anyhow::Ok(CrawlItem {
+                        coinid,
+                        coindata,
+                        coinheight: height,
+                        spender, // None if unspent
+                    })
+                }
+            }))
+            .await
+            .into_iter()
+            .flatten();
+
+            let crawls = Self {
+                crawls: input_crawls.chain(output_crawls).collect::<Vec<_>>(),
+            };
+            // ONLY cache if all the coins are spent. This prevents us from caching stale things
+            if crawls.crawls.iter().all(|c| c.spender.is_some()) {
+                CACHE.insert(txhash, crawls.clone());
             }
-        }))
-        .await
-        .into_iter()
-        .flatten();
-
-        // but we want to know exactly who spent all the other things too.
-        let chain_height = CLIENT.snapshot().await?.current_header().height;
-        let height_range = height.0..chain_height.0;
-        let output_range = 0..transaction.outputs.len();
-        let output_crawls = join_all(output_range.map(|i| {
-            let coinid = transaction.output_coinid(i as u8).to_owned();
-            let coindata = transaction.outputs[i].clone();
-            let spender_fut = find_spend_within_range(coinid, height_range.clone());
-            async move {
-                let spender = spender_fut.await?;
-                anyhow::Ok(CrawlItem {
-                    coinid,
-                    coindata,
-                    coinheight: height,
-                    spender, // None if unspent
-                })
-            }
-        }))
-        .await
-        .into_iter()
-        .flatten();
-
-        let crawls = input_crawls.chain(output_crawls).collect::<Vec<_>>();
-
-        Ok(Self { crawls })
+            Ok(crawls)
+        }
     }
 }
 
@@ -80,22 +92,27 @@ async fn find_spend_within_range(
     coinid: CoinID,
     height_range: Range<u64>,
 ) -> anyhow::Result<Option<(BlockHeight, TxHash)>> {
-    let range = height_range;
-    let spend_height = match find_spending_height(coinid, range).await? {
-        Some(spend) => spend,
-        None => return Ok(None),
-    };
+    static CACHE: Lazy<Cache<CoinID, (BlockHeight, TxHash)>> = Lazy::new(|| Cache::new(100000));
 
-    let snapshot = BACKEND.client.older_snapshot(spend_height).await?;
-    let block = snapshot.current_block().await?;
+    if let Some(existant) = CACHE.get(&coinid) {
+        Ok(Some(existant))
+    } else {
+        let range = height_range;
+        let spend_height = match find_spending_height(coinid, range).await? {
+            Some(spend) => spend,
+            None => return Ok(None),
+        };
 
-    let spend_tx = find_spending_transaction(block, coinid).await?;
-    let spend_txhash = spend_tx
-        .context("Unexpected Failure: couldn't find spending transaction in spending block")?
-        .hash_nosigs();
-    println!("{coinid}{spend_height}");
+        let snapshot = BACKEND.client.older_snapshot(spend_height).await?;
+        let block = snapshot.current_block().await?;
 
-    Ok(Some((spend_height, spend_txhash)))
+        let spend_tx = find_spending_transaction(block, coinid).await?;
+        let spend_txhash = spend_tx
+            .context("Unexpected Failure: couldn't find spending transaction in spending block")?
+            .hash_nosigs();
+        CACHE.insert(coinid, (spend_height, spend_txhash));
+        Ok(Some((spend_height, spend_txhash)))
+    }
 }
 
 async fn find_spending_height(

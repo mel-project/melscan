@@ -209,7 +209,7 @@
 			<div class="dag">
 				{#key txhash}
 					<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
-					<CoinDag {height} {txhash} />
+					<CoinDag embed {height} {txhash} />
 				{/key}
 			</div>
 		</div>
