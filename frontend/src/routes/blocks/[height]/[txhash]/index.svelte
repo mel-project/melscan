@@ -199,15 +199,17 @@
 		</div>
 
 		<div class="mb-3 mt-8">
-			<h3 class="text-2xl font-bold">Flow summary</h3>
-			<p>(MEL only)</p>
+			<h3 class="text-2xl font-bold">Coin graph</h3>
+			<p>
+				<a href={`/blocks/${height}/${txhash}/explore`} class="text-blue-800">(see in explorer)</a>
+			</p>
 		</div>
 
 		<div class="mb-3 mt-8">
 			<div class="dag">
 				{#key txhash}
-					<CoinSankey {height} {txhash} {transaction} {fetch} />
-					<!-- <CoinDag {height} {txhash} /> -->
+					<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
+					<CoinDag {height} {txhash} />
 				{/key}
 			</div>
 		</div>

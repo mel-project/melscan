@@ -8,55 +8,58 @@
 
 	let container;
 
-	const getCoinCrawl = async () =>
+	const getCoinCrawl = async (height, txhash) =>
 		await melscan(fetch, `/raw/blocks/${height}/transactions/${txhash}/crawl`);
 
 	const abbrString = (s, len) => {
 		return s.substring(0, len) + '...' + s.substring(s.length - len, s.length);
 	};
 
+	const coinid_str = (c) => c.txhash + '-' + c.index;
+
 	onMount(async () => {
-		console.log('vis is', vis);
-		const crawl = await getCoinCrawl();
 		let nodes = new visd.DataSet([]);
 		let edges = new visd.DataSet([]);
-		Object.entries(crawl.coin_contents).forEach(([coinid_str, coin_data]) => {
-			let coin_hue = cyrb53(coin_data.covhash) % 360;
-			nodes.add({
-				id: coinid_str,
-				label: `Output ${coinid_str.split('-')[1]}\n${(coin_data.value / 1_000_000).toFixed(6)} ${
-					coin_data.denom
-				}\n${abbrString(coin_data.covhash, 6)}`,
-				shape: 'diamond',
-				size: 10,
-				// mass: 200,
-				color: `hsl(${coin_hue}, 50%, 50%)`,
-				title: 'Title'
-			});
-			try {
-				nodes.add({
-					id: coinid_str.split('-')[0],
-					label: abbrString(coinid_str.split('-')[0], 10),
+
+		const refresh = async (height, txhash) => {
+			const crawl = await getCoinCrawl(height, txhash);
+			crawl.crawls.forEach(({ coinid, coindata, coinheight, spender }) => {
+				let coin_hue = cyrb53(coindata.covhash) % 360;
+				console.log('wait...');
+				// await new Promise((r) => setTimeout(r, 10));
+				console.log('dunn');
+				nodes.update({
+					id: coinid_str(coinid),
+					label: `Output ${coinid.index}\n${(coindata.value / 1_000_000).toFixed(6)} ${
+						coindata.denom
+					}\n${abbrString(coindata.covhash, 6)}`,
+					shape: 'diamond',
+					size: 10,
+					// mass: 200,
+					color: `hsl(${coin_hue}, 80%, 40%)`
+				});
+				nodes.update({
+					id: coinid.txhash,
+					label: abbrString(coinid.txhash, 10),
 					shape: 'box',
 					size: 20,
-					title: 'Title'
+					__height: coinheight
 				});
-			} catch {}
-			edges.add({ from: coinid_str.split('-')[0], to: coinid_str, color: { inherit: 'to' } });
-		});
-
-		// create an array with edges
-		Object.entries(crawl.coin_spenders).forEach(([coinid_str, txhash]) => {
-			try {
-				nodes.add({
-					id: txhash,
-					label: abbrString(txhash, 10),
-					shape: 'box',
-					title: 'Title'
-				});
-			} catch {}
-			edges.add({ from: coinid_str, to: txhash, color: { inherit: 'from' } });
-		});
+				edges.update({ from: coinid.txhash, to: coinid_str(coinid), color: { inherit: 'to' } });
+				if (spender) {
+					let [height, txhash] = spender;
+					edges.update({ from: coinid_str(coinid), to: txhash, color: { inherit: 'from' } });
+					nodes.update({
+						id: txhash,
+						label: abbrString(txhash, 10),
+						shape: 'box',
+						size: 20,
+						__height: height
+					});
+				}
+			});
+		};
+		await refresh(height, txhash);
 
 		// create a network
 
@@ -69,7 +72,7 @@
 			layout: {
 				hierarchical: {
 					enabled: true,
-					direction: 'UD',
+					direction: 'LR',
 					sortMethod: 'directed',
 					shakeTowards: 'roots'
 				}
@@ -82,10 +85,11 @@
 				hover: true
 			},
 			physics: {
+				stabilization: true,
 				hierarchicalRepulsion: {
 					avoidOverlap: 1,
-					damping: 0.4,
-					springLength: 1
+					damping: 0.1,
+					springLength: 50
 				},
 				maxVelocity: 100
 			}
@@ -96,6 +100,12 @@
 		network.on('selectNode', (obj) => {
 			obj.nodes.forEach((id) => {
 				console.log('clicked', id);
+				let node = nodes.get(id);
+				if ('__height' in node) {
+					let height = node.__height;
+					console.log('height', node.__height);
+					refresh(height, node.id);
+				}
 			});
 		});
 	});

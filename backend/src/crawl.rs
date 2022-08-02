@@ -17,6 +17,7 @@ pub struct CoinCrawl {
 pub struct CrawlItem {
     coinid: CoinID,
     coindata: CoinData,
+    coinheight: BlockHeight,
     spender: Option<(BlockHeight, TxHash)>,
 }
 
@@ -33,11 +34,12 @@ impl CoinCrawl {
         let input_crawls = join_all(transaction.inputs.clone().into_iter().map(|coinid| {
             let coindata_fut = snap.get_coin_spent_here(coinid);
             async move {
-                let coindata = coindata_fut.await?.context("must be spent here")?.coin_data;
+                let coindata = coindata_fut.await?.context("must be spent here")?;
                 // also get the content
                 anyhow::Ok(CrawlItem {
                     coinid,
-                    coindata,
+                    coindata: coindata.coin_data,
+                    coinheight: coindata.height,
                     spender: Some((height, txhash)),
                 })
             }
@@ -59,6 +61,7 @@ impl CoinCrawl {
                 anyhow::Ok(CrawlItem {
                     coinid,
                     coindata,
+                    coinheight: height,
                     spender, // None if unspent
                 })
             }
