@@ -130,6 +130,6 @@ export interface CoinSpend {
 }
 
 export interface CoinCrawl {
-	coin_contents: { [key: string]: CoinData };
+	coin_contents:  [CoinID, CoinData];
 	coin_spenders: { [key: string]: string };
 }

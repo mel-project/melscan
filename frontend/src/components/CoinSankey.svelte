@@ -14,7 +14,7 @@
 	export let txhash: TxHash;
 	export let transaction: Transaction;
 	export let fetch;
-
+	export let links; 
 	const abbrString = (s, len) => {
 		return s.substring(0, len) + '...' + s.substring(s.length - len, s.length);
 	};
