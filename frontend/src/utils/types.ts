@@ -33,9 +33,9 @@ export enum NetID {
 }
 
 export enum Denom {
-	MEL = '64',
+	MEL = '6d',
 	SYM = 'SYM',
-	ERG = '6d'
+	ERG = '64'
 }
 
 export interface Header {

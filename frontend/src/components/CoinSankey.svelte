@@ -20,6 +20,20 @@
 		return s.substring(0, len) + '...' + s.substring(s.length - len, s.length);
 	};
 	const coinid_str = (coinid: CoinID) => coinid.txhash + '-' + coinid.index;
+	const decode_denom = (denom: string) => {
+		if (denom == Denom.MEL){
+			return "MEL"
+		}
+		else if(denom == Denom.SYM){
+			return 'SYM'
+		}
+		else if(denom == Denom.ERG){
+			return 'ERG'
+		}
+		else {
+			return abbrString(denom, 4)
+		}
+	}
 	const getDataAndRes: () => Promise<[any, CoinCrawl]> = async () => {
 		console.log(transaction.inputs);
 		let res = (await melscan(
@@ -27,7 +41,7 @@
 			`/raw/blocks/${height}/transactions/${txhash}/crawl`
 		)) as CoinCrawl;
 
-		let crawls = res.crawls.filter(({coindata})=>coindata.denom == Denom.MEL)
+		let crawls = res.crawls
 		let nodes_set = new Set();
 
 		let coin_nodes = crawls
@@ -40,27 +54,20 @@
 					id,
 					label: `${id.split('-')[1]} [${(coindata.value / 1_000_000).toFixed(
 						6
-					)} MEL => ${abbrString(coindata.covhash, 4)}]`
+					)} ${decode_denom(coindata.denom)} => ${abbrString(coindata.covhash, 4)}]`
 				};
 
 				
 			
 				return coin_node
-			});
+});
 		let transaction_nodes = crawls
-		.flatMap(({coinid, spender}) => {
-			if (spender) {
-				return [coinid.txhash,spender[1]]
-			}
-			else {
-				return coinid.txhash
-			}
-		})
+		.flatMap(({coinid, spender}) =>  [coinid.txhash, spender ? spender[1] : null])
+		.filter(i=>i)
 		.map((txhash) => {
-			console.log("here", txhash)
 			if(nodes_set.has(txhash)) return null
 			nodes_set.add(txhash)
-			return {id: txhash, label: txhash}
+			return {id: txhash, label: abbrString(txhash, 4)}
 		})
 		.filter(i=>i)
 
@@ -75,24 +82,28 @@
 				value: coindata.value,
 			};
 			if (spender) {
-				let [height, spender_txhash] = spender;
+				let [_, spender_txhash] = spender;
 
 				return [transaction_to_coin,{
 					source: id,
 					target: spender_txhash,
-					value: transaction.fee
+					value: coindata.value
 				}];
 			}
 			return transaction_to_coin
-			return null
-		}).filter(i=>i);
+		});
 
 		// if spent, add spending txhash to nodeset
 
 
 
 		nodes.push({ id: 'Fees', label: "Fees" });
-
+		links.push({
+			source: txhash,
+			target: 'Fees',
+			value: transaction.fee
+		});
+		
 		return [{ nodes, links }, {crawls}];
 	};
 </script>
@@ -124,7 +135,7 @@
 				</LayerCake>
 			{/if}
 		</div>
-		<div class="data-container">
+		<!-- <div class="data-container">
 			Server Response
 			<div class="data">
 				{#each res.crawls as {coinid, coindata, spender}}
@@ -166,7 +177,7 @@
 					<div class="info">{JSON.stringify(l)}</div>
 				{/each}
 			</div>
-		</div>
+		</div> -->
 	{:catch error}
 		<i>{error}</i>
 	{/await}
@@ -180,7 +191,7 @@
 	  expand to fill it.
 	*/
 	.chart-container {
-		width: 100vw;
+		width: 100%;
 		height: 60rem;
 		display: flex;
 		flex-direction: row;

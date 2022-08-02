@@ -44,7 +44,7 @@
 
 	$: link = Sankey.sankeyLinkHorizontal();
 
-	$: fontSize = 11;
+	$: fontSize = 13;
 
 	// https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
 	const cyrb53 = function (str, seed = 0) {
