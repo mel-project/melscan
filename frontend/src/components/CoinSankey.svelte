@@ -41,10 +41,9 @@
 			`/raw/blocks/${height}/transactions/${txhash}/crawl`
 		)) as CoinCrawl;
 
-		let crawls = res.crawls
-	
+		let crawls = res.crawls.filter(({coindata})=>coindata.denom == Denom.MEL)
 		let coin_nodes = crawls
-			.map(({ coinid, coindata, spender }) => {
+			.map(({ coinid, coindata }) => {
 				let id = coinid_str(coinid);
 				let coin_node = {
 					id,
@@ -66,26 +65,30 @@
 		})
 		.filter(i=>i)
 
-		let nodes = transaction_nodes.concat(coin_nodes)
 		
-		let links = crawls.flatMap(({ coinid, coindata, spender }) => {
+		let nonspend_links = crawls.flatMap(({ coinid, coindata, spender }) => {
 			let id = coinid_str(coinid);
 			let transaction_to_coin = {
 				source: coinid.txhash,
 				target: id,
 				value: coindata.value,
 			};
-			if (spender) {
-				let [_, spender_txhash] = spender;
-
-				return [transaction_to_coin,{
-					source: id,
-					target: spender_txhash,
-					value: coindata.value
-				}];
-			}
 			return transaction_to_coin
 		});
+		let spend_links = crawls
+		.filter(({spender})=>spender)
+		.map(({coinid, coindata, spender}) => {
+			let [_, spender_txhash] = spender;
+			let id = coinid_str(coinid);
+			return {
+				source: id,
+				target: spender_txhash,
+				value: coindata.value
+			};
+			
+		})
+		let nodes = transaction_nodes.concat(coin_nodes)
+		links = nonspend_links.concat(spend_links)
 
 		nodes.push({ id: 'Fees', label: "Fees" });
 		links.push({
