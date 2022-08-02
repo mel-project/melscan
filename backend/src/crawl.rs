@@ -51,6 +51,7 @@ impl CoinCrawl {
         // but we want to know exactly who spent all the other things too.
         let chain_height = CLIENT.snapshot().await?.current_header().height;
         let height_range = height.0..chain_height.0;
+
         let output_range = 0..transaction.outputs.len();
         let output_crawls = join_all(output_range
             .map(|i| {
@@ -69,7 +70,7 @@ impl CoinCrawl {
             
 
         let crawls = input_crawls.chain(output_crawls).collect::<Vec<_>>();
-
+        
         Ok(Self {
             crawls
         })

@@ -8,18 +8,18 @@
 		type Transaction,
 		type CoinCrawl,
 		Denom,
-type CoinID
+		type CoinID
 	} from '@utils/types';
 	import { identity } from 'svelte/internal';
 	export let height: BlockHeight;
 	export let txhash: TxHash;
 	export let transaction: Transaction;
 	export let fetch;
-	export let links; 
+	export let links;
 	const abbrString = (s, len) => {
 		return s.substring(0, len) + '...' + s.substring(s.length - len, s.length);
 	};
-	const coinid_str = (coinid: CoinID) => coinid.txhash + "-" + coinid.index
+	const coinid_str = (coinid: CoinID) => coinid.txhash + '-' + coinid.index;
 	const getDataAndRes: () => Promise<[any, CoinCrawl]> = async () => {
 		console.log(transaction.inputs);
 		let crawl = (await melscan(
@@ -29,48 +29,42 @@ type CoinID
 
 		let nodes_set = new Set();
 
-		crawl.coins.forEach(({coinid, coindata, spender}) => {
-			// add the transactions to the nodeset
-			if (coindata.denom === Denom.MEL) {
-				nodes_set.add(coinid_str(coinid));
+		let nodes = crawl.crawls
+			.filter(({ coindata }) => coindata.denom == Denom.MEL)
+			.map(({ coinid, coindata, spender }) => {
+				// add the transactions to the nodeset
+
+				let id = coinid_str(coinid);
+
+				nodes_set.add(id);
 				nodes_set.add(coinid.txhash);
+				return {
+					id,
+					label: `${id.split('-')[1]} [${(coindata.value / 1_000_000).toFixed(
+						6
+					)} MEL => ${abbrString(coindata.covhash, 4)}]`
+				};
+			});
+
+		let links = crawl.crawls.map(({ coinid, coindata, spender }) => {
+			if (spender) {
+				let [height, spender_txhash] = spender;
+				nodes_set.add(txhash);
+
+				return {
+					source: coinid.txhash,
+					target: spender_txhash,
+					value: transaction.fee
+				};
 			}
-			// if spent, add spending txhash to nodeset
-			if(spender){
-				let [height, txhash] = spender;
-				nodes_set.add(txhash)
-			}
 		});
 
+		// if spent, add spending txhash to nodeset
 
-		let links = crawl.coins.map(({coinid, coindata, spender})=>{
-			
-		});
-		links.push({
-			source: txhash,
-			target: 'Fees',
-			value: transaction.fee
-		});
-		
-		
 
-		// let nodes = Array.from(nodes_set).map((id: string) => {
-		// 	if (id === 'Fees') {
-		// 		return { id };
-		// 	}
-		// 	if (id.includes('-')) {
-		// 		return {
-		// 			id: id,
-		// 			label: `${id.split('-')[1]} [${(crawl.coin_contents[id].value / 1_000_000).toFixed(
-		// 				6
-		// 			)} MEL => ${abbrString(crawl.coin_contents[id].covhash, 4)}]`
-		// 		};
-		// 	}
-		// 	return { id, label: abbrString(id, 10) };
-		// });
-		// console.log('nodes', nodes);
+		console.log('nodes', nodes);
 
-		// let links = Array.from(links_set);
+		nodes.push({ id: 'Fees', label: "Fees" });
 
 		return [{ nodes, links }, crawl];
 	};

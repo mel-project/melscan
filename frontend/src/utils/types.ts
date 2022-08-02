@@ -137,7 +137,7 @@ export interface CrawlItem {
 	spender: Option<[BlockHeight, TxHash]>
 }
 export interface CoinCrawl {
-	coins: Vec<CrawlItem>
+	crawls: Vec<CrawlItem>
 }
 
 
