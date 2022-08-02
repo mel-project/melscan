@@ -115,47 +115,35 @@ async fn find_spending_height(
     let index = {
         let mut max_index = height_range.last().unwrap().to_owned(); // will never be None since the range is not empty
         let mut min_index = height_range.first().unwrap().to_owned();
+
+        // if the coin has never been spent, return
+        if coin_exists(max_index, &coin).await? { return Ok(None) }
+    
         while max_index - min_index > 1 {
-            // println!("Bounding heights: {} {}", min_index, max_index);
-
+            
             let check_index = (max_index - min_index) / 2 + min_index;
-            let spent = is_spent(check_index, &coin).await?;
-
-            // println!("Checking: {} Spent: {}", check_index, spent);
+            let spent = coin_exists(check_index, &coin).await?;
 
             match spent {
-                true => max_index = check_index,
-                false => min_index = check_index,
+                false => max_index = check_index,
+                true => min_index = check_index,
             }
         }
-        max_index
+        min_index
     };
 
-    let spend_edge: Vec<BlockHeight> = join_all([index - 1, index].map(|index| {
-        async move {
-            let spend_height = BlockHeight(index);
-            let spend_coin_data = BACKEND.get_coin_at_height(spend_height, coin).await?; // would be nice to replace with a more lightweight function
+    // [true, false]
+    
+    let spend_height = BlockHeight(index);
+    let spend_coin_data = BACKEND.get_coin_at_height(spend_height, coin).await?; // would be nice to replace with a more lightweight function
 
-            // println!("Spent here? {} {:?}", spend_height, spend_coin_data);
-            anyhow::Ok(match spend_coin_data {
-                Some(_) => None,
-                None => Some(spend_height),
-            })
-        }
-    }))
-    .await
-    .into_iter()
-    .flatten()
-    .flatten()
-    .collect();
-
-    match spend_edge.len() {
-        1 => Ok(Some(spend_edge[0])),
-        0 => Ok(None),
-        // the binary search above is convergent and always terminates
-        // `spend_edge_result` always has at most 2 values and values are never added
-        _ => unreachable!(),
-    }
+    // println!("Spent here? {} {:?}", spend_height, spend_coin_data);
+    anyhow::Ok(match spend_coin_data {
+        Some(_) => None,
+        None => Some(spend_height),
+    })
+        
+    
 }
 
 async fn find_spending_transaction(
@@ -170,10 +158,10 @@ async fn find_spending_transaction(
     Ok(tx)
 }
 // if the coin is found at the current height it is not spent; assumes coin existed
-async fn is_spent(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
+async fn coin_exists(height: u64, coinid: &CoinID) -> anyhow::Result<bool> {
     let coin = BACKEND
         .get_coin_at_height(BlockHeight(height), *coinid)
         .await?;
 
-    Ok(coin.is_none())
+    Ok(coin.is_some())
 }
