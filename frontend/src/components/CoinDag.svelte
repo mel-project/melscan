@@ -29,16 +29,20 @@
 		const fixLevel = (left, right) => {
 			let ln = nodes.get(left);
 			let rn = nodes.get(right);
+
 			// console.log('fixing', ln, rn);
 			if (ln.level !== garbageLevel && rn.level === garbageLevel) rn.level = ln.level + 1;
 			else if (rn.level !== garbageLevel && ln.level === garbageLevel) ln.level = rn.level - 1;
 			else if (rn.level === garbageLevel && ln.level === garbageLevel) return false;
 
-			if (rn.level <= ln.level) rn.level = ln.level + 1;
+			if (rn.level <= ln.level) {
+				rn.level = ln.level + 1;
+				return false;
+			}
 
 			ln.hidden = false;
 			rn.hidden = false;
-			nodes.updateOnly([ln, rn]);
+			nodes.update([ln, rn]);
 			return true;
 		};
 		let first = true;
@@ -77,6 +81,7 @@
 			}
 		};
 		// initialize your network!
+
 		const refresh = async (height, txhash) => {
 			loading = true;
 			try {
