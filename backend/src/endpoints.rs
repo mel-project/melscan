@@ -1,18 +1,12 @@
-use std::cmp::Ordering;
+use anyhow::Context;
+use chrono::Utc;
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{Infallible, TryInto};
 use std::fmt::Display;
 use std::io::Cursor;
-use std::num::ParseIntError;
-use std::ops::Range;
-use std::str::FromStr;
 
-use anyhow::Context;
-use chrono::Utc;
-use dashmap::DashMap;
-
-use futures_util::future::join_all;
 use futures_util::Future;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
@@ -338,12 +332,6 @@ fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<OpCodeStrings> {
         ops.push(fmt);
     }
     Ok(ops)
-}
-pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect()
 }
 
 #[get("/raw/blocks/{height}/{txhash}")]
