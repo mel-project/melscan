@@ -33,6 +33,8 @@
 </script>
 
 <script lang="ts">
+	import CoinDag from '@components/CoinDag.svelte';
+
 	export let testnet: boolean;
 	export let txhash: TxHash;
 	export let txhash_abbr: String;
@@ -197,14 +199,19 @@
 		</div>
 
 		<div class="mb-3 mt-8">
-			<h3 class="text-2xl font-bold">Flow summary</h3>
-			<p>(MEL only)</p>
+			<h3 class="text-2xl font-bold">Coin graph</h3>
+			<p>
+				<a href={`/blocks/${height}/${txhash}/explore`} class="text-blue-800">(see in explorer)</a>
+			</p>
 		</div>
 
 		<div class="mb-3 mt-8">
-			{#key txhash}
-				<CoinSankey {height} {txhash} {transaction} {fetch} />
-			{/key}
+			<div class="dag">
+				{#key txhash}
+					<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
+					<CoinDag {height} {txhash} />
+				{/key}
+			</div>
 		</div>
 
 		<div class="mb-3 mt-8">
@@ -278,5 +285,13 @@
 <style>
 	td {
 		vertical-align: top;
+	}
+
+	.dag {
+		height: 20rem;
+	}
+
+	.dag-expand {
+		height: 80vh;
 	}
 </style>
