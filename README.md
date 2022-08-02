@@ -118,15 +118,15 @@ where
 
 A JSON object representing a **transaction**. This has fields:
 
-| Field     | Type    | Description                                                                                                                               |
-| --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `kind`    | integer | See [kind definitions](https://github.com/themeliolabs/themelio-stf/blob/1d7b711f1c0aeb6813b7e87f3391dd67960427d8/src/transaction.rs#L36) |
-| `inputs`  | array   | Array of **CoinID** objects (see definition below)                                                                                        |
-| `outputs` | array   | Array of **CoinData** objects                                                                                                             |
-| `fee`     | integer | µMEL paid as fees                                                                                                                         |
-| `scripts` | array   | Array of hex-encoded MelVM covenants that encumber the coins being spent by this transaction                                              |
-| `data`    | hex     | Arbitrary binary data                                                                                                                     |
-| `sigs`    | array   | Array of hex-encoded malleable signatures                                                                                                 |
+| Field       | Type    | Description                                                                                                                               |
+| ----------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`      | integer | See [kind definitions](https://github.com/themeliolabs/themelio-stf/blob/1d7b711f1c0aeb6813b7e87f3391dd67960427d8/src/transaction.rs#L36) |
+| `inputs`    | array   | Array of **CoinID** objects (see definition below)                                                                                        |
+| `outputs`   | array   | Array of **CoinData** objects                                                                                                             |
+| `fee`       | integer | µMEL paid as fees                                                                                                                         |
+| `covenants` | array   | Array of hex-encoded MelVM covenants that encumber the coins being spent by this transaction                                              |
+| `data`      | hex     | Arbitrary binary data                                                                                                                     |
+| `sigs`      | array   | Array of hex-encoded malleable signatures                                                                                                 |
 
 The **CoinID** object has these fields:
 | Field | Type | Description |
@@ -139,7 +139,7 @@ The **CoinData** object has these fields:
 |--|--|--|
 |`covhash`|hex|Hash of destination covenant, in "address" format
 |`value`|integer|Face value of coin, in millionths
-|`denom`|hex|Denomination of coin. `6d` is MEL and `73` is SYM
+|`denom`|string|Denomination of coin.
 |`additional_data`|hex|Arbitrary data
 
 ### Example
@@ -165,18 +165,18 @@ curl -s https://scan.themelio.org/raw/blocks/344778/transactions/42a18b67ca46486
     {
       "covhash": "t1m9v0fhkbr7q1sfg59prke1sbpt0gm2qgrb166mp8n8m59962gdm0",
       "value": 4000000,
-      "denom": "73",
+      "denom": "SYM",
       "additional_data": ""
     },
     {
       "covhash": "t1m9v0fhkbr7q1sfg59prke1sbpt0gm2qgrb166mp8n8m59962gdm0",
       "value": 51,
-      "denom": "6d",
+      "denom": "MEL",
       "additional_data": ""
     }
   ],
   "fee": 9,
-  "scripts": [
+  "covenants": [
     "420009f100000000000000000000000000000000000000000000000000000000000000064200005050f020e14baf3290821fd234d5b4e15fe7fa04dc1fda7a4ab64e58839e35e69b56d8fe420001320020"
   ],
   "data": "7323dcb65513b84470a76339cdf0062d47d82e205e834f2d7159684a0cb3b5ba0204fc00093d00",
@@ -187,10 +187,6 @@ curl -s https://scan.themelio.org/raw/blocks/344778/transactions/42a18b67ca46486
 }
 ```
 
-### Get an unspent coin
+## Get a time series
 
-TODO
-
-### Get a Melswap pool
-
-TODO
+(TBD))
