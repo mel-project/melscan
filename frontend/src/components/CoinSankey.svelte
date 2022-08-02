@@ -42,25 +42,20 @@
 		)) as CoinCrawl;
 
 		let crawls = res.crawls
-		let nodes_set = new Set();
-
+	
 		let coin_nodes = crawls
 			.map(({ coinid, coindata, spender }) => {
-				// add the transactions to the nodeset
-
 				let id = coinid_str(coinid);
-				// console.log("id", id, "txhash", coinid.txhash)
 				let coin_node = {
 					id,
 					label: `${id.split('-')[1]} [${(coindata.value / 1_000_000).toFixed(
 						6
 					)} ${decode_denom(coindata.denom)} => ${abbrString(coindata.covhash, 4)}]`
 				};
-
-				
-			
 				return coin_node
-});
+		});
+		
+		let nodes_set = new Set();
 		let transaction_nodes = crawls
 		.flatMap(({coinid, spender}) =>  [coinid.txhash, spender ? spender[1] : null])
 		.filter(i=>i)
@@ -72,7 +67,6 @@
 		.filter(i=>i)
 
 		let nodes = transaction_nodes.concat(coin_nodes)
-
 		
 		let links = crawls.flatMap(({ coinid, coindata, spender }) => {
 			let id = coinid_str(coinid);
@@ -92,10 +86,6 @@
 			}
 			return transaction_to_coin
 		});
-
-		// if spent, add spending txhash to nodeset
-
-
 
 		nodes.push({ id: 'Fees', label: "Fees" });
 		links.push({
