@@ -17,8 +17,6 @@
 
 	const coinid_str = (c) => c.txhash + '-' + c.index;
 
-	const garbageLevel = 100;
-
 	let loading = false;
 
 	onMount(async () => {
@@ -30,11 +28,6 @@
 			let ln = nodes.get(left);
 			let rn = nodes.get(right);
 
-			// console.log('fixing', ln, rn);
-			if (ln.level !== garbageLevel && rn.level === garbageLevel) rn.level = ln.level + 1;
-			else if (rn.level !== garbageLevel && ln.level === garbageLevel) ln.level = rn.level - 1;
-			else if (rn.level === garbageLevel && ln.level === garbageLevel) return false;
-
 			if (rn.level <= ln.level) {
 				rn.level = ln.level + 1;
 				return false;
@@ -42,6 +35,7 @@
 
 			ln.hidden = false;
 			rn.hidden = false;
+
 			nodes.update([ln, rn]);
 			return true;
 		};
@@ -96,7 +90,7 @@
 							size: 20,
 							color: '#bbb',
 							__height: height,
-							level: garbageLevel,
+							level: 0,
 							hidden: true
 						});
 				};
@@ -111,12 +105,12 @@
 						shape: 'diamond',
 						size: 10,
 						color: `hsl(${coin_hue}, 80%, 40%)`,
-						level: garbageLevel,
+						level: 0,
 						hidden: true
 					});
 					if (first) {
 						first = false;
-						nodes.update({ id: coinid_str(coinid), level: 10 });
+						nodes.update({ id: coinid_str(coinid), level: 0 });
 						console.log('first is', coinid_str(coinid));
 					}
 					if (!nodes.get(coinid.txhash)) addTxhash(coinid.txhash, coinheight);
@@ -132,8 +126,7 @@
 							id: `${coinid_str(coinid)}/${txhash}`,
 							from: coinid_str(coinid),
 							to: txhash,
-							color: { inherit: 'from' },
-							level: garbageLevel
+							color: { inherit: 'from' }
 						});
 						addTxhash(txhash, height);
 					}

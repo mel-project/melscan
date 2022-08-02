@@ -1,7 +1,9 @@
 use crate::backend::TransactionSummary;
 use anyhow::Context;
 use futures_util::{stream::FuturesOrdered, Future};
+use moka::sync::Cache;
 use num_traits::ToPrimitive;
+use once_cell::sync::Lazy;
 use themelio_nodeprot::ValClientSnapshot;
 use themelio_stf::melvm::covenant_weight_from_bytes;
 use themelio_structs::{Block, CoinID, CoinValue, Denom, PoolKey};
@@ -10,18 +12,24 @@ pub fn get_old_blocks(
     last_snap: &ValClientSnapshot,
     depth: usize,
 ) -> FuturesOrdered<impl Future<Output = anyhow::Result<(Block, CoinValue)>>> {
+    static CACHE: Lazy<Cache<u64, (Block, CoinValue)>> = Lazy::new(|| Cache::new(100));
     let mut futs = FuturesOrdered::new();
     for height in (0..=last_snap.current_header().height.0).rev().take(depth) {
         let last_snap = last_snap.clone();
         futs.push(async move {
-            // log::debug!("rendering block {}", height);
-            let old_snap = last_snap.get_older(height.into()).await?;
-            let reward_coin = old_snap
-                .get_coin(CoinID::proposer_reward(height.into()))
-                .await?;
-            let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
-            let old_block = old_snap.current_block().await?;
-            Ok((old_block, reward_amount))
+            if let Some(res) = CACHE.get(&height) {
+                Ok(res)
+            } else {
+                // log::debug!("rendering block {}", height);
+                let old_snap = last_snap.get_older(height.into()).await?;
+                let reward_coin = old_snap
+                    .get_coin(CoinID::proposer_reward(height.into()))
+                    .await?;
+                let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
+                let old_block = old_snap.current_block().await?;
+                CACHE.insert(height, (old_block.clone(), reward_amount));
+                Ok((old_block, reward_amount))
+            }
         });
     }
     futs
