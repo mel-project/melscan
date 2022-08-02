@@ -8,5 +8,5 @@ rsync -avz --progress --rsync-path="sudo rsync" ./frontend/build/ debian@web.the
 
 rsync -avz --delete --progress --rsync-path="sudo rsync" ./backend/target/x86_64-unknown-linux-musl/release/melscan-backend debian@web.themelio.org:/usr/local/bin/melscan-backend
 
-ssh debian@web.themelio.org sudo systemctl restart melscan-mainnet-backend
-ssh debian@web.themelio.org sudo systemctl restart melscan-mainnet-frontend
+ssh -v debian@web.themelio.org sudo systemctl restart melscan-mainnet-backend
+ssh -v debian@web.themelio.org sudo systemctl restart melscan-mainnet-frontend
