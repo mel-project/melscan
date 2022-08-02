@@ -1,8 +1,7 @@
-use std::{collections::BTreeMap, ops::Range};
+use std::ops::Range;
 
 use anyhow::Context;
 use futures_util::future::join_all;
-use lazy_static::__Deref;
 use serde::{Deserialize, Serialize};
 use themelio_structs::{Block, BlockHeight, CoinData, CoinID, Transaction, TxHash};
 
@@ -20,7 +19,6 @@ pub struct CrawlItem {
     coindata: CoinData,
     spender: Option<(BlockHeight, TxHash)>,
 }
-
 
 impl CoinCrawl {
     /// Create a coin crawl surrounding the given TxHash and height.
@@ -53,28 +51,26 @@ impl CoinCrawl {
         let height_range = height.0..chain_height.0;
 
         let output_range = 0..transaction.outputs.len();
-        let output_crawls = join_all(output_range
-            .map(|i| {
-                let coinid = transaction.output_coinid(i as u8).to_owned();
-                let coindata = transaction.outputs[i].clone();
-                let spender_fut = find_spend_within_range(coinid, height_range.clone());
-                async move {
-                    let spender = spender_fut.await?;
-                    anyhow::Ok(CrawlItem{
-                        coinid,
-                        coindata,
-                        spender, // None if unspent
-                    })
-                }
-            })).await.into_iter().flatten();
-            
+        let output_crawls = join_all(output_range.map(|i| {
+            let coinid = transaction.output_coinid(i as u8).to_owned();
+            let coindata = transaction.outputs[i].clone();
+            let spender_fut = find_spend_within_range(coinid, height_range.clone());
+            async move {
+                let spender = spender_fut.await?;
+                anyhow::Ok(CrawlItem {
+                    coinid,
+                    coindata,
+                    spender, // None if unspent
+                })
+            }
+        }))
+        .await
+        .into_iter()
+        .flatten();
 
         let crawls = input_crawls.chain(output_crawls).collect::<Vec<_>>();
-        
-        Ok(Self {
-            crawls
-        })
-       
+
+        Ok(Self { crawls })
     }
 }
 
@@ -97,10 +93,7 @@ async fn find_spend_within_range(
         .hash_nosigs();
     println!("{coinid}{spend_height}");
 
-    Ok(Some((
-        spend_height,
-        spend_txhash
-    )))
+    Ok(Some((spend_height, spend_txhash)))
 }
 
 async fn find_spending_height(
