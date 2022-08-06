@@ -52,7 +52,7 @@
 			layout: {
 				hierarchical: {
 					enabled: true,
-					direction: 'LR',
+					direction: 'UD',
 					sortMethod: 'directed',
 					shakeTowards: 'leaves'
 				}
@@ -76,7 +76,7 @@
 		};
 		// initialize your network!
 
-		const refresh = async (height, txhash) => {
+		const refresh = async (height, txhash, initLevel = 0) => {
 			loading = true;
 			try {
 				const crawl = await getCoinCrawl(height, txhash);
@@ -90,7 +90,7 @@
 							size: 20,
 							color: '#bbb',
 							__height: height
-							// level: 0,
+							// level: initLevel,
 							// hidden: true
 						});
 				};
@@ -105,12 +105,12 @@
 						shape: 'diamond',
 						size: 10,
 						color: `hsl(${coin_hue}, 80%, 40%)`
-						// level: 0,
+						// level: initLevel
 						// hidden: true
 					});
 					if (first) {
 						first = false;
-						// nodes.update({ id: coinid_str(coinid), level: 0 });
+						// nodes.update({ id: coinid_str(coinid), level: initLevel });
 						console.log('first is', coinid_str(coinid));
 					}
 					if (!nodes.get(coinid.txhash)) addTxhash(coinid.txhash, coinheight);
@@ -167,7 +167,7 @@
 					if (!('__explored' in node)) {
 						let height = node.__height;
 						console.log('height', node.__height);
-						await refresh(height, node.id);
+						await refresh(height, node.id, node.level);
 					}
 					height = node.__height;
 					txhash = node.id;

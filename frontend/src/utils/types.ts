@@ -92,8 +92,8 @@ export interface Transaction {
 	outputs: Vec<CoinData>;
 	fee: CoinValue;
 	covenants: Vec<Vec<u8>>;
-	data: Vec<u8>;
-	sigs: Vec<Vec<u8>>;
+	data: string;
+	sigs: Vec<string>;
 }
 
 export interface CoinID {
@@ -130,6 +130,6 @@ export interface CoinSpend {
 }
 
 export interface CoinCrawl {
-	coin_contents:  [CoinID, CoinData];
+	coin_contents: [CoinID, CoinData];
 	coin_spenders: { [key: string]: string };
 }

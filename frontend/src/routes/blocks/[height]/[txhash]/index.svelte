@@ -176,6 +176,22 @@
 		</div>
 
 		<div class="mb-3 mt-8">
+			<h3 class="text-2xl font-bold">Coin graph</h3>
+			<p>
+				<a href={`/blocks/${height}/${txhash}/explore`} class="text-blue-800">(see in explorer)</a>
+			</p>
+		</div>
+
+		<div class="mb-3 mt-8">
+			<div class="dag">
+				{#key txhash}
+					<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
+					<CoinDag embed {height} {txhash} />
+				{/key}
+			</div>
+		</div>
+
+		<div class="mb-3 mt-8">
 			<h3 class="text-2xl font-bold">Covenants</h3>
 		</div>
 
@@ -199,19 +215,36 @@
 		</div>
 
 		<div class="mb-3 mt-8">
-			<h3 class="text-2xl font-bold">Coin graph</h3>
-			<p>
-				<a href={`/blocks/${height}/${txhash}/explore`} class="text-blue-800">(see in explorer)</a>
-			</p>
+			<h3 class="text-2xl font-bold">Unlock inputs</h3>
 		</div>
 
-		<div class="mb-3 mt-8">
-			<div class="dag">
-				{#key txhash}
-					<!-- <CoinSankey {height} {txhash} {transaction} {fetch} /> -->
-					<CoinDag embed {height} {txhash} />
-				{/key}
-			</div>
+		<div class="m-3">
+			<table class="table-fixed w-full text-sm text-left">
+				<tbody>
+					<tr>
+						<td
+							class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden w-1/3"
+						>
+							<span class="name">Data field ({transaction.data.length / 2} bytes)</span>
+						</td>
+						<td class="w-2/3">
+							<div class="data-field mono">{transaction.data}</div>
+						</td>
+					</tr>
+					{#each transaction.sigs as signature, i}
+						<tr>
+							<td
+								class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden w-1/3"
+							>
+								<span class="name">Signature {i} ({signature.length / 2} bytes)</span>
+							</td>
+							<td class="mono w-2/3 break-all">
+								{signature}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
 		</div>
 
 		<div class="mb-3 mt-8">
@@ -236,7 +269,7 @@
 						</tr>
 						<tr>
 							<td class="text-black text-opacity-50 font-bold">Value</td>
-							<td>{value[0]} {value[1]}</td>
+							<td class="overflow-ellipsis overflow-hidden">{value[0]} {value[1]}</td>
 						</tr>
 						<tr>
 							<td class="text-black text-opacity-50 font-bold ">Recipient</td>
@@ -293,5 +326,14 @@
 
 	.dag-expand {
 		height: 80vh;
+	}
+
+	.data-field {
+		max-height: 10rem;
+		overflow-y: auto;
+		overflow-x: hidden;
+		word-break: break-all;
+		margin-bottom: 1rem;
+		/* font-size: 90%; */
 	}
 </style>
