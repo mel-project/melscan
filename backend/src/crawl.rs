@@ -51,8 +51,7 @@ impl CoinCrawl {
                 }
             }))
             .await
-            .into_iter()
-            .flatten();
+            .into_iter();
 
             // but we want to know exactly who spent all the other things too.
             let chain_height = CLIENT.snapshot().await?.current_header().height;
@@ -73,11 +72,12 @@ impl CoinCrawl {
                 }
             }))
             .await
-            .into_iter()
-            .flatten();
+            .into_iter();
 
             let crawls = Self {
-                crawls: input_crawls.chain(output_crawls).collect::<Vec<_>>(),
+                crawls: input_crawls
+                    .chain(output_crawls)
+                    .collect::<Result<Vec<_>, _>>()?,
             };
             // ONLY cache if all the coins are spent. This prevents us from caching stale things
             if crawls.crawls.iter().all(|c| c.spender.is_some()) {

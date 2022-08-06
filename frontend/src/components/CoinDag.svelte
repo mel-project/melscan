@@ -52,9 +52,9 @@
 			layout: {
 				hierarchical: {
 					enabled: true,
-					direction: 'UD',
+					direction: 'LR',
 					sortMethod: 'directed',
-					shakeTowards: 'roots'
+					shakeTowards: 'leaves'
 				}
 			},
 			nodes: {},
@@ -89,9 +89,9 @@
 							shape: 'box',
 							size: 20,
 							color: '#bbb',
-							__height: height,
-							level: 0,
-							hidden: true
+							__height: height
+							// level: 0,
+							// hidden: true
 						});
 				};
 
@@ -104,13 +104,13 @@
 						}\n${abbrString(coindata.covhash, 6)}`,
 						shape: 'diamond',
 						size: 10,
-						color: `hsl(${coin_hue}, 80%, 40%)`,
-						level: 0,
-						hidden: true
+						color: `hsl(${coin_hue}, 80%, 40%)`
+						// level: 0,
+						// hidden: true
 					});
 					if (first) {
 						first = false;
-						nodes.update({ id: coinid_str(coinid), level: 0 });
+						// nodes.update({ id: coinid_str(coinid), level: 0 });
 						console.log('first is', coinid_str(coinid));
 					}
 					if (!nodes.get(coinid.txhash)) addTxhash(coinid.txhash, coinheight);
@@ -139,18 +139,18 @@
 				});
 
 				// fix level in a loop
-				while (true) {
-					let badcount = 0;
-					edges.forEach((i, _) => {
-						if (!fixLevel(i.from, i.to)) {
-							badcount += 1;
-						}
-					});
-					console.log(badcount);
-					if (badcount === 0) {
-						break;
-					}
-				}
+				// while (true) {
+				// 	let badcount = 0;
+				// 	edges.forEach((i, _) => {
+				// 		if (!fixLevel(i.from, i.to)) {
+				// 			badcount += 1;
+				// 		}
+				// 	});
+				// 	console.log(badcount);
+				// 	if (badcount === 0) {
+				// 		break;
+				// 	}
+				// }
 				// network.redraw();
 			} finally {
 				// network.setData(data);
