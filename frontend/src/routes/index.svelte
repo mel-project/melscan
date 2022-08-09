@@ -7,12 +7,12 @@
 		props: Overview;
 	}
 
-	export let load: LoadFunction<OverviewPage> = async (loadEvent) => {
+	export let load: LoadFunction<any> = async (loadEvent) => {
 		let endpoint = '/raw/overview';
-		let props = (await melscan(loadEvent.fetch, endpoint)) as unknown as Overview;
+		let props = (await melscan(loadEvent.fetch, endpoint)) as Overview;
 		return {
 			status: 200,
-			props
+			props: { params: props }
 		};
 	};
 </script>
@@ -22,17 +22,17 @@
 	import type { BlockHeight } from '@utils/types';
 	import TopNav from '../components/TopNav.svelte';
 
-	export let erg_per_mel, sym_per_mel, recent_blocks;
+	export let params: Overview;
 
 	$: recentTxx = () => {
-		let x = recent_blocks.map((b) => b.transactions).flat();
+		let x = params.recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
 			x.length = 50;
 		}
 		return x;
 	};
 	$: {
-		console.debug(recent_blocks);
+		console.debug(params.recent_blocks);
 	}
 
 	autorefresh(500);
@@ -53,7 +53,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{(1.0 / erg_per_mel).toFixed(5)} MEL
+				{(1.0 / params.erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/ERG/MEL">See details →</a></small>
@@ -61,7 +61,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 SYM =</span>
-				{(1.0 / sym_per_mel).toFixed(5)} MEL
+				{(1.0 / params.sym_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
@@ -92,7 +92,7 @@
 					</tr>
 				</thead>
 				<tbody id="block-rows" class="leading-loose text-sm">
-					{#each recent_blocks as block (block.header.height)}
+					{#each params.recent_blocks as block (block.header.height)}
 						<tr>
 							<td class="font-medium"
 								><a href="/blocks/{block.header.height}" class="text-blue-600"
