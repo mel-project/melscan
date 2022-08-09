@@ -35,7 +35,7 @@
 		console.debug(params.recent_blocks);
 	}
 
-	autorefresh(500);
+	autorefresh(5000);
 </script>
 
 <TopNav><a href="/">Melscan</a></TopNav>
