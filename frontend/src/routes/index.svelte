@@ -34,8 +34,8 @@
 	$: {
 		console.debug(recent_blocks);
 	}
-	
-	autorefresh(backendUrl('/raw/overview'))();
+
+	autorefresh(backendUrl('/raw/overview'))(5000);
 </script>
 
 <TopNav><a href="/">Melscan</a></TopNav>
