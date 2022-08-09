@@ -1,17 +1,15 @@
 <script context="module" lang="ts">
-	import { backendUrl, melscan, type LoadFunction } from '@utils/common';
+	import { backendUrl, melscan, autorefresh } from '@utils/common';
+	import type { LoadFunction } from '@utils/common';
 	import type { Overview } from '@utils/page-types';
 	interface OverviewPage {
 		status: number;
-		props: {
-			overview: Overview;
-		};
+		props: Overview;
 	}
 
 	export let load: LoadFunction<OverviewPage> = async (loadEvent) => {
-		let props = {
-			overview: (await melscan(loadEvent.fetch, '/raw/overview')) as unknown as Overview
-		};
+		let endpoint = '/raw/overview';
+		let props = (await melscan(loadEvent.fetch, endpoint)) as unknown as Overview;
 		return {
 			status: 200,
 			props
@@ -22,20 +20,10 @@
 <script lang="ts">
 	import HashSearch from '@components/HashSearch.svelte';
 	import type { BlockHeight } from '@utils/types';
-	import { onDestroy } from 'svelte';
-
 	import TopNav from '../components/TopNav.svelte';
-	// export let refresh: (s?: string)=>Promise<JSON>;
-	// export let autorefresh: () => void;
 
-	// autorefresh();
+	export let erg_per_mel, sym_per_mel, recent_blocks;
 
-	export let overview;
-	let { erg_per_mel, sym_per_mel, recent_blocks } = overview;
-
-	let height: BlockHeight;
-
-	$: height = recent_blocks[0].header.height;
 	$: recentTxx = () => {
 		let x = recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
@@ -43,6 +31,11 @@
 		}
 		return x;
 	};
+	$: {
+		console.debug(recent_blocks);
+	}
+	
+	autorefresh(backendUrl('/raw/overview'))();
 </script>
 
 <TopNav><a href="/">Melscan</a></TopNav>
@@ -99,7 +92,7 @@
 					</tr>
 				</thead>
 				<tbody id="block-rows" class="leading-loose text-sm">
-					{#each recent_blocks as block}
+					{#each recent_blocks as block (block.header.height)}
 						<tr>
 							<td class="font-medium"
 								><a href="/blocks/{block.header.height}" class="text-blue-600"

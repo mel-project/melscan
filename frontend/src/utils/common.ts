@@ -1,5 +1,7 @@
+import { browser } from '$app/env';
+import { invalidate } from '$app/navigation';
 import type { LoadEvent } from '@sveltejs/kit/types';
-
+import { onDestroy } from 'svelte'
 import type { GraphDatum, GraphQuery } from './page-types';
 
 const baseUrl = import.meta.env.VITE_BASE_URL
@@ -21,7 +23,7 @@ export const melscan = async (fetch: Fetch, endpoint: string): Promise<any> => {
 		}
 		let res = response.json();
 		return res;
-	} catch {}
+	} catch { }
 };
 
 // https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
@@ -55,6 +57,23 @@ export const queryGraph = async (query: GraphQuery): Promise<GraphDatum[]> => {
 		return elem as GraphDatum;
 	});
 };
+
+
+export const autorefresh = (url) => (interval?: number) => {
+	if (browser) {
+		console.log(browser)
+		interval = interval || 1000;
+		let interval_code = setInterval(async () => {
+			// let v = await refresh()
+			// console.log("invalidating", url)
+			invalidate(url)
+
+		}, interval)
+		console.log(interval_code)
+		onDestroy(() => clearInterval(interval_code))
+	}
+};
+
 
 export type EndpointLoader = (loadEvent: LoadEvent) => { [key: string]: string };
 
@@ -108,4 +127,5 @@ let handler = {
 	}
 };
 export const tooltips = new Proxy({}, handler);
+
 // temp end
