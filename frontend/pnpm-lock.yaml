@@ -2,6 +2,7 @@ lockfileVersion: 5.4
 
 specifiers:
   '@sveltejs/adapter-auto': next
+  '@sveltejs/adapter-node': ^1.0.0-next.85
   '@sveltejs/kit': next
   '@types/node': ^18.0.3
   '@typescript-eslint/eslint-plugin': ^5.10.1
@@ -30,9 +31,11 @@ specifiers:
   typescript: ~4.6.2
   typescript-is: ^0.19.0
   uplot: ^1.6.22
+  vis-network: ^9.1.2
   vite: ^3.0.0
 
 dependencies:
+  '@sveltejs/adapter-node': 1.0.0-next.86
   chart.js: 3.8.0
   chartjs-adapter-luxon: 1.1.0_chart.js@3.8.0+luxon@2.4.0
   chartjs-plugin-zoom: 1.2.1_chart.js@3.8.0
@@ -45,10 +48,11 @@ dependencies:
   sass: 1.53.0
   typescript-is: 0.19.0_typescript@4.6.4
   uplot: 1.6.22
+  vis-network: 9.1.2
 
 devDependencies:
   '@sveltejs/adapter-auto': 1.0.0-next.64
-  '@sveltejs/kit': 1.0.0-next.396_svelte@3.48.0+vite@3.0.2
+  '@sveltejs/kit': 1.0.0-next.405_svelte@3.48.0+vite@3.0.2
   '@types/node': 18.0.3
   '@typescript-eslint/eslint-plugin': 5.29.0_cqgkxvblk4mcfu5l3zhs4rfr3u
   '@typescript-eslint/parser': 5.29.0_yrtj344k46h67sdw7qqyyz3die
@@ -247,6 +251,10 @@ packages:
       tiny-glob: 0.2.9
     dev: true
 
+  /@sveltejs/adapter-node/1.0.0-next.86:
+    resolution: {integrity: sha512-VfKcFukVEPoAdm8tVGkFLyDDMZe+9HLFW7X/9Ch/UrSCHo3/HyOfYt/slmh+sjGXYjIBAtTjacrIfcMdYh744g==}
+    dev: false
+
   /@sveltejs/adapter-vercel/1.0.0-next.66:
     resolution: {integrity: sha512-s3Hcxu9nCG/rR3C3cFbdQGjTa5W4K2kRcc6S5Xefx7itbrw+4v3KpO8ZPB6qM55XDwVxuG7260NMHVI6MUGmSA==}
     dependencies:
@@ -257,10 +265,11 @@ packages:
       - supports-color
     dev: true
 
-  /@sveltejs/kit/1.0.0-next.396_svelte@3.48.0+vite@3.0.2:
-    resolution: {integrity: sha512-bKFpuzp9QxPkOIOEIeNeedvxEMORNqBPxUmoJXDP/Se7MrSfcxYiamjBcKrG+bgGNWmV39nD3EvUox+CXno/Ig==}
+  /@sveltejs/kit/1.0.0-next.405_svelte@3.48.0+vite@3.0.2:
+    resolution: {integrity: sha512-jHSa74F7k+hC+0fof75g/xm/+1M5sM66Qt6v8eLLMSgjkp36Lb5xOioBhbl6w0NYoE5xysLsBWuu+yHytfvCBA==}
     engines: {node: '>=16.9'}
     hasBin: true
+    requiresBuild: true
     peerDependencies:
       svelte: ^3.44.0
       vite: ^3.0.0
@@ -269,6 +278,7 @@ packages:
       chokidar: 3.5.3
       sade: 1.8.1
       svelte: 3.48.0
+      tiny-glob: 0.2.9
       vite: 3.0.2_sass@1.53.0
     transitivePeerDependencies:
       - diff-match-patch
@@ -3035,6 +3045,19 @@ packages:
       assert-plus: 1.0.0
       core-util-is: 1.0.2
       extsprintf: 1.3.0
+
+  /vis-network/9.1.2:
+    resolution: {integrity: sha512-BdapguKg7sk3NvdZaDsM7T6rNhOBFz0/F4ZScxctK4klRzQPLQPTEcmbioXaZhMkkgWymzBR3lFCxL1q+eYyAw==}
+    requiresBuild: true
+    peerDependencies:
+      '@egjs/hammerjs': ^2.0.0
+      component-emitter: ^1.3.0
+      keycharm: ^0.2.0 || ^0.3.0 || ^0.4.0
+      timsort: ^0.3.0
+      uuid: ^3.4.0 || ^7.0.0 || ^8.0.0
+      vis-data: ^7.0.0
+      vis-util: ^5.0.1
+    dev: false
 
   /vite/3.0.2_sass@1.53.0:
     resolution: {integrity: sha512-TAqydxW/w0U5AoL5AsD9DApTvGb2iNbGs3sN4u2VdT1GFkQVUfgUldt+t08TZgi23uIauh1TUOQJALduo9GXqw==}

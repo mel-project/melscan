@@ -1,20 +1,18 @@
 <script context="module" lang="ts">
-	import { backendUrl, melscan, type LoadFunction } from '@utils/common';
+	import { backendUrl, melscan, autorefresh } from '@utils/common';
+	import type { LoadFunction } from '@utils/common';
 	import type { Overview } from '@utils/page-types';
 	interface OverviewPage {
 		status: number;
-		props: {
-			overview: Overview;
-		};
+		props: Overview;
 	}
 
-	export let load: LoadFunction<OverviewPage> = async (loadEvent) => {
-		let props = {
-			overview: (await melscan(loadEvent.fetch, '/raw/overview')) as unknown as Overview
-		};
+	export let load: LoadFunction<any> = async (loadEvent) => {
+		let endpoint = '/raw/overview';
+		let props = (await melscan(loadEvent.fetch, endpoint)) as Overview;
 		return {
 			status: 200,
-			props
+			props: { params: props }
 		};
 	};
 </script>
@@ -22,27 +20,22 @@
 <script lang="ts">
 	import HashSearch from '@components/HashSearch.svelte';
 	import type { BlockHeight } from '@utils/types';
-	import { onDestroy } from 'svelte';
-
 	import TopNav from '../components/TopNav.svelte';
-	// export let refresh: (s?: string)=>Promise<JSON>;
-	// export let autorefresh: () => void;
 
-	// autorefresh();
+	export let params: Overview;
 
-	export let overview;
-	let { erg_per_mel, sym_per_mel, recent_blocks } = overview;
-
-	let height: BlockHeight;
-
-	$: height = recent_blocks[0].header.height;
 	$: recentTxx = () => {
-		let x = recent_blocks.map((b) => b.transactions).flat();
+		let x = params.recent_blocks.map((b) => b.transactions).flat();
 		if (x.length > 50) {
 			x.length = 50;
 		}
 		return x;
 	};
+	$: {
+		console.debug(params.recent_blocks);
+	}
+
+	autorefresh(500);
 </script>
 
 <TopNav><a href="/">Melscan</a></TopNav>
@@ -60,7 +53,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 ERG =</span>
-				{(1.0 / erg_per_mel).toFixed(5)} MEL
+				{(1.0 / params.erg_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/ERG/MEL">See details →</a></small>
@@ -68,7 +61,7 @@
 		<div>
 			<span class="text-lg font-bold">
 				<span class="text-black text-opacity-50">1 SYM =</span>
-				{(1.0 / sym_per_mel).toFixed(5)} MEL
+				{(1.0 / params.sym_per_mel).toFixed(5)} MEL
 			</span>
 			<br />
 			<small class="text-blue-600 font-bold"><a href="/pools/MEL/SYM">See details →</a></small>
@@ -99,7 +92,7 @@
 					</tr>
 				</thead>
 				<tbody id="block-rows" class="leading-loose text-sm">
-					{#each recent_blocks as block}
+					{#each params.recent_blocks as block (block.header.height)}
 						<tr>
 							<td class="font-medium"
 								><a href="/blocks/{block.header.height}" class="text-blue-600"
