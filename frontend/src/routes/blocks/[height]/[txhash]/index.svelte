@@ -34,8 +34,6 @@
 
 <script lang="ts">
 	import CoinDag from '@components/CoinDag.svelte';
-
-	export let testnet: boolean;
 	export let txhash: TxHash;
 	export let txhash_abbr: String;
 	export let height: number;
@@ -203,10 +201,12 @@
 							<td class="text-black text-opacity-50 font-bold overflow-ellipsis overflow-hidden">
 								<span class="name">{covhash}</span>
 							</td>
-							<td class="font-medium">
-								{#each covenant as opcode}
-									{opcode} <br />
-								{/each}
+							<td>
+								<div class="data-field">
+									{#each covenant as opcode}
+										{opcode.toLowerCase()} <br />
+									{/each}
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -329,7 +329,7 @@
 	}
 
 	.data-field {
-		max-height: 10rem;
+		max-height: 20rem;
 		overflow-y: auto;
 		overflow-x: hidden;
 		word-break: break-all;

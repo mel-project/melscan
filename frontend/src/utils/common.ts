@@ -6,6 +6,8 @@ const baseUrl = import.meta.env.VITE_BASE_URL
 	? import.meta.env.VITE_BASE_URL
 	: 'https://scan.themelio.org';
 
+export const isTestnet = baseUrl.includes('testnet');
+
 export const backendUrl = (endpoint) => baseUrl + endpoint;
 
 export type Fetch = (info: RequestInfo, init?: RequestInit) => Promise<Response>;

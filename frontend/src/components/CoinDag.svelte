@@ -52,7 +52,7 @@
 			layout: {
 				hierarchical: {
 					enabled: true,
-					direction: 'UD',
+					direction: 'LR',
 					sortMethod: 'directed',
 					shakeTowards: 'leaves'
 				}

@@ -1,10 +1,12 @@
 <script>
-	export let testnet = false;
+	import { isTestnet } from '@utils/common';
+
+	export let testnet = isTestnet;
 </script>
 
 <nav class="mx-auto max-w-screen-lg mt-8 text-xl leading-tight outer">
 	{#if testnet}
-		<span class="font-bold text-black italic text-opacity-50">Testnet </span>
+		<div class="font-bold text-black italic text-opacity-50 tnet">Testnet</div>
 	{/if}
 	<div class="inner">
 		<slot />
@@ -34,6 +36,11 @@
 		flex-direction: row;
 		width: 100%;
 		justify-content: space-between;
+	}
+
+	.inner {
+		flex-grow: 1;
+		margin-left: 0.5rem;
 	}
 
 	.second {
