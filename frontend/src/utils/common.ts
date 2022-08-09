@@ -1,5 +1,7 @@
+import { browser } from '$app/env';
+import { invalidate } from '$app/navigation';
 import type { LoadEvent } from '@sveltejs/kit/types';
-
+import { onDestroy } from 'svelte';
 import type { GraphDatum, GraphQuery } from './page-types';
 
 const baseUrl = import.meta.env.VITE_BASE_URL
@@ -56,6 +58,19 @@ export const queryGraph = async (query: GraphQuery): Promise<GraphDatum[]> => {
 	});
 };
 
+export const autorefresh = (interval?: number) => {
+	if (browser) {
+		console.log(browser);
+		interval = interval || 1000;
+		let interval_code = setInterval(async () => {
+			// let v = await refresh()
+			invalidate((_) => true);
+		}, interval);
+		console.log(interval_code);
+		onDestroy(() => clearInterval(interval_code));
+	}
+};
+
 export type EndpointLoader = (loadEvent: LoadEvent) => { [key: string]: string };
 
 export type LoadFunction<T> = (
@@ -108,4 +123,5 @@ let handler = {
 	}
 };
 export const tooltips = new Proxy({}, handler);
+
 // temp end
