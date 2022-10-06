@@ -1,9 +1,10 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use melblkidx::Indexer;
+use melnet2::{wire::tcp::TcpBackhaul, Backhaul};
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
-use themelio_nodeprot::ValClient;
+use themelio_nodeprot::{NodeRpcClient, ValClient};
 use themelio_structs::NetID;
 
 use crate::backend::Backend;
@@ -19,6 +20,10 @@ pub struct Args {
     connect: SocketAddr,
 
     #[structopt(long)]
+    /// The custom network to connect to
+    network: Option<NetID>,
+
+    #[structopt(long)]
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
 
@@ -32,20 +37,35 @@ pub static CMD_ARGS: Lazy<Args> = Lazy::new(Args::from_args);
 
 /// The global ValClient for talking to the network.
 pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
-    let client = ValClient::new(
-        if CMD_ARGS.testnet {
+    smolscale::block_on(async move {
+        let backhaul = TcpBackhaul::new();
+        let network = if let Some(custom_net) = CMD_ARGS.network {
+            custom_net
+        } else if CMD_ARGS.testnet {
             NetID::Testnet
         } else {
             NetID::Mainnet
-        },
-        CMD_ARGS.connect,
-    );
-    if CMD_ARGS.testnet {
-        client.trust(themelio_bootstrap::checkpoint_height(NetID::Testnet).unwrap());
-    } else {
-        client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
-    }
-    client
+        };
+
+        let client = ValClient::new(
+            network,
+            NodeRpcClient(
+                backhaul
+                    .connect(CMD_ARGS.connect.to_string().into())
+                    .await
+                    .unwrap(),
+            ),
+        );
+        if let Some(_) = CMD_ARGS.network {
+            println!("Insecurely trusting snapshot on a custom network");
+            client.insecure_latest_snapshot().await.unwrap();
+        } else if CMD_ARGS.testnet {
+            client.trust(themelio_bootstrap::checkpoint_height(NetID::Testnet).unwrap());
+        } else {
+            client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
+        }
+        client
+    })
 });
 
 pub static BACKEND: Lazy<Backend> = Lazy::new(|| {
