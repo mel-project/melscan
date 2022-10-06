@@ -20,6 +20,10 @@ pub struct Args {
     connect: SocketAddr,
 
     #[structopt(long)]
+    /// The custom network to connect to
+    network: Option<NetID>,
+
+    #[structopt(long)]
     /// Whether or not the block explorer is connected to a testnet node.
     testnet: bool,
 
@@ -35,12 +39,16 @@ pub static CMD_ARGS: Lazy<Args> = Lazy::new(Args::from_args);
 pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
     smolscale::block_on(async move {
         let backhaul = TcpBackhaul::new();
+        let network = if let Some(custom_net) = CMD_ARGS.network {
+            custom_net
+        } else if CMD_ARGS.testnet {
+            NetID::Testnet
+        } else {
+            NetID::Mainnet
+        };
+
         let client = ValClient::new(
-            if CMD_ARGS.testnet {
-                NetID::Testnet
-            } else {
-                NetID::Mainnet
-            },
+            network,
             NodeRpcClient(
                 backhaul
                     .connect(CMD_ARGS.connect.to_string().into())
@@ -48,7 +56,10 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
                     .unwrap(),
             ),
         );
-        if CMD_ARGS.testnet {
+        if let Some(_) = CMD_ARGS.network {
+            println!("Insecurely trusting snapshot on a custom network");
+            client.insecure_latest_snapshot().await.unwrap();
+        } else if CMD_ARGS.testnet {
             client.trust(themelio_bootstrap::checkpoint_height(NetID::Testnet).unwrap());
         } else {
             client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
