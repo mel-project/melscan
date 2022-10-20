@@ -87,6 +87,51 @@ jobs:
 
 
 
+  backend-build:
+    runs-on: self-hosted
+
+    container:
+      image: rust:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Add Default Toolchain
+        run: rustup default stable
+
+      - name: Update Rust
+        run: rustup update
+
+      - uses: themeliolabs/actions-sccache@v1
+
+      - uses: themeliolabs/actions-mold@v1
+
+      - name: Build MelScan
+        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
+
+      - name: Create MelScan Directory
+        run: mkdir melscan-archive
+
+      - name: Move MelwalletD Binary
+        run: mv backend/target/x86_64-unknown-linux-musl/debug/melscan-backend melscan-archive/melscan-backend
+
+      - name: Create MelScan Archive
+        run: tar -czvf /tmp/melscan-backend.tar.gz melscan-archive
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: backend-dev
+          path: /tmp/backend.tar.gz
+
+
+
 
 
 
