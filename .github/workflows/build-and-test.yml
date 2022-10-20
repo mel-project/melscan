@@ -39,6 +39,9 @@ jobs:
 #
 #    runs-on: self-hosted
 #
+#    needs:
+#      - frontend-lint
+#
 #    container:
 #      image: node:latest
 #      volumes:
@@ -73,6 +76,9 @@ jobs:
 #  testnet-frontend-build:
 #
 #    runs-on: self-hosted
+#
+#    needs:
+#      - frontend-lint
 #
 #    container:
 #      image: node:latest
@@ -129,13 +135,19 @@ jobs:
 #
 #      - name: Update Rust
 #        run: rustup update
-#
-#      - uses: themeliolabs/actions-sccache@v1
+
+      - uses: themeliolabs/actions-sccache@v1
 
       - uses: themeliolabs/actions-mold@v1
 
       - name: List
         run: ls -la /usr/local/bin
+
+      - name: SCCache Version
+        run: sccache --version
+
+      - name: Mold Version
+        run: mold --version
 
 #      - name: Build MelScan
 #        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
