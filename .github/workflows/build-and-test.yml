@@ -103,8 +103,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install The Musl Development Package
-        run: apk add musl-dev
+      - name: Install The Musl Development Package And Bash
+        run: apk add musl-dev bash
 
       - name: Add Musl Toolchain
         run: rustup target add x86_64-unknown-linux-musl
