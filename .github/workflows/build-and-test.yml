@@ -46,8 +46,43 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: frontend-dev
-          path: /tmp/frontend.tar.gz
+          name: frontend-mainnet-dev
+          path: /tmp/frontend-mainnet.tar.gz
+
+
+  testnet-frontend-build:
+
+    runs-on: self-hosted
+
+    container:
+      image: node:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/npm-cache:/usr/local/npm-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Yarn Install
+        run: yarn install --prefer-offline --cwd frontend
+
+      - name: Run NPM Build
+        env:
+          BUILD: "development"
+          VITE_BASE_URL: "https://scan-testnet.themelio.org"
+        run: npm run build --prefix frontend
+
+      - name: Copy Manifest To Build Folder
+        run: cp frontend/package.json frontend/build/
+
+      - name: Create Frontend Archive
+        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: frontend-testnet-dev
+          path: /tmp/frontend-testnet.tar.gz
 
 
 
