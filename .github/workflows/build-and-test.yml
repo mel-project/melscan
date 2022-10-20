@@ -35,6 +35,27 @@ jobs:
       - name: Run NPM Lint
         run: npm run lint --prefix frontend
 
+
+  frontend-check:
+
+    runs-on: self-hosted
+
+    container:
+      image: node:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/npm-cache:/usr/local/npm-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Yarn Install
+        run: yarn install --prefer-offline --cwd frontend
+
+      - name: Run NPM Lint
+        run: npm run check --prefix frontend
+
 #  mainnet-frontend-build:
 #
 #    runs-on: self-hosted
