@@ -15,76 +15,74 @@ env:
   YARN_CACHE_FOLDER: "/usr/local/npm-cache"
 
 jobs:
-  mainnet-frontend-build:
-
-    runs-on: self-hosted
-
-    container:
-      image: node:latest
-      volumes:
-        - /var/lib/docker:/var/lib/docker
-        - /usr/local/npm-cache:/usr/local/npm-cache
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Run Yarn Install
-        run: yarn install --prefer-offline --cwd frontend
-
-      - name: Run NPM Build
-        env:
-          BUILD: "development"
-          VITE_BASE_URL: "https://scan.themelio.org"
-        run: npm run build --prefix frontend
-
-      - name: Copy Manifest To Build Folder
-        run: cp frontend/package.json frontend/build/
-
-      - name: Create Frontend Archive
-        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: frontend-mainnet-dev
-          path: /tmp/frontend-mainnet.tar.gz
-
-
-  testnet-frontend-build:
-
-    runs-on: self-hosted
-
-    container:
-      image: node:latest
-      volumes:
-        - /var/lib/docker:/var/lib/docker
-        - /usr/local/npm-cache:/usr/local/npm-cache
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Run Yarn Install
-        run: yarn install --prefer-offline --cwd frontend
-
-      - name: Run NPM Build
-        env:
-          BUILD: "development"
-          VITE_BASE_URL: "https://scan-testnet.themelio.org"
-        run: npm run build --prefix frontend
-
-      - name: Copy Manifest To Build Folder
-        run: cp frontend/package.json frontend/build/
-
-      - name: Create Frontend Archive
-        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: frontend-testnet-dev
-          path: /tmp/frontend-testnet.tar.gz
-
-
+#  mainnet-frontend-build:
+#
+#    runs-on: self-hosted
+#
+#    container:
+#      image: node:latest
+#      volumes:
+#        - /var/lib/docker:/var/lib/docker
+#        - /usr/local/npm-cache:/usr/local/npm-cache
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v3
+#
+#      - name: Run Yarn Install
+#        run: yarn install --prefer-offline --cwd frontend
+#
+#      - name: Run NPM Build
+#        env:
+#          BUILD: "development"
+#          VITE_BASE_URL: "https://scan.themelio.org"
+#        run: npm run build --prefix frontend
+#
+#      - name: Copy Manifest To Build Folder
+#        run: cp frontend/package.json frontend/build/
+#
+#      - name: Create Frontend Archive
+#        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
+#
+#      - uses: actions/upload-artifact@v3
+#        with:
+#          name: frontend-mainnet-dev
+#          path: /tmp/frontend-mainnet.tar.gz
+#
+#
+#  testnet-frontend-build:
+#
+#    runs-on: self-hosted
+#
+#    container:
+#      image: node:latest
+#      volumes:
+#        - /var/lib/docker:/var/lib/docker
+#        - /usr/local/npm-cache:/usr/local/npm-cache
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v3
+#
+#      - name: Run Yarn Install
+#        run: yarn install --prefer-offline --cwd frontend
+#
+#      - name: Run NPM Build
+#        env:
+#          BUILD: "development"
+#          VITE_BASE_URL: "https://scan-testnet.themelio.org"
+#        run: npm run build --prefix frontend
+#
+#      - name: Copy Manifest To Build Folder
+#        run: cp frontend/package.json frontend/build/
+#
+#      - name: Create Frontend Archive
+#        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
+#
+#      - uses: actions/upload-artifact@v3
+#        with:
+#          name: frontend-testnet-dev
+#          path: /tmp/frontend-testnet.tar.gz
 
 
   backend-build:
@@ -106,32 +104,35 @@ jobs:
       - name: Install The Musl Development Package And Bash
         run: apk add musl-dev bash
 
-      - name: Add Musl Toolchain
-        run: rustup target add x86_64-unknown-linux-musl
-
-      - name: Update Rust
-        run: rustup update
-
-      - uses: themeliolabs/actions-sccache@v1
+#      - name: Add Musl Toolchain
+#        run: rustup target add x86_64-unknown-linux-musl
+#
+#      - name: Update Rust
+#        run: rustup update
+#
+#      - uses: themeliolabs/actions-sccache@v1
 
       - uses: themeliolabs/actions-mold@v1
 
-      - name: Build MelScan
-        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
+      - name: List
+        run: ls -la /usr/local
 
-      - name: Create MelScan Directory
-        run: mkdir melscan-archive
-
-      - name: Move MelwalletD Binary
-        run: mv backend/target/x86_64-unknown-linux-musl/debug/melscan-backend melscan-archive/melscan-backend
-
-      - name: Create MelScan Archive
-        run: tar -czvf /tmp/melscan-backend.tar.gz melscan-archive
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: backend-dev
-          path: /tmp/backend.tar.gz
+#      - name: Build MelScan
+#        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
+#
+#      - name: Create MelScan Directory
+#        run: mkdir melscan-archive
+#
+#      - name: Move MelwalletD Binary
+#        run: mv backend/target/x86_64-unknown-linux-musl/debug/melscan-backend melscan-archive/melscan-backend
+#
+#      - name: Create MelScan Archive
+#        run: tar -czvf /tmp/melscan-backend.tar.gz melscan-archive
+#
+#      - uses: actions/upload-artifact@v3
+#        with:
+#          name: backend-dev
+#          path: /tmp/backend.tar.gz
 
 
 
