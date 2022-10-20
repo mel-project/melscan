@@ -15,6 +15,26 @@ env:
   YARN_CACHE_FOLDER: "/usr/local/npm-cache"
 
 jobs:
+  frontend-lint:
+
+    runs-on: self-hosted
+
+    container:
+      image: node:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/npm-cache:/usr/local/npm-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Yarn Install
+        run: yarn install --prefer-offline --cwd frontend
+
+      - name: Run NPM Lint
+        run: npm run lint --prefix frontend
+
 #  mainnet-frontend-build:
 #
 #    runs-on: self-hosted
@@ -115,7 +135,7 @@ jobs:
       - uses: themeliolabs/actions-mold@v1
 
       - name: List
-        run: ls -la /usr/local
+        run: ls -la /usr/local/bin
 
 #      - name: Build MelScan
 #        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
