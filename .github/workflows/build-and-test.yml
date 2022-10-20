@@ -42,7 +42,7 @@ jobs:
         run: cp frontend/package.json frontend/build/
 
       - name: Create Frontend Archive
-        run: tar -czvf /tmp/frontend.tar.gz -C frontend/build build
+        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
 
       - uses: actions/upload-artifact@v3
         with:
