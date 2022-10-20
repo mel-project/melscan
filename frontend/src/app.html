@@ -1,51 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
+		<link href="https://cdn.jsdelivr.net/npm/uplot@1.6.22/dist/uPlot.min.css" rel="stylesheet" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.9.1/font/bootstrap-icons.min.css"
+			integrity="sha512-5PV92qsds/16vyYIJo3T/As4m2d8b6oWYfoqV+vtizRB6KhF1F9kYzWzQmsO6T3z3QG2Xdhrx7FQ+5R1LiQdUA=="
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"
+		/>
+		<style>
+			@import 'https://themelio.org/iosevka-aile/iosevka-aile.css';
+			@import url('https://fonts.googleapis.com/css2?family=PT+Mono&display=swap');
 
-<head>
-	<meta charset="utf-8" />
-	<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
-	<link href="https://cdn.jsdelivr.net/npm/uplot@1.6.22/dist/uPlot.min.css" rel="stylesheet" />
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.9.1/font/bootstrap-icons.min.css" integrity="sha512-5PV92qsds/16vyYIJo3T/As4m2d8b6oWYfoqV+vtizRB6KhF1F9kYzWzQmsO6T3z3QG2Xdhrx7FQ+5R1LiQdUA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-	<style>
-		@import "https://themelio.org/iosevka-aile/iosevka-aile.css";
-		@import url('https://fonts.googleapis.com/css2?family=PT+Mono&display=swap');
+			body {
+				font-family: 'Iosevka Aile Web', sans-serif;
+				padding: 1rem;
+			}
 
-		body {
-			font-family: 'Iosevka Aile Web', sans-serif;
-			padding: 1rem;
-		}
+			.mono {
+				font-family: 'Roboto Mono', monospace;
+			}
 
-		.mono {
-			font-family: "Roboto Mono", monospace
-		}
+			html {
+				font-size: 16.5px;
+				background-color: #f8fbf8;
+			}
 
-		html {
-			font-size: 16.5px;
-			background-color: #f8fbf8;
-		}
+			.link {
+				fill: none;
+				stroke: #000;
+				stroke-opacity: 0.2;
+			}
 
-		.link {
-			fill: none;
-			stroke: #000;
-			stroke-opacity: 0.2;
-		}
+			.link:hover {
+				stroke-opacity: 0.5;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+		</style>
+		<title>Melscan</title>
+		%sveltekit.head%
+	</head>
 
-		.link:hover {
-			stroke-opacity: 0.5;
-		}
-		a:hover {
-			text-decoration: underline;
-		}
-
-	</style>
-	<title>Melscan</title>
-	%sveltekit.head%
-</head>
-
-<body>
-	%sveltekit.body%
-</body>
-
+	<body>
+		%sveltekit.body%
+	</body>
 </html>
