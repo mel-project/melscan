@@ -20,11 +20,10 @@
 
 	let container: HTMLElement;
 
-	const formatData = (d: GraphDatum[]): uPlot.AlignedData => ([
+	const formatData = (d: GraphDatum[]): uPlot.AlignedData => [
 		d.map((dp) => dp.date.getTime() / 1000.0),
-		d.map((dp) => (isNaN(dp.value) ? 0.0 : dp.value))]
-		);
-
+		d.map((dp) => (isNaN(dp.value) ? 0.0 : dp.value))
+	];
 
 	function clamp(
 		nRange: number,
