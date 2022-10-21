@@ -41,7 +41,6 @@
 		"layercake": "^7.0.0",
 		"lodash": "^4.17.21",
 		"luxon": "^2.4.0",
-		"node-sass": "^7.0.1",
 		"reflect-metadata": "^0.1.13",
 		"sass": "^1.53.0",
 		"typescript-is": "^0.19.0",
