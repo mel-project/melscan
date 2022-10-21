@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { invalidate } from '$app/navigation';
 import type { LoadEvent } from '@sveltejs/kit/types';
 import { onDestroy } from 'svelte';
