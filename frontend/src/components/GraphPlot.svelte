@@ -20,10 +20,11 @@
 
 	let container: HTMLElement;
 
-	const formatData = (d: GraphDatum[]) => [
+	const formatData = (d: GraphDatum[]): uPlot.AlignedData => ([
 		d.map((dp) => dp.date.getTime() / 1000.0),
-		d.map((dp) => (isNaN(dp.value) ? 0.0 : dp.value))
-	];
+		d.map((dp) => (isNaN(dp.value) ? 0.0 : dp.value))]
+		);
+
 
 	function clamp(
 		nRange: number,
@@ -67,12 +68,16 @@
 			let maxDigits = Math.ceil(
 				Math.log10(dataPoints.map((d) => d.value).reduce((a, b) => Math.max(a, b), 0.0))
 			);
-			let opts = {
+			let opts: uPlot.Options = {
+				mode: null,
 				title: title,
 				id: 'chart1',
 				class: 'my-chart',
 				width: size.width,
 				height: size.height,
+				data: null,
+				tzDate: null,
+				fmtDate: null,
 				padding: [0, 0, 0, Math.max((maxDigits - 4) * 8, 0)],
 				series: [
 					{},
