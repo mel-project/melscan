@@ -138,20 +138,23 @@ jobs:
     runs-on: self-hosted
 
     container:
-      image: rust:alpine
+      image: rust:latest
       volumes:
         - /var/lib/docker:/var/lib/docker
-#        - /usr/local/cargo/git:/usr/local/cargo/git
-#        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
         - /usr/local/sccache:/usr/local/sccache
-#        - /usr/local/rustup:/usr/local/rustup
+        - /usr/local/rustup:/usr/local/rustup
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Update Apt
+        run: apt update
+
       - name: Install The Musl Development Package And Bash
-        run: apk add musl-dev bash
+        run: apt -y install musl musl-tools
 
       - name: Add Musl Toolchain
         run: rustup target add x86_64-unknown-linux-musl
@@ -161,16 +164,10 @@ jobs:
 
       - uses: themeliolabs/actions-sccache@v1
 
-#      - uses: themeliolabs/actions-mold@v1
-
-      - name: SCCache Version
-        run: sccache --version
-
-#      - name: Build MelScan
-#        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
+      - uses: themeliolabs/actions-mold@v1
 
       - name: Build MelScan
-        run: cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
+        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
 
       - name: Create MelScan Directory
         run: mkdir melscan-archive
@@ -187,6 +184,57 @@ jobs:
           path: /tmp/backend.tar.gz
 
 
+
+#  build-docker-image-and-run-bats:
+#    runs-on: self-hosted
+#
+#    container:
+#      image: summerwind/actions-runner-dind:latest
+#      volumes:
+#        - /var/lib/docker:/var/lib/docker
+#      options: --privileged --user root
+#
+#    needs:
+#      - musl-build
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v3
+#
+#      - name: Update Apt
+#        run: apt update
+#
+#      - name: Install Requirements
+#        run: apt -y install p7zip gettext packer
+#
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: themelio-node-dev
+#
+#      - name: Extract Themelio-Node Archive
+#        run: 7zr e themelio-node.7z
+#
+#      - name: Move Themelio-Node Binary
+#        run: mv themelio-node docker/dev/
+#
+#      - name: Install Yq
+#        run: pip install yq
+#
+#      - name: Create Version Environment Variable
+#        run: echo "THEMELIO_NODE_VERSION=$(cat Cargo.toml | tomlq .package.version | tr -d '"')" >> $GITHUB_ENV
+#
+#      - name: Set Network
+#        run: ./ci/set-network.sh
+#
+#      - name: Build Docker Image
+#        env:
+#          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
+#        run: docker build --build-arg themelio_node_version=${THEMELIO_NODE_VERSION} -t "ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}" docker/dev/
+#
+#      - name: Run Docker Image
+#        env:
+#          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
+#        run: docker run -p 11814:11814 -p 8080:8080 -e NETWORK=${NETWORK_TO_BUILD} ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}
 
 
 
