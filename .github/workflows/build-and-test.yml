@@ -91,7 +91,7 @@ jobs:
 
       - name: Create Frontend Archive
 #        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
-        run: tar -czvf /tmp/frontend.tar.gz frontend-archive
+        run: tar -czvf /tmp/melscan-frontend.tar.gz frontend-archive
 
       - uses: actions/upload-artifact@v3
         with:
