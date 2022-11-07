@@ -143,97 +143,109 @@ jobs:
           path: melscan-backend.7z
 
 
-#  mainnet-build-docker-image-and-run-bats:
-#    runs-on: self-hosted
-#
-#    container:
-#      image: summerwind/actions-runner-dind:latest
-#      volumes:
-#        - /var/lib/docker:/var/lib/docker
-#      options: --privileged --user root
-#
-#    needs:
-#      - backend-build
-#      - frontend-build
-#
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v3
-#
-#      - name: Update Apt
-#        run: apt update
-#
-#      - name: Install Requirements
-#        run: apt -y install p7zip
-#
-#      - uses: actions/download-artifact@v3
-#        with:
-#          name: melscan-backend-dev
-#
-#      - uses: actions/download-artifact@v3
-#        with:
-#          name: melscan-frontend-dev
-#
-#      - name: Extract MelScan Backend Archive
-#        run: 7zr e melscan-backend.7z
-#
-#      - name: Move MelScan Backend Binary
-#        run: mv melscan-backend docker/dev/
-#
-#      - name: Build Docker Image
-#        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
-#
-#      - name: Run Docker Image
-#        env:
-#          BACKEND_URL: "http://localhost:13000"
-#        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
-#
-#
-#
-#  testnet-build-docker-image-and-run-bats:
-#    runs-on: self-hosted
-#
-#    container:
-#      image: summerwind/actions-runner-dind:latest
-#      volumes:
-#        - /var/lib/docker:/var/lib/docker
-#      options: --privileged --user root
-#
-#    needs:
-#      - backend-build
-#      - frontend-build
-#
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v3
-#
-#      - name: Update Apt
-#        run: apt update
-#
-#      - name: Install Requirements
-#        run: apt -y install p7zip
-#
-#      - uses: actions/download-artifact@v3
-#        with:
-#          name: melscan-backend-dev
-#
-#      - uses: actions/download-artifact@v3
-#        with:
-#          name: melscan-frontend-dev
-#
-#      - name: Extract MelScan Backend Archive
-#        run: 7zr e melscan-backend.7z
-#
-#      - name: Move MelScan Backend Binary
-#        run: mv melscan-backend docker/dev/
-#
-#      - name: Build Docker Image
-#        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
-#
-#      - name: Add TestNet Host
-#        run: echo "127.0.0.1 testnet.local" >> /etc/hosts
-#
-#      - name: Run Docker Image
-#        env:
-#          BACKEND_URL: "http://testnet.local:13000"
-#        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
+  mainnet-build-docker-image-and-run-bats:
+    runs-on: self-hosted
+
+    container:
+      image: summerwind/actions-runner-dind:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+      options: --privileged --user root
+
+    needs:
+      - backend-build
+      - frontend-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install p7zip
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-backend-dev
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-frontend-dev
+
+      - name: Extract MelScan Backend Archive
+        run: 7zr e melscan-backend.7z
+
+      - name: Move MelScan Backend Binary
+        run: mv melscan-backend docker/dev/
+
+      - name: Extract MelScan Frontend Archive
+        run: tar -xf melscan-frontend.tar.gz
+
+      - name: Move Frontend Files
+        run: mv frontend-archive/* .
+
+      - name: Build Docker Image
+        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
+
+      - name: Run Docker Image
+        env:
+          BACKEND_URL: "http://localhost:13000"
+        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
+
+
+
+  testnet-build-docker-image-and-run-bats:
+    runs-on: self-hosted
+
+    container:
+      image: summerwind/actions-runner-dind:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+      options: --privileged --user root
+
+    needs:
+      - backend-build
+      - frontend-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install p7zip
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-backend-dev
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-frontend-dev
+
+      - name: Extract MelScan Backend Archive
+        run: 7zr e melscan-backend.7z
+
+      - name: Move MelScan Backend Binary
+        run: mv melscan-backend docker/dev/
+
+      - name: Extract MelScan Frontend Archive
+        run: tar -xf melscan-frontend.tar.gz
+
+      - name: Move Frontend Files
+        run: mv frontend-archive/* .
+
+      - name: Build Docker Image
+        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
+
+      - name: Add TestNet Host
+        run: echo "127.0.0.1 testnet.local" >> /etc/hosts
+
+      - name: Run Docker Image
+        env:
+          BACKEND_URL: "http://testnet.local:13000"
+        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
