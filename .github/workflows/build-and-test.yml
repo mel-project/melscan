@@ -87,7 +87,7 @@ jobs:
         run: cp frontend/package.json frontend-archive/
 
       - name: Move Frontend Build To Archive Folder
-        run: mv build frontend-archive/
+        run: mv frontend/build frontend-archive/
 
       - name: Create Frontend Archive
 #        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
