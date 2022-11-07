@@ -56,7 +56,7 @@ jobs:
       - name: Run NPM Check
         run: npm run check --prefix frontend
 
-  mainnet-frontend-build:
+  frontend-build:
 
     runs-on: self-hosted
 
@@ -78,60 +78,25 @@ jobs:
         run: yarn install --prefer-offline --cwd frontend
 
       - name: Run NPM Build
-        env:
-          BUILD: "development"
-          VITE_BASE_URL: "https://scan.themelio.org"
-        run: npm run build --prefix frontend
+        run: npm run build-dev --prefix frontend
+
+      - name: Create Frontend Archive Directory
+        run: mkdir frontend-archive
 
       - name: Copy Manifest To Build Folder
-        run: cp frontend/package.json frontend/build/
+        run: cp frontend/package.json frontend-archive/
+
+      - name: Move Frontend Build To Archive Folder
+        run: mv build frontend-archive/
 
       - name: Create Frontend Archive
-        run: tar -czvf /tmp/frontend-mainnet.tar.gz -C frontend build
+#        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
+        run: tar -czvf /tmp/frontend.tar.gz frontend-archive
 
       - uses: actions/upload-artifact@v3
         with:
-          name: frontend-mainnet-dev
-          path: /tmp/frontend-mainnet.tar.gz
-
-
-  testnet-frontend-build:
-
-    runs-on: self-hosted
-
-    needs:
-      - frontend-lint
-      - frontend-check
-
-    container:
-      image: node:latest
-      volumes:
-        - /var/lib/docker:/var/lib/docker
-        - /usr/local/npm-cache:/usr/local/npm-cache
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Run Yarn Install
-        run: yarn install --prefer-offline --cwd frontend
-
-      - name: Run NPM Build
-        env:
-          BUILD: "development"
-          VITE_BASE_URL: "https://scan-testnet.themelio.org"
-        run: npm run build --prefix frontend
-
-      - name: Copy Manifest To Build Folder
-        run: cp frontend/package.json frontend/build/
-
-      - name: Create Frontend Archive
-        run: tar -czvf /tmp/frontend-testnet.tar.gz -C frontend build
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: frontend-testnet-dev
-          path: /tmp/frontend-testnet.tar.gz
+          name: melscan-frontend-dev
+          path: /tmp/melscan-frontend.tar.gz
 
 
   backend-build:
@@ -177,21 +142,6 @@ jobs:
           name: melscan-backend-dev
           path: melscan-backend.7z
 
-#      - name: Create MelScan Directory
-#        run: mkdir melscan-archive
-#
-#      - name: Move MelwalletD Binary
-#        run: mv backend/target/x86_64-unknown-linux-musl/debug/melscan-backend melscan-archive/melscan-backend
-#
-#      - name: Create MelScan Archive
-#        run: tar -czvf /tmp/melscan-backend.tar.gz melscan-archive
-
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: backend-dev
-#          path: /tmp/backend.tar.gz
-
-
 
 #  mainnet-build-docker-image-and-run-bats:
 #    runs-on: self-hosted
@@ -204,7 +154,7 @@ jobs:
 #
 #    needs:
 #      - backend-build
-#      - mainnet-frontend-build
+#      - frontend-build
 #
 #    steps:
 #      - name: Checkout repository
@@ -214,39 +164,33 @@ jobs:
 #        run: apt update
 #
 #      - name: Install Requirements
-#        run: apt -y install p7zip gettext packer
+#        run: apt -y install p7zip
 #
 #      - uses: actions/download-artifact@v3
 #        with:
-#          name: backend-dev
+#          name: melscan-backend-dev
 #
 #      - uses: actions/download-artifact@v3
 #        with:
-#          name: frontend-mainnet-dev
+#          name: melscan-frontend-dev
 #
-#      - name: Extract Themelio-Node Archive
-#        run: 7zr e themelio-node.7z
+#      - name: Extract MelScan Backend Archive
+#        run: 7zr e melscan-backend.7z
 #
-#      - name: Move Themelio-Node Binary
-#        run: mv themelio-node docker/dev/
+#      - name: Move MelScan Backend Binary
+#        run: mv melscan-backend docker/dev/
 #
 #      - name: Build Docker Image
-#        env:
-#          NETWORK: "mainnet"
-#        run: docker build -t "ghcr.io/themeliolabs/melscan-${NETWORK}:${THEMELIO_NODE_VERSION}" docker/dev/
+#        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
 #
 #      - name: Run Docker Image
 #        env:
-#          NETWORK: "mainnet"
-#        run: docker run -p 11814:11814 -p 8080:8080 -e NETWORK=${NETWORK_TO_BUILD} ghcr.io/themeliolabs/themelio-node-${NETWORK}:${THEMELIO_NODE_VERSION}
-
-
-
-
-
-
-
-#  build-docker-image-and-run-bats:
+#          BACKEND_URL: "http://localhost:13000"
+#        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
+#
+#
+#
+#  testnet-build-docker-image-and-run-bats:
 #    runs-on: self-hosted
 #
 #    container:
@@ -256,7 +200,8 @@ jobs:
 #      options: --privileged --user root
 #
 #    needs:
-#      - musl-build
+#      - backend-build
+#      - frontend-build
 #
 #    steps:
 #      - name: Checkout repository
@@ -266,61 +211,29 @@ jobs:
 #        run: apt update
 #
 #      - name: Install Requirements
-#        run: apt -y install p7zip gettext packer
+#        run: apt -y install p7zip
 #
 #      - uses: actions/download-artifact@v3
 #        with:
-#          name: themelio-node-dev
+#          name: melscan-backend-dev
 #
-#      - name: Extract Themelio-Node Archive
-#        run: 7zr e themelio-node.7z
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: melscan-frontend-dev
 #
-#      - name: Move Themelio-Node Binary
-#        run: mv themelio-node docker/dev/
+#      - name: Extract MelScan Backend Archive
+#        run: 7zr e melscan-backend.7z
 #
-#      - name: Install Yq
-#        run: pip install yq
-#
-#      - name: Create Version Environment Variable
-#        run: echo "THEMELIO_NODE_VERSION=$(cat Cargo.toml | tomlq .package.version | tr -d '"')" >> $GITHUB_ENV
-#
-#      - name: Set Network
-#        run: ./ci/set-network.sh
+#      - name: Move MelScan Backend Binary
+#        run: mv melscan-backend docker/dev/
 #
 #      - name: Build Docker Image
-#        env:
-#          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
-#        run: docker build --build-arg themelio_node_version=${THEMELIO_NODE_VERSION} -t "ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}" docker/dev/
+#        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
+#
+#      - name: Add TestNet Host
+#        run: echo "127.0.0.1 testnet.local" >> /etc/hosts
 #
 #      - name: Run Docker Image
 #        env:
-#          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
-#        run: docker run -p 11814:11814 -p 8080:8080 -e NETWORK=${NETWORK_TO_BUILD} ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}
-#
-#  verify-packer:
-#    runs-on: self-hosted
-#
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v3
-#
-#      - name: Add Packer Apt Key
-#        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-#
-#      - name: Add Packer Repository Key
-#        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-#
-#      - name: Update Apt
-#        run: sudo apt update
-#
-#      - name: Install Requirements
-#        run: sudo apt -y install gettext packer ansible
-#
-#      - name: Set Network
-#        run: ./ci/set-network.sh
-#
-#      - name: Verify Packer
-#        env:
-#          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
-#          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-#        run: ./ci/packer.sh
+#          BACKEND_URL: "http://testnet.local:13000"
+#        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
