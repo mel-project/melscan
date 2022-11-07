@@ -184,7 +184,7 @@ jobs:
         run: tar -xf melscan-frontend.tar.gz
 
       - name: Move Frontend Files
-        run: mv frontend-archive/* .
+        run: mv frontend-archive/* docker/dev
 
       - name: Build Docker Image
         run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
@@ -237,7 +237,7 @@ jobs:
         run: tar -xf melscan-frontend.tar.gz
 
       - name: Move Frontend Files
-        run: mv frontend-archive/* .
+        run: mv frontend-archive/* docker/dev
 
       - name: Build Docker Image
         run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
