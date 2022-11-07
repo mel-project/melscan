@@ -18,8 +18,7 @@
   [ "$output" = "200" ]
 }
 
-
-@test "Frontend root returns 200" {
+@test "Frontend stats returns 200" {
   output="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/stats)"
   [ "$output" = "200" ]
 }
@@ -33,7 +32,6 @@
   output="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/pools/MEL/SYM)"
   [ "$output" = "200" ]
 }
-
 
 @test "Frontend hash search returns 200" {
   output="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/blocks/1627701/774965c08b5aabe8e019384a73d5515c993ada00e8210098bb2bc96959c93bd2)"
