@@ -190,7 +190,7 @@ jobs:
         run: ls -la themelio-node-${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug
 
       - name: Create Themelio-Node Archive
-        run: 7zr a themelio-node.7z ${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug/themelio-node
+        run: 7zr a themelio-node.7z themelio-node-${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug/themelio-node
 
       - uses: actions/upload-artifact@v3
         with:
