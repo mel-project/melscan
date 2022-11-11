@@ -142,6 +142,59 @@ jobs:
           name: melscan-backend-dev
           path: melscan-backend.7z
 
+  themelio-node-build:
+    runs-on: self-hosted
+
+    env:
+      THEMELIO_NODE_VERSION: "0.13.2"
+
+    container:
+      image: rust:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install musl musl-tools p7zip
+
+      - name: Add Musl Toolchain
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Update Rust
+        run: rustup update
+
+      - uses: themeliolabs/actions-sccache@v1
+
+      - uses: themeliolabs/actions-mold@v1
+
+      - name: Fetch Themelio-Node Archive
+        run: wget https://github.com/themeliolabs/themelio-node/archive/refs/tags/v${THEMELIO_NODE_VERSION}.tar.gz
+
+      - name: Extract Themelio-Node Archive
+        run: tar -xf v${THEMELIO_NODE_VERSION}.tar.gz
+
+      - name: Build Themelio-Node
+
+        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path themelio-node-${THEMELIO_NODE_VERSION}/Cargo.toml
+
+      - name: Create Themelio-Node Archive
+        run: 7zr a melscan-backend.7z ${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug/themelio-node
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: themelio-node-dev
+          path: themelio-node.7z
+
 
   mainnet-build-docker-image-and-run-bats:
     runs-on: self-hosted
@@ -154,6 +207,7 @@ jobs:
 
     needs:
       - backend-build
+      - themelio-node-build
       - frontend-build
 
     steps:
@@ -207,6 +261,7 @@ jobs:
 
     needs:
       - backend-build
+      - themelio-node-build
       - frontend-build
 
     steps:
