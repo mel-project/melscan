@@ -18,11 +18,6 @@
   [ "$output" = "200" ]
 }
 
-@test "Frontend stats returns 200" {
-  output="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/stats)"
-  [ "$output" = "200" ]
-}
-
 @test "Frontend ERG/MEL returns 200" {
   output="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/pools/ERG/MEL)"
   [ "$output" = "200" ]
