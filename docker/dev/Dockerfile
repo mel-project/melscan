@@ -18,6 +18,9 @@ RUN rm -rf "bats-core-${BATS_VERSION}"
 COPY melscan-backend /usr/local/bin/melscan-backend
 RUN chmod +x /usr/local/bin/melscan-backend
 
+COPY themelio-node /usr/local/bin/themelio-node
+RUN chmod +x /usr/local/bin/themelio-node
+
 COPY build /var/www/melscan-frontend/build
 COPY package.json /var/www/melscan-frontend/
 WORKDIR /var/www/melscan-frontend
