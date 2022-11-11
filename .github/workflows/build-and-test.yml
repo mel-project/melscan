@@ -184,11 +184,10 @@ jobs:
         run: tar -xf v${THEMELIO_NODE_VERSION}.tar.gz
 
       - name: Build Themelio-Node
-
         run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path themelio-node-${THEMELIO_NODE_VERSION}/Cargo.toml
 
       - name: Create Themelio-Node Archive
-        run: 7zr a melscan-backend.7z ${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug/themelio-node
+        run: 7zr a themelio-node.7z ${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug/themelio-node
 
       - uses: actions/upload-artifact@v3
         with:
@@ -226,13 +225,23 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
+          name: themelio-node-dev
+
+      - uses: actions/download-artifact@v3
+        with:
           name: melscan-frontend-dev
 
       - name: Extract MelScan Backend Archive
         run: 7zr e melscan-backend.7z
 
+      - name: Extract Themelio-Node Backend Archive
+        run: 7zr e themelio-node.7z
+
       - name: Move MelScan Backend Binary
         run: mv melscan-backend docker/dev/
+
+      - name: Move Themelio-Node Binary
+        run: mv themelio-node docker/dev/
 
       - name: Extract MelScan Frontend Archive
         run: tar -xf melscan-frontend.tar.gz
@@ -280,13 +289,23 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
+          name: themelio-node-dev
+
+      - uses: actions/download-artifact@v3
+        with:
           name: melscan-frontend-dev
 
       - name: Extract MelScan Backend Archive
         run: 7zr e melscan-backend.7z
 
+      - name: Extract Themelio-Node Backend Archive
+        run: 7zr e themelio-node.7z
+
       - name: Move MelScan Backend Binary
         run: mv melscan-backend docker/dev/
+
+      - name: Move Themelio-Node Binary
+        run: mv themelio-node docker/dev/
 
       - name: Extract MelScan Frontend Archive
         run: tar -xf melscan-frontend.tar.gz
