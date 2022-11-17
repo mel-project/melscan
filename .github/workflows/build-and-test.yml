@@ -184,7 +184,7 @@ jobs:
         run: tar -xf v${THEMELIO_NODE_VERSION}.tar.gz
 
       - name: Build Themelio-Node
-        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path themelio-node-${THEMELIO_NODE_VERSION}/Cargo.toml
+        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --features metrics --manifest-path themelio-node-${THEMELIO_NODE_VERSION}/Cargo.toml
 
       - name: List
         run: ls -la themelio-node-${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug
