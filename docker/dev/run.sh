@@ -1,38 +1,88 @@
 #!/bin/bash
 
-# BACKEND_URL
-# NETWORK
+if [ "${RUN_FULL_NODE}" = 'false' ]; then
+  if [ -z "${FULL_NODE_ADDRESS}" ]; then
+    echo "Not running a full node and no node address specified with FULL_NODE_ADDRESS. Exiting."
+    exit 1
+  fi
 
-# I need to default BACKEND_URL to https://scan.themelio.org
+  echo "Not running a full node. Connecting to ${FULL_NODE_ADDRESS}."
 
+  # Backend Section
+  if [ "${NETWORK}" = 'mainnet' ]; then
+    mkdir -p /var/melscan/
+    melscan-backend --connect "${FULL_NODE_ADDRESS}" --listen 127.0.0.1:13000 --blkidx-db /var/melscan/mainnet.db &
+    sleep 3
+  elif [ "${NETWORK}" = 'testnet' ]; then
+    mkdir -p /var/melscan/
+    melscan-backend --testnet --connect "${FULL_NODE_ADDRESS}" --listen 127.0.0.1:13000 --blkidx-db /var/melscan/testnet.db &
+    sleep 3
+  else
+    echo "No network specified with NETWORK. Please use either 'mainnet' or 'testnet.' Exiting."
+    exit 1
+  fi
 
-COMMON_SERVER_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep -v map)"
-COMMON_SERVER_MAP_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep map)"
-COMMON_CLIENT_IMMUTATABLE_FILENAME="$(ls -d /var/www/melscan-frontend/build/client/_app/immutable/chunks/* | grep common | grep -v map)"
+  # Frontend Section
+  COMMON_SERVER_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep -v map)"
+  COMMON_SERVER_MAP_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep map)"
+  COMMON_CLIENT_IMMUTATABLE_FILENAME="$(ls -d /var/www/melscan-frontend/build/client/_app/immutable/chunks/* | grep common | grep -v map)"
 
-sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
-sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
-sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+  BACKEND_URL="http://127.0.0.1:13000"
 
+  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
 
-#if [ -z "${BACKEND_URL}" || -z "${NETWORK}" ]; then
-#  echo ""
-#  exit 1
-#elif [ -n "${ADVERTISE_MANUAL}" ]; then
-#  exec themelio-node --database {{ pkg.svc_data_path }}/main3 --listen 0.0.0.0:{{ cfg.port }} --advertise "${ADVERTISE_MANUAL}":{{ cfg.port }}
-#else
-#  PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
-#  exec themelio-node --database {{ pkg.svc_data_path }}/main3 --listen 0.0.0.0:{{ cfg.port }} --advertise "${PUBLIC_IP_ADDRESS}":{{ cfg.port }}
-#fi
+  node /var/www/melscan-frontend/build/index.js &
 
+  sleep 3
 
-# I need a way of selecting the .db file here for mainnet and testnet.
-melscan-backend --connect 146.59.84.29:41814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan-mainnet.db &
+  bats --print-output-on-failure /tmp/ci.bats
+else
+  # Node Section
+  if [ "${NETWORK}" = 'mainnet' ]; then
+    PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
+    themelio-node --database /var/lib/themelio-node/mainnet --listen 0.0.0.0:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814 &
+    sleep 3
+  elif [ "${NETWORK}" = 'testnet' ]; then
+    PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
+    themelio-node --database /var/lib/themelio-node/testnet --testnet --bootstrap tm-1.themelio.org:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814
+    sleep 3
+  else
+    echo "No network specified with NETWORK. Please use either 'mainnet' or 'testnet.' Exiting."
+    exit 1
+  fi
 
-sleep 3
+  # Backend Section
+  if [ "${NETWORK}" = 'mainnet' ]; then
+    mkdir -p /var/melscan/
+    melscan-backend --connect 127.0.0.1:11814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/mainnet.db &
+#      melscan-backend --connect 146.59.84.29:41814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/mainnet.db &
+    sleep 3
+  elif [ "${NETWORK}" = 'testnet' ]; then
+    mkdir -p /var/melscan/
+    melscan-backend --testnet --connect 127.0.0.1:11814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/testnet.db &
+#      melscan-backend --testnet --connect 146.59.84.29:11111 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/testnet.db &
+    sleep 3
+  else
+    echo "No network specified with NETWORK. Please use either 'mainnet' or 'testnet.' Exiting."
+    exit 1
+  fi
 
-node /var/www/melscan-frontend/build/index.js &
+  # Frontend Section
+  COMMON_SERVER_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep -v map)"
+  COMMON_SERVER_MAP_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep map)"
+  COMMON_CLIENT_IMMUTATABLE_FILENAME="$(ls -d /var/www/melscan-frontend/build/client/_app/immutable/chunks/* | grep common | grep -v map)"
 
-sleep 3
+  BACKEND_URL="http://127.0.0.1:13000"
 
-bats --print-output-on-failure /tmp/ci.bats
+  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+
+  node /var/www/melscan-frontend/build/index.js &
+
+  sleep 3
+
+  bats --print-output-on-failure /tmp/ci.bats
+fi
