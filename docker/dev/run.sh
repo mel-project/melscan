@@ -74,11 +74,23 @@ else
   COMMON_SERVER_MAP_FILENAME="$(ls -d /var/www/melscan-frontend/build/server/chunks/* | grep common | grep map)"
   COMMON_CLIENT_IMMUTATABLE_FILENAME="$(ls -d /var/www/melscan-frontend/build/client/_app/immutable/chunks/* | grep common | grep -v map)"
 
-  BACKEND_URL="http://127.0.0.1:13000"
+  if [ "${NETWORK}" = 'mainnet' ]; then
+    BACKEND_URL="http://127.0.0.1:13000"
 
-  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
-  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
-  sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+  elif [ "${NETWORK}" = 'testnet' ]; then
+    BACKEND_URL="http://testnet.local:13000"
+
+    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+  else
+    echo "No network specified with NETWORK. Please use either 'mainnet' or 'testnet.' Exiting."
+    exit 1
+  fi
+
 
   node /var/www/melscan-frontend/build/index.js &
 

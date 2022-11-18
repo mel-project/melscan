@@ -257,8 +257,8 @@ jobs:
 
       - name: Run Docker Image
         env:
-          BACKEND_URL: "http://localhost:13000"
-        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
+          NETWORK: "mainnet"
+        run: docker run -p 3000:3000 -e NETWORK=${NETWORK} ghcr.io/themeliolabs/melscan:latest
 
 
 
@@ -324,5 +324,5 @@ jobs:
 
       - name: Run Docker Image
         env:
-          BACKEND_URL: "http://testnet.local:13000"
-        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
+          NETWORK: "testnet"
+        run: docker run -p 3000:3000 -e NETWORK=${NETWORK} ghcr.io/themeliolabs/melscan:latest
