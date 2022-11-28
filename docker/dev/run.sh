@@ -88,11 +88,11 @@ else
     fi
   elif [ "${NETWORK}" = 'testnet' ]; then
     if [ -z "${BACKEND_URL}" ]; then
-        BACKEND_URL="http://testnet.local:13000"
+      BACKEND_URL="http://testnet.local:13000"
 
-        sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
-        sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
-        sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+      sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+      sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+      sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
     else
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
@@ -104,9 +104,13 @@ else
   fi
 
 
+  echo "Starting frontend."
+
   node /var/www/melscan-frontend/build/index.js &
 
   sleep 3
+
+  echo "Running BATS tests."
 
   bats --print-output-on-failure /tmp/ci.bats
 fi
