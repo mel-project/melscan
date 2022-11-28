@@ -81,11 +81,19 @@ else
     sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
     sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
   elif [ "${NETWORK}" = 'testnet' ]; then
-    BACKEND_URL="http://testnet.local:13000"
+    if [ -z "${BACKEND_URL}" ]; then
+        BACKEND_URL="http://testnet.local:13000"
 
-    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
-    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
-    sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+        sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+        sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+        sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+      echo "Not running a full node and no node address specified with FULL_NODE_ADDRESS. Exiting."
+      exit 1
+    else
+      sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
+      sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
+      sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
+    fi
   else
     echo "No network specified with NETWORK. Please use either 'mainnet' or 'testnet.' Exiting."
     exit 1
