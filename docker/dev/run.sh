@@ -52,7 +52,7 @@ else
 
     echo "Starting testnet node."
 
-    themelio-node --database /var/lib/themelio-node/testnet --testnet --bootstrap tm-1.themelio.org:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814 &
+    themelio-node --database /var/lib/themelio-node/testnet --listen 0.0.0.0:11814 --testnet --bootstrap tm-1.themelio.org:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814 &
     sleep 3
   else
     echo "No network specified with NETWORK. Please use either 'mainnet' or 'testnet.' Exiting."
