@@ -121,8 +121,11 @@ jobs:
       - name: Install Requirements
         run: apt -y install musl musl-tools p7zip
 
+      - name: Add Default Toolchain
+        run: rustup default stable
+
       - name: Add Musl Toolchain
-        run: rustup default stable-x86_64-unknown-linux-musl
+        run: rustup target add x86_64-unknown-linux-musl
 
       - name: Update Rust
         run: rustup update
@@ -167,8 +170,11 @@ jobs:
       - name: Install Requirements
         run: apt -y install musl musl-tools p7zip
 
+      - name: Add Default Toolchain
+        run: rustup default stable
+
       - name: Add Musl Toolchain
-        run: rustup default stable-x86_64-unknown-linux-musl
+        run: rustup target add x86_64-unknown-linux-musl
 
       - name: Update Rust
         run: rustup update
@@ -321,6 +327,11 @@ jobs:
 
       - name: Add TestNet Host
         run: echo "127.0.0.1 testnet.local" >> /etc/hosts
+
+      - name: Run Docker Image
+        env:
+          BACKEND_URL: "http://testnet.local:13000"
+        run: docker run -p 3000:3000 -e BACKEND_URL=${BACKEND_URL} ghcr.io/themeliolabs/melscan:latest
 
       - name: Run Docker Image
         env:
