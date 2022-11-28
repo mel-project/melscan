@@ -1,0 +1,334 @@
+name: BuildAndTest
+
+on:
+  pull_request:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_HOME: "/usr/local/cargo/"
+  RUSTUP_HOME: "/usr/local/rustup"
+  SCCACHE_DIR: "/usr/local/sccache"
+  RUSTC_WRAPPER: "/usr/local/bin/sccache"
+  npm_config_cache: "/usr/local/npm-cache"
+  YARN_CACHE_FOLDER: "/usr/local/npm-cache"
+
+jobs:
+  frontend-lint:
+
+    runs-on: self-hosted
+
+    container:
+      image: node:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/npm-cache:/usr/local/npm-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Yarn Install
+        run: yarn install --prefer-offline --cwd frontend
+
+      - name: Run NPM Lint
+        run: npm run lint --prefix frontend
+
+
+  frontend-check:
+
+    runs-on: self-hosted
+
+    container:
+      image: node:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/npm-cache:/usr/local/npm-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Yarn Install
+        run: yarn install --prefer-offline --cwd frontend
+
+      - name: Run NPM Check
+        run: npm run check --prefix frontend
+
+  frontend-build:
+
+    runs-on: self-hosted
+
+    needs:
+      - frontend-lint
+      - frontend-check
+
+    container:
+      image: node:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/npm-cache:/usr/local/npm-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Yarn Install
+        run: yarn install --prefer-offline --cwd frontend
+
+      - name: Run NPM Build
+        run: npm run build-dev --prefix frontend
+
+      - name: Create Frontend Archive Directory
+        run: mkdir frontend-archive
+
+      - name: Copy Manifest To Build Folder
+        run: cp frontend/package.json frontend-archive/
+
+      - name: Move Frontend Build To Archive Folder
+        run: mv frontend/build frontend-archive/
+
+      - name: Create Frontend Archive
+#        run: tar -czvf /tmp/frontend.tar.gz -C frontend build
+        run: tar -czvf /tmp/melscan-frontend.tar.gz frontend-archive
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: melscan-frontend-dev
+          path: /tmp/melscan-frontend.tar.gz
+
+
+  backend-build:
+    runs-on: self-hosted
+
+    container:
+      image: rust:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install musl musl-tools p7zip
+
+      - name: Add Default Toolchain
+        run: rustup default stable
+
+      - name: Add Musl Toolchain
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Update Rust
+        run: rustup update
+
+      - uses: themeliolabs/actions-sccache@v1
+
+      - uses: themeliolabs/actions-mold@v1
+
+      - name: Build MelScan
+        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --manifest-path backend/Cargo.toml
+
+      - name: Create MelScan Backend Archive
+        run: 7zr a melscan-backend.7z backend/target/x86_64-unknown-linux-musl/debug/melscan-backend
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: melscan-backend-dev
+          path: melscan-backend.7z
+
+  themelio-node-build:
+    runs-on: self-hosted
+
+    env:
+      THEMELIO_NODE_VERSION: "0.13.2"
+
+    container:
+      image: rust:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install musl musl-tools p7zip
+
+      - name: Add Default Toolchain
+        run: rustup default stable
+
+      - name: Add Musl Toolchain
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Update Rust
+        run: rustup update
+
+      - uses: themeliolabs/actions-sccache@v1
+
+      - uses: themeliolabs/actions-mold@v1
+
+      - name: Fetch Themelio-Node Archive
+        run: wget https://github.com/themeliolabs/themelio-node/archive/refs/tags/v${THEMELIO_NODE_VERSION}.tar.gz
+
+      - name: Extract Themelio-Node Archive
+        run: tar -xf v${THEMELIO_NODE_VERSION}.tar.gz
+
+      - name: Build Themelio-Node
+        run: mold --run cargo build --target=x86_64-unknown-linux-musl --locked --features metrics --manifest-path themelio-node-${THEMELIO_NODE_VERSION}/Cargo.toml
+
+      - name: List
+        run: ls -la themelio-node-${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug
+
+      - name: Create Themelio-Node Archive
+        run: 7zr a themelio-node.7z themelio-node-${THEMELIO_NODE_VERSION}/target/x86_64-unknown-linux-musl/debug/themelio-node
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: themelio-node-dev
+          path: themelio-node.7z
+
+
+  mainnet-build-docker-image-and-run-bats:
+    runs-on: self-hosted
+
+    container:
+      image: summerwind/actions-runner-dind:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+      options: --privileged --user root
+
+    needs:
+      - backend-build
+      - themelio-node-build
+      - frontend-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install p7zip
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-backend-dev
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: themelio-node-dev
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-frontend-dev
+
+      - name: Extract MelScan Backend Archive
+        run: 7zr e melscan-backend.7z
+
+      - name: Extract Themelio-Node Backend Archive
+        run: 7zr e themelio-node.7z
+
+      - name: Move MelScan Backend Binary
+        run: mv melscan-backend docker/dev/
+
+      - name: Move Themelio-Node Binary
+        run: mv themelio-node docker/dev/
+
+      - name: Extract MelScan Frontend Archive
+        run: tar -xf melscan-frontend.tar.gz
+
+      - name: Move Frontend Files
+        run: mv frontend-archive/* docker/dev
+
+      - name: Build Docker Image
+        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
+
+      - name: Run Docker Image
+        env:
+          NETWORK: "mainnet"
+        run: docker run -p 3000:3000 -e NETWORK=${NETWORK} ghcr.io/themeliolabs/melscan:latest
+
+
+
+  testnet-build-docker-image-and-run-bats:
+    runs-on: self-hosted
+
+    container:
+      image: summerwind/actions-runner-dind:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+      options: --privileged --user root
+
+    needs:
+      - backend-build
+      - themelio-node-build
+      - frontend-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install p7zip
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-backend-dev
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: themelio-node-dev
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melscan-frontend-dev
+
+      - name: Extract MelScan Backend Archive
+        run: 7zr e melscan-backend.7z
+
+      - name: Extract Themelio-Node Backend Archive
+        run: 7zr e themelio-node.7z
+
+      - name: Move MelScan Backend Binary
+        run: mv melscan-backend docker/dev/
+
+      - name: Move Themelio-Node Binary
+        run: mv themelio-node docker/dev/
+
+      - name: Extract MelScan Frontend Archive
+        run: tar -xf melscan-frontend.tar.gz
+
+      - name: Move Frontend Files
+        run: mv frontend-archive/* docker/dev
+
+      - name: Build Docker Image
+        run: docker build -t "ghcr.io/themeliolabs/melscan:latest" docker/dev/
+
+      - name: Add TestNet Host
+        run: echo "127.0.0.1 testnet.local" >> /etc/hosts
+
+      - name: Run Docker Image
+        env:
+          NETWORK: "testnet"
+        run: docker run -p 3000:3000 -e NETWORK=${NETWORK} ghcr.io/themeliolabs/melscan:latest

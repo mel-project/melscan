@@ -9,8 +9,8 @@
 
 	export let load = async (event) => {
 		let { params, fetch, url } = event;
-		let res = (await melscan(fetch, '/raw' + url.pathname))
-	
+		let res = await melscan(fetch, '/raw' + url.pathname);
+
 		return {
 			status: 200,
 			props: res
