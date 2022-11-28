@@ -42,10 +42,16 @@ else
   # Node Section
   if [ "${NETWORK}" = 'mainnet' ]; then
     PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
+
+    echo "Starting mainnet node."
+
     themelio-node --database /var/lib/themelio-node/mainnet --listen 0.0.0.0:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814 &
     sleep 3
   elif [ "${NETWORK}" = 'testnet' ]; then
     PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
+
+    echo "Starting testnet node."
+
     themelio-node --database /var/lib/themelio-node/testnet --testnet --bootstrap tm-1.themelio.org:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814
     sleep 3
   else
@@ -56,11 +62,17 @@ else
   # Backend Section
   if [ "${NETWORK}" = 'mainnet' ]; then
     mkdir -p /var/melscan/
+
+    echo "Starting backend."
+
     melscan-backend --connect 127.0.0.1:11814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/mainnet.db &
 #      melscan-backend --connect 146.59.84.29:41814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/mainnet.db &
     sleep 3
   elif [ "${NETWORK}" = 'testnet' ]; then
     mkdir -p /var/melscan/
+
+    echo "Starting backend."
+
     melscan-backend --testnet --connect 127.0.0.1:11814 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/testnet.db &
 #      melscan-backend --testnet --connect 146.59.84.29:11111 --listen 127.0.0.1:13000 --blkidx-db /var/melscan/testnet.db &
     sleep 3
@@ -78,6 +90,8 @@ else
     if [ -z "${BACKEND_URL}" ]; then
       BACKEND_URL="http://127.0.0.1:13000"
 
+      echo "Setting BACKEND_URL to be ${BACKEND_URL} for connection from the frontend."
+
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_CLIENT_IMMUTATABLE_FILENAME}"
@@ -89,6 +103,8 @@ else
   elif [ "${NETWORK}" = 'testnet' ]; then
     if [ -z "${BACKEND_URL}" ]; then
       BACKEND_URL="http://testnet.local:13000"
+
+      echo "Setting BACKEND_URL to be ${BACKEND_URL} for connection from the frontend."
 
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_FILENAME}"
       sed -ri "s|BASE_URL_DYNAMIC|${BACKEND_URL}|g" "${COMMON_SERVER_MAP_FILENAME}"
