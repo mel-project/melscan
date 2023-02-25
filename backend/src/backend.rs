@@ -5,16 +5,16 @@ use chrono::Utc;
 use dashmap::DashMap;
 use itertools::Itertools;
 use melblkidx::{BalanceTracker, Indexer};
+use melprot::Client;
+use melstructs::{
+    Address, Block, BlockHeight, CoinDataHeight, CoinID, CoinValue, Denom, Header, PoolKey,
+    Transaction, TxHash,
+};
+use melvm::covenant_weight_from_bytes;
 use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
 use smol::{lock::Semaphore, prelude::*};
 use tap::Tap;
-use themelio_nodeprot::ValClient;
-use themelio_stf::melvm::covenant_weight_from_bytes;
-use themelio_structs::{
-    Address, Block, BlockHeight, CoinDataHeight, CoinID, CoinValue, Denom, Header, PoolKey,
-    Transaction, TxHash,
-};
 use tmelcrypt::HashVal;
 
 use crate::{graphs::height_to_datetime, utils::*};
@@ -90,7 +90,7 @@ pub struct AddressTransactionSummary {
 /// A Backend encapsulates the current state of a blockchain and exposes methods that are convenient to call from JSON-returning APIs.
 #[derive(Clone)]
 pub struct Backend {
-    pub client: ValClient,
+    pub client: Client,
 
     indexer: Option<Arc<Indexer>>,
     supply_cache: Arc<DashMap<Denom, Arc<BalanceTracker>>>,
@@ -100,8 +100,8 @@ pub struct Backend {
 }
 
 impl Backend {
-    /// Creates a new Backend that wraps around a given ValClient.
-    pub fn new(client: ValClient, indexer: Option<Indexer>) -> Self {
+    /// Creates a new Backend that wraps around a given Client.
+    pub fn new(client: Client, indexer: Option<Indexer>) -> Self {
         Self {
             client,
             indexer: indexer.map(Arc::new),
@@ -133,7 +133,7 @@ impl Backend {
 
     /// Obtains the latest blockchain header.
     pub async fn get_latest_header(&self) -> anyhow::Result<Header> {
-        Ok(self.client.snapshot().await?.current_header())
+        Ok(self.client.latest_snapshot().await?.current_header())
     }
 
     /// Searches for the transaction matching a given hash.
@@ -155,8 +155,8 @@ impl Backend {
     /// Get "overview" information at either the latest height or a given height.
     pub async fn get_overview(&self, height: Option<BlockHeight>) -> anyhow::Result<Overview> {
         let last_snap = match height {
-            Some(height) => self.client.older_snapshot(height).await?,
-            None => self.client.snapshot().await?,
+            Some(height) => self.client.snapshot(height).await?,
+            None => self.client.latest_snapshot().await?,
         };
 
         let mut futs = get_old_blocks(&last_snap, 50);
@@ -185,7 +185,7 @@ impl Backend {
     ) -> anyhow::Result<Option<Transaction>> {
         Ok(self
             .client
-            .older_snapshot(height)
+            .snapshot(height)
             .await?
             .get_transaction(txhash)
             .await?)
@@ -197,13 +197,13 @@ impl Backend {
         height: BlockHeight,
         coinid: CoinID,
     ) -> anyhow::Result<Option<CoinDataHeight>> {
-        let older = self.client.older_snapshot(height).await?;
+        let older = self.client.snapshot(height).await?;
         Ok(older.get_coin(coinid).await?)
     }
 
     /// Gets a particular block.
     pub async fn get_block(&self, height: BlockHeight) -> anyhow::Result<Option<Block>> {
-        let snap = self.client.snapshot().await?;
+        let snap = self.client.latest_snapshot().await?;
         if height > snap.current_header().height {
             return Ok(None);
         }
@@ -215,7 +215,7 @@ impl Backend {
         &self,
         height: BlockHeight,
     ) -> anyhow::Result<Option<BlockSummary>> {
-        let snap = self.client.snapshot().await?;
+        let snap = self.client.latest_snapshot().await?;
         if height > snap.current_header().height {
             return Ok(None);
         }

@@ -19,3 +19,5 @@ rsync -avz --delete --progress --rsync-path="sudo rsync" ./backend/target/x86_64
 # Restart services
 ssh -v debian@web.themelio.org sudo systemctl restart melscan-mainnet-backend
 ssh -v debian@web.themelio.org sudo systemctl restart melscan-mainnet-frontend
+ssh -v debian@web.themelio.org sudo systemctl restart melscan-testnet-backend
+ssh -v debian@web.themelio.org sudo systemctl restart melscan-testnet-frontend

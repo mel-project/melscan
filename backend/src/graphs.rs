@@ -3,8 +3,8 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 use futures_util::Future;
 use itertools::Itertools;
+use melstructs::BlockHeight;
 use serde::{Deserialize, Serialize};
-use themelio_structs::BlockHeight;
 
 mod helpers;
 

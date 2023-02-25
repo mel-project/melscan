@@ -14,10 +14,10 @@ use rweb::*;
 
 use serde::{ser::SerializeTupleStruct, Deserialize};
 
+use melstructs::*;
+use melvm::covenant_weight_from_bytes;
 use serde::Serialize;
 use smol::Task;
-use themelio_stf::melvm::covenant_weight_from_bytes;
-use themelio_structs::*;
 use tmelcrypt::{HashVal, Hashable};
 use tracing::{debug, info};
 
@@ -26,7 +26,7 @@ use crate::{
     globals::{BACKEND, CLIENT},
     graphs::{datetime_to_height, graph_range},
 };
-use themelio_stf::melvm::opcode;
+use melvm::opcode;
 
 type DynReply = Result<Box<dyn warp::Reply>, Infallible>;
 
@@ -179,7 +179,7 @@ enum GraphId {
 #[post("/raw/graph")]
 pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
     generic_fallible_json_option(async move {
-        let snapshot = CLIENT.snapshot().await?;
+        let snapshot = CLIENT.latest_snapshot().await?;
         let start = qs
             .start
             .map(datetime_to_height)
@@ -202,12 +202,12 @@ pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
                     end,
                     1000,
                     move |height| async move {
-                        let snap = CLIENT.older_snapshot(height).await?;
+                        let snap = CLIENT.snapshot(height).await?;
                         let pool_key = PoolKey::new(from, to);
                         let pool_info = snap.get_pool(pool_key).await?;
                         if let Some(pool_info) = pool_info {
                             let ratio = pool_info.implied_price().to_f64().unwrap_or(f64::NAN);
-                            if pool_key.left == from {
+                            if pool_key.left() == from {
                                 Ok(1.0 / ratio)
                             } else {
                                 Ok(ratio)
@@ -227,7 +227,7 @@ pub async fn graph(#[json] qs: GraphQuery) -> DynReply {
                     end,
                     1000,
                     move |height| async move {
-                        let snap = CLIENT.older_snapshot(height).await?;
+                        let snap = CLIENT.snapshot(height).await?;
                         let pool_key = PoolKey::new(from, to);
                         let pool_info = snap.get_pool(pool_key).await?;
                         if let Some(pool_info) = pool_info {
@@ -338,7 +338,7 @@ fn decode_all_ops(covenant: Vec<u8>) -> anyhow::Result<OpCodeStrings> {
 pub async fn transaction_page(height: BlockHeight, txhash: TxHash) -> DynReply {
     generic_fallible_json_option(async move {
         let client = CLIENT.to_owned();
-        let snap = client.older_snapshot(height).await?;
+        let snap = client.snapshot(height).await?;
         let transaction = if let Some(tx) = snap.get_transaction(txhash).await? {
             tx
         } else {
@@ -444,7 +444,12 @@ pub async fn transaction_page(height: BlockHeight, txhash: TxHash) -> DynReply {
             .clone()
             .covenants
             .into_iter()
-            .map(|cov| anyhow::Ok((Address(cov.hash()).to_string(), decode_all_ops(cov)?)))
+            .map(|cov| {
+                anyhow::Ok((
+                    Address(cov.hash()).to_string(),
+                    decode_all_ops(cov.to_vec())?,
+                ))
+            })
             .collect::<Result<_, _>>()?;
 
         let body = TransactionTemplate {
@@ -478,7 +483,7 @@ pub async fn transaction_page(height: BlockHeight, txhash: TxHash) -> DynReply {
                 .iter()
                 .map(|(denom, val)| MicroUnit(val.0, *denom))
                 .collect(),
-            weight: transaction.weight(themelio_stf::melvm::covenant_weight_from_bytes),
+            weight: transaction.weight(melvm::covenant_weight_from_bytes),
             kind: format!("{}", transaction.kind),
             covenants,
         };

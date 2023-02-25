@@ -1,15 +1,15 @@
 use crate::backend::TransactionSummary;
 use anyhow::Context;
 use futures_util::{stream::FuturesOrdered, Future};
+use melprot::Snapshot;
+use melstructs::{Block, CoinID, CoinValue, Denom, PoolKey};
+use melvm::covenant_weight_from_bytes;
 use moka::sync::Cache;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
-use themelio_nodeprot::ValClientSnapshot;
-use themelio_stf::melvm::covenant_weight_from_bytes;
-use themelio_structs::{Block, CoinID, CoinValue, Denom, PoolKey};
 
 pub fn get_old_blocks(
-    last_snap: &ValClientSnapshot,
+    last_snap: &Snapshot,
     depth: usize,
 ) -> FuturesOrdered<impl Future<Output = anyhow::Result<(Block, CoinValue)>>> {
     static CACHE: Lazy<Cache<u64, (Block, CoinValue)>> = Lazy::new(|| Cache::new(100));
@@ -56,7 +56,7 @@ pub fn get_transactions(block: &Block) -> Vec<TransactionSummary> {
 }
 
 pub async fn get_exchange(
-    last_snap: &ValClientSnapshot,
+    last_snap: &Snapshot,
     denom1: Denom,
     denom2: Denom,
 ) -> anyhow::Result<f64> {

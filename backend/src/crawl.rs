@@ -2,10 +2,10 @@ use std::ops::Range;
 
 use anyhow::Context;
 use futures_util::future::join_all;
+use melstructs::{Block, BlockHeight, CoinData, CoinID, Transaction, TxHash};
 use moka::sync::Cache;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use themelio_structs::{Block, BlockHeight, CoinData, CoinID, Transaction, TxHash};
 
 use crate::globals::{BACKEND, CLIENT};
 
@@ -30,7 +30,7 @@ impl CoinCrawl {
         if let Some(res) = CACHE.get(&txhash) {
             Ok(res)
         } else {
-            let snap = CLIENT.older_snapshot(height).await?;
+            let snap = CLIENT.snapshot(height).await?;
             let transaction = snap
                 .get_transaction(txhash)
                 .await?
@@ -54,7 +54,7 @@ impl CoinCrawl {
             .into_iter();
 
             // but we want to know exactly who spent all the other things too.
-            let chain_height = CLIENT.snapshot().await?.current_header().height;
+            let chain_height = CLIENT.latest_snapshot().await?.current_header().height;
             let height_range = height.0..chain_height.0;
             let output_range = 0..transaction.outputs.len();
             let output_crawls = join_all(output_range.map(|i| {
@@ -103,7 +103,7 @@ async fn find_spend_within_range(
             None => return Ok(None),
         };
 
-        let snapshot = BACKEND.client.older_snapshot(spend_height).await?;
+        let snapshot = BACKEND.client.snapshot(spend_height).await?;
         let block = snapshot.current_block().await?;
 
         let spend_tx = find_spending_transaction(block, coinid).await?;

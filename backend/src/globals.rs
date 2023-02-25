@@ -1,11 +1,11 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use melblkidx::Indexer;
-use melnet2::{wire::tcp::TcpBackhaul, Backhaul};
+use melnet2::{wire::http::HttpBackhaul, Backhaul};
+use melprot::{Client, NodeRpcClient};
+use melstructs::NetID;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
-use themelio_nodeprot::{NodeRpcClient, ValClient};
-use themelio_structs::NetID;
 
 use crate::backend::Backend;
 
@@ -35,10 +35,10 @@ pub struct Args {
 /// Command-line arguments that were initially passed in.
 pub static CMD_ARGS: Lazy<Args> = Lazy::new(Args::from_args);
 
-/// The global ValClient for talking to the network.
-pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
+/// The global Client for talking to the network.
+pub static CLIENT: Lazy<Client> = Lazy::new(|| {
     smolscale::block_on(async move {
-        let backhaul = TcpBackhaul::new();
+        let backhaul = HttpBackhaul::new();
         let network = if let Some(custom_net) = CMD_ARGS.network {
             custom_net
         } else if CMD_ARGS.testnet {
@@ -47,7 +47,7 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
             NetID::Mainnet
         };
 
-        let client = ValClient::new(
+        let client = Client::new(
             network,
             NodeRpcClient(
                 backhaul
@@ -58,11 +58,11 @@ pub static CLIENT: Lazy<ValClient> = Lazy::new(|| {
         );
         if let Some(_) = CMD_ARGS.network {
             println!("Insecurely trusting snapshot on a custom network");
-            client.insecure_latest_snapshot().await.unwrap();
+            client.dangerously_trust_latest().await.unwrap();
         } else if CMD_ARGS.testnet {
-            client.trust(themelio_bootstrap::checkpoint_height(NetID::Testnet).unwrap());
+            client.trust(melbootstrap::checkpoint_height(NetID::Testnet).unwrap());
         } else {
-            client.trust(themelio_bootstrap::checkpoint_height(NetID::Mainnet).unwrap());
+            client.trust(melbootstrap::checkpoint_height(NetID::Mainnet).unwrap());
         }
         client
     })
