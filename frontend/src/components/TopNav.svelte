@@ -13,9 +13,9 @@
 		<div class="text-sm text-blue-600 hover:underline">
 			<b>
 				{#if testnet}
-					<a href="https://scan.themelio.org">Switch to mainnet</a>
+					<a href="https://melscan.io">Switch to mainnet</a>
 				{:else}
-					<a href="https://scan-testnet.themelio.org">Switch to testnet</a>
+					<a href="https://testnet.melscan.io">Switch to testnet</a>
 				{/if}
 			</b>
 		</div>
