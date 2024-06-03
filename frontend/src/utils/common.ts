@@ -16,6 +16,7 @@ export type Fetch = (info: RequestInfo, init?: RequestInit) => Promise<Response>
 
 export const melscan = async (fetch: Fetch, endpoint: string): Promise<any> => {
   const url = backendUrl(endpoint);
+  console.log("BACKEND URL: ", url);
 
   try {
     const response = await fetch(url);
