@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [patch.crates-io]
-melbootstrap = { git = "https://github.com/mel-project", branch = "history-wipe" }
+melbootstrap = { git = "https://github.com/mel-project/melbootstrap", branch = "history-wipe" }
 
 [dependencies]
 smol= "1.3.0"
