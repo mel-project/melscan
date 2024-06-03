@@ -6,7 +6,7 @@ import type { GraphDatum, GraphQuery } from './page-types';
 
 const baseUrl = import.meta.env.VITE_BASE_URL
   ? import.meta.env.VITE_BASE_URL
-  : 'http://62.210.93.59:8081';
+  : 'http://62.210.93.59';
 
 export const isTestnet = baseUrl.includes('testnet');
 
